@@ -1,0 +1,121 @@
+import uuid
+
+from fastapi import (
+    APIRouter,
+    Depends,
+    Query,
+)
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.api.dependencies.tenant import (
+    get_current_organization_id,
+)
+from app.db.session import get_db
+from app.schemas.pipeline import (
+    PipelineResponse,
+    PipelineStageResponse,
+)
+from app.services.pipelines import (
+    get_pipeline,
+    get_pipeline_stage,
+    list_pipeline_stages,
+    list_pipelines,
+)
+
+
+router = APIRouter(
+    prefix="/pipelines",
+    tags=["Pipelines"],
+)
+
+
+@router.get(
+    "",
+    response_model=list[
+        PipelineResponse
+    ],
+)
+async def list_pipelines_endpoint(
+    include_inactive: bool = Query(
+        default=False,
+    ),
+    organization_id: uuid.UUID = Depends(
+        get_current_organization_id
+    ),
+    db: AsyncSession = Depends(
+        get_db
+    ),
+):
+    return await list_pipelines(
+        db,
+        organization_id,
+        include_inactive,
+    )
+
+
+@router.get(
+    "/{pipeline_id}",
+    response_model=PipelineResponse,
+)
+async def get_pipeline_endpoint(
+    pipeline_id: uuid.UUID,
+    organization_id: uuid.UUID = Depends(
+        get_current_organization_id
+    ),
+    db: AsyncSession = Depends(
+        get_db
+    ),
+):
+    return await get_pipeline(
+        db,
+        organization_id,
+        pipeline_id,
+    )
+
+
+@router.get(
+    "/{pipeline_id}/stages",
+    response_model=list[
+        PipelineStageResponse
+    ],
+)
+async def list_pipeline_stages_endpoint(
+    pipeline_id: uuid.UUID,
+    include_inactive: bool = Query(
+        default=False,
+    ),
+    organization_id: uuid.UUID = Depends(
+        get_current_organization_id
+    ),
+    db: AsyncSession = Depends(
+        get_db
+    ),
+):
+    return await list_pipeline_stages(
+        db,
+        organization_id,
+        pipeline_id,
+        include_inactive,
+    )
+
+
+@router.get(
+    "/{pipeline_id}/stages/{stage_id}",
+    response_model=PipelineStageResponse,
+)
+async def get_pipeline_stage_endpoint(
+    pipeline_id: uuid.UUID,
+    stage_id: uuid.UUID,
+    organization_id: uuid.UUID = Depends(
+        get_current_organization_id
+    ),
+    db: AsyncSession = Depends(
+        get_db
+    ),
+):
+    return await get_pipeline_stage(
+        db,
+        organization_id,
+        pipeline_id,
+        stage_id,
+    )
