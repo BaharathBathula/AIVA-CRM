@@ -42,7 +42,9 @@ class Activity(
         ),
     )
 
-    account_id: Mapped[uuid.UUID | None] = mapped_column(
+    account_id: Mapped[
+        uuid.UUID | None
+    ] = mapped_column(
         ForeignKey(
             "accounts.id",
             ondelete="SET NULL",
@@ -51,7 +53,9 @@ class Activity(
         index=True,
     )
 
-    contact_id: Mapped[uuid.UUID | None] = mapped_column(
+    contact_id: Mapped[
+        uuid.UUID | None
+    ] = mapped_column(
         ForeignKey(
             "contacts.id",
             ondelete="SET NULL",
@@ -60,7 +64,31 @@ class Activity(
         index=True,
     )
 
-    created_by_user_id: Mapped[uuid.UUID | None] = mapped_column(
+    lead_id: Mapped[
+        uuid.UUID | None
+    ] = mapped_column(
+        ForeignKey(
+            "leads.id",
+            ondelete="SET NULL",
+        ),
+        nullable=True,
+        index=True,
+    )
+
+    opportunity_id: Mapped[
+        uuid.UUID | None
+    ] = mapped_column(
+        ForeignKey(
+            "opportunities.id",
+            ondelete="SET NULL",
+        ),
+        nullable=True,
+        index=True,
+    )
+
+    created_by_user_id: Mapped[
+        uuid.UUID | None
+    ] = mapped_column(
         ForeignKey(
             "users.id",
             ondelete="SET NULL",
@@ -80,28 +108,38 @@ class Activity(
         nullable=False,
     )
 
-    body: Mapped[str | None] = mapped_column(
+    body: Mapped[
+        str | None
+    ] = mapped_column(
         Text,
         nullable=True,
     )
 
-    direction: Mapped[str | None] = mapped_column(
+    direction: Mapped[
+        str | None
+    ] = mapped_column(
         String(20),
         nullable=True,
     )
 
-    occurred_at: Mapped[datetime] = mapped_column(
+    occurred_at: Mapped[
+        datetime
+    ] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
         server_default=func.now(),
     )
 
-    external_id: Mapped[str | None] = mapped_column(
+    external_id: Mapped[
+        str | None
+    ] = mapped_column(
         String(500),
         nullable=True,
     )
 
-    activity_metadata: Mapped[dict] = mapped_column(
+    activity_metadata: Mapped[
+        dict
+    ] = mapped_column(
         "metadata",
         JSONB,
         nullable=False,
@@ -109,10 +147,14 @@ class Activity(
         server_default="{}",
     )
 
-    account: Mapped["Account | None"] = relationship(
+    account: Mapped[
+        "Account | None"
+    ] = relationship(
         back_populates="activities",
     )
 
-    contact: Mapped["Contact | None"] = relationship(
+    contact: Mapped[
+        "Contact | None"
+    ] = relationship(
         back_populates="activities",
     )
