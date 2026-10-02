@@ -13,7 +13,7 @@ services:
       - "5432:5432"
 
     volumes:
-      - aiva_postgres_data:/var/lib/postgresql/data
+  - aiva_postgres_data:/var/lib/postgresql
 
     healthcheck:
       test:
