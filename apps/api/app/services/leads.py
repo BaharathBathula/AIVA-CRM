@@ -1,12 +1,20 @@
 import uuid
+from datetime import datetime, timezone
 
 from fastapi import HTTPException, status
-from sqlalchemy import or_, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models.account import Account
+from app.models.contact import Contact
 from app.models.lead import Lead
 from app.models.membership import OrganizationMembership
+from app.models.opportunity import Opportunity
+from app.models.pipeline import Pipeline
+from app.models.pipeline_stage import PipelineStage
 from app.schemas.lead import (
+    LeadConvertRequest,
+    LeadConvertResponse,
     LeadCreate,
     LeadUpdate,
 )
@@ -100,6 +108,9 @@ async def list_leads(
                 Lead.company_name.ilike(
                     search_term
                 ),
+                Lead.job_title.ilike(
+                    search_term
+                ),
             )
         )
 
@@ -179,7 +190,9 @@ async def update_lead(
             and updates[field] is None
         ):
             raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                status_code=(
+                    status.HTTP_422_UNPROCESSABLE_ENTITY
+                ),
                 detail=(
                     f"{field.replace('_', ' ').title()} "
                     "cannot be null."
@@ -208,3 +221,339 @@ async def update_lead(
     await db.refresh(lead)
 
     return lead
+
+
+async def convert_lead(
+    db: AsyncSession,
+    organization_id: uuid.UUID,
+    lead_id: uuid.UUID,
+    payload: LeadConvertRequest,
+) -> LeadConvertResponse:
+    try:
+        lead_result = await db.execute(
+            select(Lead)
+            .where(
+                Lead.id == lead_id,
+                Lead.organization_id
+                == organization_id,
+            )
+            .with_for_update()
+        )
+
+        lead = (
+            lead_result.scalar_one_or_none()
+        )
+
+        if lead is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Lead not found.",
+            )
+
+        if lead.status == "converted":
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=(
+                    "Lead has already been "
+                    "converted."
+                ),
+            )
+
+        if lead.status != "qualified":
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=(
+                    "Lead must be qualified "
+                    "before conversion."
+                ),
+            )
+
+        if (
+            lead.company_name is None
+            or not lead.company_name.strip()
+        ):
+            raise HTTPException(
+                status_code=(
+                    status.HTTP_422_UNPROCESSABLE_ENTITY
+                ),
+                detail=(
+                    "Company name is required "
+                    "to convert this lead."
+                ),
+            )
+
+        pipeline_result = await db.execute(
+            select(Pipeline)
+            .where(
+                Pipeline.organization_id
+                == organization_id,
+                Pipeline.is_default.is_(True),
+                Pipeline.is_active.is_(True),
+            )
+            .order_by(
+                Pipeline.created_at.asc()
+            )
+            .limit(1)
+        )
+
+        pipeline = (
+            pipeline_result.scalar_one_or_none()
+        )
+
+        if pipeline is None:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=(
+                    "No active default sales "
+                    "pipeline is configured."
+                ),
+            )
+
+        stage_result = await db.execute(
+            select(PipelineStage)
+            .where(
+                PipelineStage.organization_id
+                == organization_id,
+                PipelineStage.pipeline_id
+                == pipeline.id,
+                PipelineStage.category
+                == "open",
+                PipelineStage.is_active.is_(True),
+            )
+            .order_by(
+                PipelineStage.position.asc()
+            )
+            .limit(1)
+        )
+
+        stage = (
+            stage_result.scalar_one_or_none()
+        )
+
+        if stage is None:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=(
+                    "Default pipeline has no "
+                    "active open stage."
+                ),
+            )
+
+        account_name = (
+            lead.company_name.strip()
+        )
+
+        account_result = await db.execute(
+            select(Account)
+            .where(
+                Account.organization_id
+                == organization_id,
+                func.lower(
+                    Account.name
+                )
+                == account_name.lower(),
+            )
+            .order_by(
+                Account.created_at.asc()
+            )
+            .limit(1)
+        )
+
+        account = (
+            account_result.scalar_one_or_none()
+        )
+
+        if account is None:
+            account = Account(
+                organization_id=organization_id,
+                name=account_name,
+                lifecycle_stage="prospect",
+                owner_user_id=(
+                    lead.owner_user_id
+                ),
+            )
+
+            db.add(account)
+
+            await db.flush()
+
+        contact = None
+
+        if (
+            lead.email is not None
+            and lead.email.strip()
+        ):
+            normalized_email = (
+                lead.email
+                .strip()
+                .lower()
+            )
+
+            contact_result = await db.execute(
+                select(Contact)
+                .where(
+                    Contact.organization_id
+                    == organization_id,
+                    func.lower(
+                        Contact.email
+                    )
+                    == normalized_email,
+                )
+                .order_by(
+                    Contact.created_at.asc()
+                )
+                .limit(1)
+            )
+
+            contact = (
+                contact_result.scalar_one_or_none()
+            )
+
+        if contact is not None:
+            if (
+                contact.account_id is not None
+                and contact.account_id
+                != account.id
+            ):
+                raise HTTPException(
+                    status_code=(
+                        status.HTTP_409_CONFLICT
+                    ),
+                    detail=(
+                        "A contact with this email "
+                        "already belongs to another "
+                        "account."
+                    ),
+                )
+
+            if contact.account_id is None:
+                contact.account_id = (
+                    account.id
+                )
+
+            if not contact.job_title:
+                contact.job_title = (
+                    lead.job_title
+                )
+
+            if not contact.phone:
+                contact.phone = (
+                    lead.phone
+                )
+
+            contact.is_primary = True
+            contact.is_active = True
+
+        else:
+            contact = Contact(
+                organization_id=organization_id,
+                account_id=account.id,
+                first_name=lead.first_name,
+                last_name=lead.last_name,
+                email=(
+                    lead.email.strip()
+                    if lead.email
+                    else None
+                ),
+                phone=lead.phone,
+                job_title=lead.job_title,
+                is_primary=True,
+                is_active=True,
+            )
+
+            db.add(contact)
+
+            await db.flush()
+
+        if payload.opportunity_name:
+            opportunity_name = (
+                payload.opportunity_name.strip()
+            )
+        else:
+            opportunity_name = (
+                f"{account.name} - New Business"
+            )
+
+        opportunity = Opportunity(
+            organization_id=organization_id,
+            name=opportunity_name,
+            account_id=account.id,
+            primary_contact_id=(
+                contact.id
+            ),
+            pipeline_id=pipeline.id,
+            stage_id=stage.id,
+            owner_user_id=(
+                lead.owner_user_id
+            ),
+            amount=(
+                payload.opportunity_amount
+            ),
+            currency="USD",
+            probability=(
+                stage.probability
+            ),
+            expected_close_date=(
+                payload.expected_close_date
+            ),
+            description=(
+                "Created from converted lead: "
+                f"{lead.first_name} "
+                f"{lead.last_name}."
+            ),
+        )
+
+        db.add(opportunity)
+
+        await db.flush()
+
+        lead.status = "converted"
+
+        lead.converted_at = (
+            datetime.now(
+                timezone.utc
+            )
+        )
+
+        lead.converted_account_id = (
+            account.id
+        )
+
+        lead.converted_contact_id = (
+            contact.id
+        )
+
+        lead.converted_opportunity_id = (
+            opportunity.id
+        )
+
+        await db.commit()
+
+        return LeadConvertResponse(
+            lead_id=lead.id,
+            account_id=account.id,
+            contact_id=contact.id,
+            opportunity_id=(
+                opportunity.id
+            ),
+            pipeline_id=pipeline.id,
+            stage_id=stage.id,
+            status="converted",
+        )
+
+    except HTTPException:
+        await db.rollback()
+        raise
+
+    except Exception as exc:
+        await db.rollback()
+
+        raise HTTPException(
+            status_code=(
+                status.HTTP_500_INTERNAL_SERVER_ERROR
+            ),
+            detail=(
+                "Lead conversion failed. "
+                "No CRM records were committed."
+            ),
+        ) from exc
