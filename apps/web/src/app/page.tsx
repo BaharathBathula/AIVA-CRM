@@ -36,7 +36,7 @@ const stats = [
 export default function Dashboard() {
   return (
     <div className="appShell">
-      <Sidebar />
+      <Sidebar active="Dashboard" />
 
       <main className="mainArea">
         <Topbar />
