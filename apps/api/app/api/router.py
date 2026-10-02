@@ -15,9 +15,16 @@ from app.api.routes.health import (
 from app.api.routes.leads import (
     router as leads_router,
 )
+from app.api.routes.opportunities import (
+    router as opportunities_router,
+)
+from app.api.routes.pipelines import (
+    router as pipelines_router,
+)
 
 
 api_router = APIRouter()
+
 
 api_router.include_router(
     health_router
@@ -37,4 +44,12 @@ api_router.include_router(
 
 api_router.include_router(
     leads_router
+)
+
+api_router.include_router(
+    opportunities_router
+)
+
+api_router.include_router(
+    pipelines_router
 )
