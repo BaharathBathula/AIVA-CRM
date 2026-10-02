@@ -26,6 +26,7 @@ services:
 
     restart: unless-stopped
 
+
   redis:
     image: redis:8-alpine
     container_name: aiva-redis
@@ -56,16 +57,19 @@ services:
 
     restart: unless-stopped
 
+
   migrate:
     build:
       context: ./apps/api
 
     container_name: aiva-migrate
 
+    network_mode: host
+
     environment:
       ENVIRONMENT: development
-      DATABASE_URL: postgresql+asyncpg://aiva:aiva_local_dev@postgres:5432/aiva_crm
-      REDIS_URL: redis://redis:6379/0
+      DATABASE_URL: postgresql+asyncpg://aiva:aiva_local_dev@127.0.0.1:5432/aiva_crm
+      REDIS_URL: redis://127.0.0.1:6379/0
 
     command:
       [
@@ -80,16 +84,19 @@ services:
 
     restart: "no"
 
+
   bootstrap:
     build:
       context: ./apps/api
 
     container_name: aiva-bootstrap
 
+    network_mode: host
+
     environment:
       ENVIRONMENT: development
-      DATABASE_URL: postgresql+asyncpg://aiva:aiva_local_dev@postgres:5432/aiva_crm
-      REDIS_URL: redis://redis:6379/0
+      DATABASE_URL: postgresql+asyncpg://aiva:aiva_local_dev@127.0.0.1:5432/aiva_crm
+      REDIS_URL: redis://127.0.0.1:6379/0
 
     command:
       [
@@ -104,19 +111,19 @@ services:
 
     restart: "no"
 
+
   api:
     build:
       context: ./apps/api
 
     container_name: aiva-api
 
+    network_mode: host
+
     environment:
       ENVIRONMENT: development
-      DATABASE_URL: postgresql+asyncpg://aiva:aiva_local_dev@postgres:5432/aiva_crm
-      REDIS_URL: redis://redis:6379/0
-
-    ports:
-      - "8000:8000"
+      DATABASE_URL: postgresql+asyncpg://aiva:aiva_local_dev@127.0.0.1:5432/aiva_crm
+      REDIS_URL: redis://127.0.0.1:6379/0
 
     depends_on:
       bootstrap:
@@ -131,13 +138,14 @@ services:
           "CMD",
           "python",
           "-c",
-          "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health')"
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health')"
         ]
       interval: 5s
       timeout: 5s
       retries: 12
 
     restart: unless-stopped
+
 
   web:
     build:
@@ -157,6 +165,7 @@ services:
         condition: service_healthy
 
     restart: unless-stopped
+
 
 volumes:
   aiva_postgres_data:
