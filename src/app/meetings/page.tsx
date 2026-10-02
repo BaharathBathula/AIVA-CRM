@@ -1,5 +1,3 @@
-mkdir -p src/app/meetings
-
 cat > src/app/meetings/page.tsx <<'TSX'
 "use client";
 
@@ -134,16 +132,21 @@ function formatDuration(
   const remaining =
     minutes % 60;
 
-  return remaining
-    ? `${hours}h ${remaining}m`
-    : `${hours}h`;
+  if (remaining) {
+    return `${hours}h ${remaining}m`;
+  }
+
+  return `${hours}h`;
 }
 
 
 function contactName(
   contact: Contact
 ) {
-  return `${contact.first_name} ${contact.last_name}`.trim();
+  return (
+    `${contact.first_name} ${contact.last_name}`
+      .trim()
+  );
 }
 
 
@@ -310,7 +313,7 @@ export default function MeetingsPage() {
 
 
   useEffect(() => {
-    loadData();
+    void loadData();
   }, []);
 
 
@@ -458,9 +461,7 @@ export default function MeetingsPage() {
     value: string
   ) {
     setAccountId(value);
-
     setContactId("");
-
     setOpportunityId("");
   }
 
@@ -515,7 +516,7 @@ export default function MeetingsPage() {
           ? contactMap.get(
               contactId
             )
-          : null;
+          : undefined;
 
       const created =
         await createMeeting({
@@ -587,17 +588,22 @@ export default function MeetingsPage() {
 
       setMeetings(
         (current) =>
-          [...current, created]
-            .sort(
-              (a, b) =>
-                new Date(
-                  a.start_at
-                ).getTime()
-                -
-                new Date(
-                  b.start_at
-                ).getTime()
-            )
+          [
+            ...current,
+            created,
+          ].sort(
+            (
+              first,
+              second
+            ) =>
+              new Date(
+                first.start_at
+              ).getTime()
+              -
+              new Date(
+                second.start_at
+              ).getTime()
+          )
       );
 
       resetForm();
@@ -617,12 +623,11 @@ export default function MeetingsPage() {
 
   async function changeStatus(
     meeting: Meeting,
-    status:
-      MeetingStatus
+    nextStatus: MeetingStatus
   ) {
     if (
       meeting.status
-      === status
+      === nextStatus
     ) {
       return;
     }
@@ -638,7 +643,8 @@ export default function MeetingsPage() {
         await updateMeeting(
           meeting.id,
           {
-            status,
+            status:
+              nextStatus,
           }
         );
 
@@ -666,7 +672,9 @@ export default function MeetingsPage() {
 
   return (
     <div className="appShell">
-      <Sidebar active="Meetings" />
+      <Sidebar
+        active="Meetings"
+      />
 
       <main className="mainArea">
         <Topbar />
@@ -696,9 +704,11 @@ export default function MeetingsPage() {
                 disabled={
                   refreshing
                 }
-                onClick={() =>
-                  loadData(true)
-                }
+                onClick={() => {
+                  void loadData(
+                    true
+                  );
+                }}
               >
                 {refreshing ? (
                   <Loader2
@@ -722,7 +732,10 @@ export default function MeetingsPage() {
                   )
                 }
               >
-                <Plus size={15} />
+                <Plus
+                  size={15}
+                />
+
                 Schedule Meeting
               </button>
             </div>
@@ -744,7 +757,9 @@ export default function MeetingsPage() {
             </div>
 
             <div>
-              <Clock3 size={18} />
+              <Clock3
+                size={18}
+              />
 
               <span>
                 Upcoming
@@ -770,7 +785,9 @@ export default function MeetingsPage() {
             </div>
 
             <div>
-              <XCircle size={18} />
+              <XCircle
+                size={18}
+              />
 
               <span>
                 Cancelled
@@ -796,12 +813,15 @@ export default function MeetingsPage() {
                   type="button"
                   key={value}
                   className={
-                    filter === value
+                    filter
+                    === value
                       ? "filterButton active"
                       : "filterButton"
                   }
                   onClick={() =>
-                    setFilter(value)
+                    setFilter(
+                      value
+                    )
                   }
                 >
                   {
@@ -824,256 +844,269 @@ export default function MeetingsPage() {
 
           {loading ? (
             <div className="meetingLoading">
-              <Loader2 size={20} />
+              <Loader2
+                size={20}
+              />
+
               Loading meetings...
             </div>
           ) : (
             <section className="meetingList">
               {filteredMeetings.length
-                === 0 ? (
-                  <div className="meetingEmpty">
-                    <CalendarDays
-                      size={28}
-                    />
+              === 0 ? (
+                <div className="meetingEmpty">
+                  <CalendarDays
+                    size={28}
+                  />
 
-                    <strong>
-                      No meetings found
-                    </strong>
+                  <strong>
+                    No meetings found
+                  </strong>
 
-                    <p>
-                      Schedule a CRM-linked
-                      meeting to begin.
-                    </p>
-                  </div>
-                ) : (
-                  filteredMeetings.map(
-                    (meeting) => {
-                      const account =
-                        meeting.account_id
-                          ? accountMap.get(
-                              meeting.account_id
-                            )
-                          : null;
+                  <p>
+                    Schedule a CRM-linked
+                    meeting to begin.
+                  </p>
+                </div>
+              ) : (
+                filteredMeetings.map(
+                  (meeting) => {
+                    const account =
+                      meeting.account_id
+                        ? accountMap.get(
+                            meeting.account_id
+                          )
+                        : undefined;
 
-                      const contact =
-                        meeting.contact_id
-                          ? contactMap.get(
-                              meeting.contact_id
-                            )
-                          : null;
+                    const contact =
+                      meeting.contact_id
+                        ? contactMap.get(
+                            meeting.contact_id
+                          )
+                        : undefined;
 
-                      const opportunity =
-                        meeting.opportunity_id
-                          ? opportunityMap.get(
-                              meeting.opportunity_id
-                            )
-                          : null;
+                    const opportunity =
+                      meeting.opportunity_id
+                        ? opportunityMap.get(
+                            meeting.opportunity_id
+                          )
+                        : undefined;
 
-                      const updating =
-                        updatingId
-                        === meeting.id;
+                    const updating =
+                      updatingId
+                      === meeting.id;
 
-                      return (
-                        <article
-                          key={
-                            meeting.id
-                          }
-                          className="meetingCard"
-                        >
-                          <div className="meetingDateBlock">
-                            <span>
-                              {new Intl.DateTimeFormat(
-                                "en-US",
-                                {
-                                  month:
-                                    "short",
-                                }
-                              ).format(
-                                new Date(
-                                  meeting.start_at
-                                )
-                              )}
-                            </span>
-
-                            <strong>
-                              {new Date(
+                    return (
+                      <article
+                        key={
+                          meeting.id
+                        }
+                        className="meetingCard"
+                      >
+                        <div className="meetingDateBlock">
+                          <span>
+                            {new Intl.DateTimeFormat(
+                              "en-US",
+                              {
+                                month:
+                                  "short",
+                              }
+                            ).format(
+                              new Date(
                                 meeting.start_at
-                              ).getDate()}
-                            </strong>
-                          </div>
-
-                          <div className="meetingContent">
-                            <div className="meetingTop">
-                              <div>
-                                <div className="meetingTitleLine">
-                                  <h2>
-                                    {
-                                      meeting.title
-                                    }
-                                  </h2>
-
-                                  <span
-                                    className={
-                                      `statusBadge status-${meeting.status}`
-                                    }
-                                  >
-                                    {
-                                      meeting.status
-                                    }
-                                  </span>
-                                </div>
-
-                                <div className="meetingTime">
-                                  <Clock3
-                                    size={13}
-                                  />
-
-                                  {formatDateTime(
-                                    meeting.start_at
-                                  )}
-
-                                  <span>
-                                    •
-                                  </span>
-
-                                  {formatDuration(
-                                    meeting.start_at,
-                                    meeting.end_at
-                                  )}
-                                </div>
-                              </div>
-
-                              <select
-                                value={
-                                  meeting.status
-                                }
-                                disabled={
-                                  updating
-                                }
-                                onChange={(
-                                  event
-                                ) =>
-                                  changeStatus(
-                                    meeting,
-                                    event
-                                      .target
-                                      .value
-                                    as MeetingStatus
-                                  )
-                                }
-                              >
-                                <option value="scheduled">
-                                  Scheduled
-                                </option>
-
-                                <option value="completed">
-                                  Completed
-                                </option>
-
-                                <option value="cancelled">
-                                  Cancelled
-                                </option>
-                              </select>
-                            </div>
-
-                            {meeting.description && (
-                              <p className="meetingDescription">
-                                {
-                                  meeting.description
-                                }
-                              </p>
+                              )
                             )}
+                          </span>
 
-                            <div className="meetingMeta">
-                              {account && (
-                                <Link
-                                  href={
-                                    `/accounts/${account.id}`
+                          <strong>
+                            {new Date(
+                              meeting.start_at
+                            ).getDate()}
+                          </strong>
+                        </div>
+
+                        <div className="meetingContent">
+                          <div className="meetingTop">
+                            <div>
+                              <div className="meetingTitleLine">
+                                <h2>
+                                  {
+                                    meeting.title
+                                  }
+                                </h2>
+
+                                <span
+                                  className={
+                                    `statusBadge status-${meeting.status}`
                                   }
                                 >
-                                  <Building2
-                                    size={13}
-                                  />
-
                                   {
-                                    account.name
+                                    meeting.status
+                                  }
+                                </span>
+                              </div>
+
+                              <div className="meetingTime">
+                                <Clock3
+                                  size={13}
+                                />
+
+                                {formatDateTime(
+                                  meeting.start_at
+                                )}
+
+                                <span>
+                                  •
+                                </span>
+
+                                {formatDuration(
+                                  meeting.start_at,
+                                  meeting.end_at
+                                )}
+                              </div>
+                            </div>
+
+                            <select
+                              value={
+                                meeting.status
+                              }
+                              disabled={
+                                updating
+                              }
+                              onChange={(
+                                event
+                              ) => {
+                                const nextStatus =
+                                  event
+                                    .target
+                                    .value
+                                  as MeetingStatus;
+
+                                void changeStatus(
+                                  meeting,
+                                  nextStatus
+                                );
+                              }}
+                            >
+                              <option
+                                value="scheduled"
+                              >
+                                Scheduled
+                              </option>
+
+                              <option
+                                value="completed"
+                              >
+                                Completed
+                              </option>
+
+                              <option
+                                value="cancelled"
+                              >
+                                Cancelled
+                              </option>
+                            </select>
+                          </div>
+
+                          {meeting.description && (
+                            <p className="meetingDescription">
+                              {
+                                meeting.description
+                              }
+                            </p>
+                          )}
+
+                          <div className="meetingMeta">
+                            {account && (
+                              <Link
+                                href={
+                                  `/accounts/${account.id}`
+                                }
+                              >
+                                <Building2
+                                  size={13}
+                                />
+
+                                {
+                                  account.name
+                                }
+                              </Link>
+                            )}
+
+                            {contact && (
+                              <span>
+                                <Users
+                                  size={13}
+                                />
+
+                                {contactName(
+                                  contact
+                                )}
+                              </span>
+                            )}
+
+                            {meeting.location && (
+                              <span>
+                                <MapPin
+                                  size={13}
+                                />
+
+                                {
+                                  meeting.location
+                                }
+                              </span>
+                            )}
+
+                            {meeting.is_online && (
+                              <span>
+                                <Video
+                                  size={13}
+                                />
+
+                                Online
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="meetingFooter">
+                            <div>
+                              {opportunity && (
+                                <Link
+                                  href={
+                                    `/opportunities/${opportunity.id}`
+                                  }
+                                >
+                                  Opportunity:
+                                  {" "}
+                                  {
+                                    opportunity.name
                                   }
                                 </Link>
                               )}
-
-                              {contact && (
-                                <span>
-                                  <Users
-                                    size={13}
-                                  />
-
-                                  {contactName(
-                                    contact
-                                  )}
-                                </span>
-                              )}
-
-                              {meeting.location && (
-                                <span>
-                                  <MapPin
-                                    size={13}
-                                  />
-
-                                  {
-                                    meeting.location
-                                  }
-                                </span>
-                              )}
-
-                              {meeting.is_online && (
-                                <span>
-                                  <Video
-                                    size={13}
-                                  />
-
-                                  Online
-                                </span>
-                              )}
                             </div>
 
-                            <div className="meetingFooter">
-                              <div>
-                                {opportunity && (
-                                  <Link
-                                    href={
-                                      `/opportunities/${opportunity.id}`
-                                    }
-                                  >
-                                    Opportunity:
-                                    {" "}
-                                    {
-                                      opportunity.name
-                                    }
-                                  </Link>
-                                )}
-                              </div>
+                            {meeting.meeting_url && (
+                              <a
+                                href={
+                                  meeting.meeting_url
+                                }
+                                target="_blank"
+                                rel="noreferrer"
+                              >
+                                Join Meeting
 
-                              {meeting.meeting_url && (
-                                <a
-                                  href={
-                                    meeting.meeting_url
-                                  }
-                                  target="_blank"
-                                  rel="noreferrer"
-                                >
-                                  Join Meeting
-                                  <ExternalLink
-                                    size={12}
-                                  />
-                                </a>
-                              )}
-                            </div>
+                                <ExternalLink
+                                  size={12}
+                                />
+                              </a>
+                            )}
                           </div>
-                        </article>
-                      );
-                    }
-                  )
-                )}
+                        </div>
+                      </article>
+                    );
+                  }
+                )
+              )}
             </section>
           )}
         </div>
@@ -1098,12 +1131,15 @@ export default function MeetingsPage() {
                 type="button"
                 onClick={() => {
                   resetForm();
+
                   setCreateOpen(
                     false
                   );
                 }}
               >
-                <X size={18} />
+                <X
+                  size={18}
+                />
               </button>
             </div>
 
@@ -1382,6 +1418,7 @@ export default function MeetingsPage() {
                   className="secondaryButton"
                   onClick={() => {
                     resetForm();
+
                     setCreateOpen(
                       false
                     );
@@ -1473,7 +1510,10 @@ export default function MeetingsPage() {
           grid-template-columns:
             repeat(
               4,
-              minmax(0, 1fr)
+              minmax(
+                0,
+                1fr
+              )
             );
           gap: 12px;
           margin-bottom: 16px;
@@ -1502,6 +1542,7 @@ export default function MeetingsPage() {
 
         .meetingToolbar {
           display: flex;
+          flex-wrap: wrap;
           gap: 7px;
           margin-bottom: 13px;
         }
@@ -1611,6 +1652,7 @@ export default function MeetingsPage() {
         .meetingTime {
           display: flex;
           align-items: center;
+          flex-wrap: wrap;
           gap: 5px;
           margin-top: 6px;
           color: var(--muted);
@@ -1649,10 +1691,6 @@ export default function MeetingsPage() {
           gap: 5px;
           color: inherit;
           text-decoration: none;
-        }
-
-        .meetingMeta a:hover {
-          color: var(--primary);
         }
 
         .meetingFooter {
@@ -1776,7 +1814,10 @@ export default function MeetingsPage() {
           grid-template-columns:
             repeat(
               2,
-              minmax(0, 1fr)
+              minmax(
+                0,
+                1fr
+              )
             );
           gap: 13px;
         }
@@ -1874,7 +1915,3 @@ export default function MeetingsPage() {
   );
 }
 TSX
-
-npx tsc --noEmit
-
-echo "=== MEETINGS PAGE PASSED ==="
