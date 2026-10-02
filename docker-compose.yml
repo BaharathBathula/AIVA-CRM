@@ -1,0 +1,94 @@
+services:
+
+  postgres:
+    image: postgres:18-alpine
+    container_name: aiva-postgres
+
+    environment:
+      POSTGRES_DB: aiva_crm
+      POSTGRES_USER: aiva
+      POSTGRES_PASSWORD: aiva_local_dev
+
+    ports:
+      - "5432:5432"
+
+    volumes:
+      - aiva_postgres_data:/var/lib/postgresql/data
+
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U aiva -d aiva_crm"
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+    restart: unless-stopped
+
+
+  redis:
+    image: redis:8-alpine
+    container_name: aiva-redis
+
+    command:
+      [
+        "redis-server",
+        "--appendonly",
+        "yes"
+      ]
+
+    ports:
+      - "6379:6379"
+
+    volumes:
+      - aiva_redis_data:/data
+
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "redis-cli",
+          "ping"
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+    restart: unless-stopped
+
+
+  api:
+    build:
+      context: ./apps/api
+
+    container_name: aiva-api
+
+    environment:
+      ENVIRONMENT: development
+
+      DATABASE_URL: >-
+        postgresql+asyncpg://aiva:aiva_local_dev@postgres:5432/aiva_crm
+
+      REDIS_URL: >-
+        redis://redis:6379/0
+
+    ports:
+      - "8000:8000"
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+      redis:
+        condition: service_healthy
+
+    restart: unless-stopped
+
+
+volumes:
+
+  aiva_postgres_data:
+
+  aiva_redis_data:
