@@ -63,3 +63,24 @@ export interface LeadCreatePayload {
 
   owner_user_id?: string | null;
 }
+
+
+export interface LeadConvertPayload {
+  opportunity_name?: string | null;
+  opportunity_amount?: number | null;
+  expected_close_date?: string | null;
+}
+
+
+export interface LeadConvertResult {
+  lead_id: string;
+
+  account_id: string;
+  contact_id: string;
+  opportunity_id: string;
+
+  pipeline_id: string;
+  stage_id: string;
+
+  status: "converted";
+}
