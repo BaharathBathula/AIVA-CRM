@@ -153,11 +153,10 @@ export function LogActivityModal({
               <select
                 value={activityType}
                 onChange={(event) =>
-                  setActivityType(
-                    event.target
-                      .value as ActivityType
-                  )
-                }
+  setDirection(
+    event.target.value as ActivityDirection | ""
+  )
+}
               >
                 <option value="note">
                   Note
