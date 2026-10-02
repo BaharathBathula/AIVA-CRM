@@ -1,32 +1,30 @@
 services:
-
   postgres:
-  image: postgres:18-alpine
-  container_name: aiva-postgres
+    image: postgres:18-alpine
+    container_name: aiva-postgres
 
-  environment:
-    POSTGRES_DB: aiva_crm
-    POSTGRES_USER: aiva
-    POSTGRES_PASSWORD: aiva_local_dev
+    environment:
+      POSTGRES_DB: aiva_crm
+      POSTGRES_USER: aiva
+      POSTGRES_PASSWORD: aiva_local_dev
 
-  ports:
-    - "5432:5432"
+    ports:
+      - "5432:5432"
 
-  volumes:
-    - aiva_postgres_data:/var/lib/postgresql
+    volumes:
+      - aiva_postgres_data:/var/lib/postgresql
 
-  healthcheck:
-    test:
-      [
-        "CMD-SHELL",
-        "pg_isready -U aiva -d aiva_crm"
-      ]
-    interval: 5s
-    timeout: 5s
-    retries: 10
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U aiva -d aiva_crm"
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
-  restart: unless-stopped
-
+    restart: unless-stopped
 
   redis:
     image: redis:8-alpine
@@ -58,7 +56,6 @@ services:
 
     restart: unless-stopped
 
-
   migrate:
     build:
       context: ./apps/api
@@ -67,12 +64,8 @@ services:
 
     environment:
       ENVIRONMENT: development
-
-      DATABASE_URL: >-
-        postgresql+asyncpg://aiva:aiva_local_dev@postgres:5432/aiva_crm
-
-      REDIS_URL: >-
-        redis://redis:6379/0
+      DATABASE_URL: postgresql+asyncpg://aiva:aiva_local_dev@postgres:5432/aiva_crm
+      REDIS_URL: redis://redis:6379/0
 
     command:
       [
@@ -87,7 +80,6 @@ services:
 
     restart: "no"
 
-
   bootstrap:
     build:
       context: ./apps/api
@@ -96,12 +88,8 @@ services:
 
     environment:
       ENVIRONMENT: development
-
-      DATABASE_URL: >-
-        postgresql+asyncpg://aiva:aiva_local_dev@postgres:5432/aiva_crm
-
-      REDIS_URL: >-
-        redis://redis:6379/0
+      DATABASE_URL: postgresql+asyncpg://aiva:aiva_local_dev@postgres:5432/aiva_crm
+      REDIS_URL: redis://redis:6379/0
 
     command:
       [
@@ -116,7 +104,6 @@ services:
 
     restart: "no"
 
-
   api:
     build:
       context: ./apps/api
@@ -125,12 +112,8 @@ services:
 
     environment:
       ENVIRONMENT: development
-
-      DATABASE_URL: >-
-        postgresql+asyncpg://aiva:aiva_local_dev@postgres:5432/aiva_crm
-
-      REDIS_URL: >-
-        redis://redis:6379/0
+      DATABASE_URL: postgresql+asyncpg://aiva:aiva_local_dev@postgres:5432/aiva_crm
+      REDIS_URL: redis://redis:6379/0
 
     ports:
       - "8000:8000"
@@ -156,7 +139,6 @@ services:
 
     restart: unless-stopped
 
-
   web:
     build:
       context: ./apps/web
@@ -164,11 +146,8 @@ services:
     container_name: aiva-web
 
     environment:
-      NEXT_PUBLIC_AIVA_API_URL: >-
-        http://localhost:8000/api/v1
-
-      NEXT_PUBLIC_AIVA_ORGANIZATION_ID: >-
-        10000000-0000-0000-0000-000000000001
+      NEXT_PUBLIC_AIVA_API_URL: http://localhost:8000/api/v1
+      NEXT_PUBLIC_AIVA_ORGANIZATION_ID: 10000000-0000-0000-0000-000000000001
 
     ports:
       - "3000:3000"
@@ -179,9 +158,6 @@ services:
 
     restart: unless-stopped
 
-
 volumes:
-
   aiva_postgres_data:
-
   aiva_redis_data:
