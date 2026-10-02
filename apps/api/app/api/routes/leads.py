@@ -13,12 +13,15 @@ from app.api.dependencies.tenant import (
 )
 from app.db.session import get_db
 from app.schemas.lead import (
+    LeadConvertRequest,
+    LeadConvertResponse,
     LeadCreate,
     LeadResponse,
     LeadStatus,
     LeadUpdate,
 )
 from app.services.leads import (
+    convert_lead,
     create_lead,
     get_lead,
     list_leads,
@@ -42,7 +45,9 @@ async def create_lead_endpoint(
     organization_id: uuid.UUID = Depends(
         get_current_organization_id
     ),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(
+        get_db
+    ),
 ):
     return await create_lead(
         db,
@@ -76,7 +81,9 @@ async def list_leads_endpoint(
     organization_id: uuid.UUID = Depends(
         get_current_organization_id
     ),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(
+        get_db
+    ),
 ):
     return await list_leads(
         db,
@@ -97,7 +104,9 @@ async def get_lead_endpoint(
     organization_id: uuid.UUID = Depends(
         get_current_organization_id
     ),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(
+        get_db
+    ),
 ):
     return await get_lead(
         db,
@@ -116,9 +125,34 @@ async def update_lead_endpoint(
     organization_id: uuid.UUID = Depends(
         get_current_organization_id
     ),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(
+        get_db
+    ),
 ):
     return await update_lead(
+        db,
+        organization_id,
+        lead_id,
+        payload,
+    )
+
+
+@router.post(
+    "/{lead_id}/convert",
+    response_model=LeadConvertResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def convert_lead_endpoint(
+    lead_id: uuid.UUID,
+    payload: LeadConvertRequest,
+    organization_id: uuid.UUID = Depends(
+        get_current_organization_id
+    ),
+    db: AsyncSession = Depends(
+        get_db
+    ),
+):
+    return await convert_lead(
         db,
         organization_id,
         lead_id,
