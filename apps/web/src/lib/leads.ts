@@ -4,6 +4,8 @@ import {
 
 import type {
   Lead,
+  LeadConvertPayload,
+  LeadConvertResult,
   LeadCreatePayload,
 } from "@/types/lead";
 
@@ -45,6 +47,20 @@ export function updateLead(
     `/leads/${leadId}`,
     {
       method: "PATCH",
+      body: JSON.stringify(payload),
+    }
+  );
+}
+
+
+export function convertLead(
+  leadId: string,
+  payload: LeadConvertPayload
+): Promise<LeadConvertResult> {
+  return aivaRequest<LeadConvertResult>(
+    `/leads/${leadId}/convert`,
+    {
+      method: "POST",
       body: JSON.stringify(payload),
     }
   );
