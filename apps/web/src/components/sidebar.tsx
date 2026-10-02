@@ -1,3 +1,4 @@
+cat > src/components/sidebar.tsx <<'TSX'
 import Link from "next/link";
 
 import {
@@ -89,6 +90,7 @@ const groups = [
       {
         label: "Email",
         icon: Mail,
+        href: "/email",
       },
       {
         label: "Meetings",
@@ -176,36 +178,59 @@ export function Sidebar({
       </div>
 
       <nav className="navigation">
-        {groups.map((group) => (
-          <div
-            className="navGroup"
-            key={group.title}
-          >
-            <div className="navGroupTitle">
-              {group.title}
-            </div>
+        {groups.map(
+          (group) => (
+            <div
+              className="navGroup"
+              key={group.title}
+            >
+              <div className="navGroupTitle">
+                {group.title}
+              </div>
 
-            {group.items.map(
-              (item) => {
-                const Icon =
-                  item.icon;
+              {group.items.map(
+                (item) => {
+                  const Icon =
+                    item.icon;
 
-                const className =
-                  `navItem ${
-                    active
-                    === item.label
-                      ? "active"
-                      : ""
-                  }`;
+                  const className =
+                    `navItem ${
+                      active
+                      === item.label
+                        ? "active"
+                        : ""
+                    }`;
 
-                if (item.href) {
+                  if (item.href) {
+                    return (
+                      <Link
+                        className={
+                          className
+                        }
+                        href={
+                          item.href
+                        }
+                        key={
+                          item.label
+                        }
+                      >
+                        <Icon
+                          size={18}
+                          strokeWidth={1.9}
+                        />
+
+                        <span>
+                          {item.label}
+                        </span>
+                      </Link>
+                    );
+                  }
+
                   return (
-                    <Link
+                    <button
+                      type="button"
                       className={
                         className
-                      }
-                      href={
-                        item.href
                       }
                       key={
                         item.label
@@ -213,48 +238,19 @@ export function Sidebar({
                     >
                       <Icon
                         size={18}
-                        strokeWidth={
-                          1.9
-                        }
+                        strokeWidth={1.9}
                       />
 
                       <span>
-                        {
-                          item.label
-                        }
+                        {item.label}
                       </span>
-                    </Link>
+                    </button>
                   );
                 }
-
-                return (
-                  <button
-                    type="button"
-                    className={
-                      className
-                    }
-                    key={
-                      item.label
-                    }
-                  >
-                    <Icon
-                      size={18}
-                      strokeWidth={
-                        1.9
-                      }
-                    />
-
-                    <span>
-                      {
-                        item.label
-                      }
-                    </span>
-                  </button>
-                );
-              }
-            )}
-          </div>
-        ))}
+              )}
+            </div>
+          )
+        )}
       </nav>
 
       <div className="sidebarBottom">
@@ -263,6 +259,7 @@ export function Sidebar({
           type="button"
         >
           <Users size={18} />
+
           <span>
             Team
           </span>
@@ -273,6 +270,7 @@ export function Sidebar({
           type="button"
         >
           <Settings size={18} />
+
           <span>
             Settings
           </span>
@@ -297,3 +295,8 @@ export function Sidebar({
     </aside>
   );
 }
+TSX
+
+npx tsc --noEmit
+
+echo "=== SIDEBAR EMAIL LINK PASSED ==="
