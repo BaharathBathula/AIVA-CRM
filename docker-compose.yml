@@ -59,6 +59,64 @@ services:
     restart: unless-stopped
 
 
+  migrate:
+    build:
+      context: ./apps/api
+
+    container_name: aiva-migrate
+
+    environment:
+      ENVIRONMENT: development
+
+      DATABASE_URL: >-
+        postgresql+asyncpg://aiva:aiva_local_dev@postgres:5432/aiva_crm
+
+      REDIS_URL: >-
+        redis://redis:6379/0
+
+    command:
+      [
+        "alembic",
+        "upgrade",
+        "head"
+      ]
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+    restart: "no"
+
+
+  bootstrap:
+    build:
+      context: ./apps/api
+
+    container_name: aiva-bootstrap
+
+    environment:
+      ENVIRONMENT: development
+
+      DATABASE_URL: >-
+        postgresql+asyncpg://aiva:aiva_local_dev@postgres:5432/aiva_crm
+
+      REDIS_URL: >-
+        redis://redis:6379/0
+
+    command:
+      [
+        "python",
+        "-m",
+        "app.scripts.bootstrap_dev"
+      ]
+
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+    restart: "no"
+
+
   api:
     build:
       context: ./apps/api
@@ -78,10 +136,45 @@ services:
       - "8000:8000"
 
     depends_on:
-      postgres:
-        condition: service_healthy
+      bootstrap:
+        condition: service_completed_successfully
 
       redis:
+        condition: service_healthy
+
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health')"
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+    restart: unless-stopped
+
+
+  web:
+    build:
+      context: ./apps/web
+
+    container_name: aiva-web
+
+    environment:
+      NEXT_PUBLIC_AIVA_API_URL: >-
+        http://localhost:8000/api/v1
+
+      NEXT_PUBLIC_AIVA_ORGANIZATION_ID: >-
+        10000000-0000-0000-0000-000000000001
+
+    ports:
+      - "3000:3000"
+
+    depends_on:
+      api:
         condition: service_healthy
 
     restart: unless-stopped
