@@ -66,10 +66,12 @@ const groups = [
       {
         label: "Opportunities",
         icon: Handshake,
+        href: "/opportunities",
       },
       {
         label: "Pipeline",
         icon: SquareKanban,
+        href: "/pipeline",
       },
     ],
   },
@@ -183,52 +185,74 @@ export function Sidebar({
               {group.title}
             </div>
 
-            {group.items.map((item) => {
-              const Icon = item.icon;
+            {group.items.map(
+              (item) => {
+                const Icon =
+                  item.icon;
 
-              const className =
-                `navItem ${
-                  active === item.label
-                    ? "active"
-                    : ""
-                }`;
+                const className =
+                  `navItem ${
+                    active
+                    === item.label
+                      ? "active"
+                      : ""
+                  }`;
 
-              if (item.href) {
+                if (item.href) {
+                  return (
+                    <Link
+                      className={
+                        className
+                      }
+                      href={
+                        item.href
+                      }
+                      key={
+                        item.label
+                      }
+                    >
+                      <Icon
+                        size={18}
+                        strokeWidth={
+                          1.9
+                        }
+                      />
+
+                      <span>
+                        {
+                          item.label
+                        }
+                      </span>
+                    </Link>
+                  );
+                }
+
                 return (
-                  <Link
-                    className={className}
-                    href={item.href}
-                    key={item.label}
+                  <button
+                    type="button"
+                    className={
+                      className
+                    }
+                    key={
+                      item.label
+                    }
                   >
                     <Icon
                       size={18}
-                      strokeWidth={1.9}
+                      strokeWidth={
+                        1.9
+                      }
                     />
 
                     <span>
-                      {item.label}
+                      {
+                        item.label
+                      }
                     </span>
-                  </Link>
+                  </button>
                 );
               }
-
-              return (
-                <button
-                  type="button"
-                  className={className}
-                  key={item.label}
-                >
-                  <Icon
-                    size={18}
-                    strokeWidth={1.9}
-                  />
-
-                  <span>
-                    {item.label}
-                  </span>
-                </button>
-              );
-            })}
+            )}
           </div>
         ))}
       </nav>
@@ -239,7 +263,9 @@ export function Sidebar({
           type="button"
         >
           <Users size={18} />
-          <span>Team</span>
+          <span>
+            Team
+          </span>
         </button>
 
         <button
@@ -247,7 +273,9 @@ export function Sidebar({
           type="button"
         >
           <Settings size={18} />
-          <span>Settings</span>
+          <span>
+            Settings
+          </span>
         </button>
 
         <div className="profile">
