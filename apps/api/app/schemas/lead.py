@@ -77,10 +77,25 @@ class LeadUpdate(BaseModel):
         max_length=120,
     )
 
-    email: str | None = None
-    phone: str | None = None
-    company_name: str | None = None
-    job_title: str | None = None
+    email: str | None = Field(
+        default=None,
+        max_length=320,
+    )
+
+    phone: str | None = Field(
+        default=None,
+        max_length=50,
+    )
+
+    company_name: str | None = Field(
+        default=None,
+        max_length=250,
+    )
+
+    job_title: str | None = Field(
+        default=None,
+        max_length=150,
+    )
 
     source: str | None = Field(
         default=None,

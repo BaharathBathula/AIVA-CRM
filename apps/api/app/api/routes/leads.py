@@ -15,6 +15,7 @@ from app.db.session import get_db
 from app.schemas.lead import (
     LeadCreate,
     LeadResponse,
+    LeadStatus,
     LeadUpdate,
 )
 from app.services.leads import (
@@ -55,7 +56,7 @@ async def create_lead_endpoint(
     response_model=list[LeadResponse],
 )
 async def list_leads_endpoint(
-    lead_status: str | None = Query(
+    lead_status: LeadStatus | None = Query(
         default=None,
         alias="status",
     ),
