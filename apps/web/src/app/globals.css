@@ -1100,3 +1100,446 @@ button {
     grid-template-columns: 1fr;
   }
 }
+
+/* =========================================================
+   Account detail
+   ========================================================= */
+
+.backLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 18px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 650;
+  text-decoration: none;
+}
+
+.backLink:hover {
+  color: var(--primary);
+}
+
+.accountHero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 18px;
+  padding: 21px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: white;
+}
+
+.accountHeroIdentity {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.accountHeroLogo {
+  width: 52px;
+  height: 52px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  background: var(--primary-soft);
+  color: var(--primary);
+  font-size: 19px;
+  font-weight: 800;
+}
+
+.accountHeroTitle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.accountHeroTitle h1 {
+  margin: 0;
+  font-size: 22px;
+  letter-spacing: -0.03em;
+}
+
+.accountHeroMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 13px;
+  margin-top: 7px;
+  color: var(--muted);
+}
+
+.accountHeroMeta span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+}
+
+.detailActions {
+  display: flex;
+  gap: 8px;
+}
+
+.detailActions button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.accountDetailGrid {
+  display: grid;
+  grid-template-columns:
+    minmax(0, 1.5fr)
+    minmax(300px, 0.75fr);
+  gap: 15px;
+  align-items: start;
+}
+
+.accountMainColumn,
+.accountSideColumn {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.detailPanel {
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: white;
+}
+
+.detailPanelHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 17px;
+}
+
+.detailPanelHeader h2 {
+  margin: 0;
+  font-size: 13px;
+}
+
+.detailPanelHeader p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 9px;
+}
+
+.detailFields {
+  display: flex;
+  flex-direction: column;
+}
+
+.detailFields > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 11px 0;
+  border-bottom: 1px solid #eef0f4;
+}
+
+.detailFields > div:last-child {
+  border-bottom: 0;
+}
+
+.detailFields span {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.detailFields strong,
+.detailFields a {
+  max-width: 190px;
+  color: var(--text);
+  font-size: 10px;
+  font-weight: 650;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.detailFields a {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--primary);
+  text-decoration: none;
+}
+
+.contactList {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.contactCard {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px;
+  border: 1px solid #eceef3;
+  border-radius: 10px;
+  background: #fdfdfe;
+}
+
+.contactAvatar {
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #eeeaff;
+  color: var(--primary);
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.contactCardBody {
+  min-width: 0;
+}
+
+.contactName {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.contactName strong {
+  font-size: 10px;
+}
+
+.contactName span {
+  padding: 2px 5px;
+  border-radius: 999px;
+  background: #e7f8f1;
+  color: #14845e;
+  font-size: 7px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.contactCard p {
+  margin: 3px 0;
+  color: var(--muted);
+  font-size: 9px;
+}
+
+.contactCard a {
+  color: var(--primary);
+  font-size: 9px;
+  text-decoration: none;
+}
+
+.timeline {
+  position: relative;
+}
+
+.timelineItem {
+  display: grid;
+  grid-template-columns: 34px 1fr;
+  gap: 11px;
+  padding-bottom: 20px;
+}
+
+.timelineItem:last-child {
+  padding-bottom: 0;
+}
+
+.timelineMarker {
+  width: 31px;
+  height: 31px;
+  position: relative;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  border-radius: 9px;
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+
+.timelineItem:not(:last-child)
+.timelineMarker::after {
+  content: "";
+  width: 1px;
+  height: calc(100% + 10px);
+  position: absolute;
+  top: 31px;
+  left: 15px;
+  z-index: -1;
+  background: #e4e6ed;
+}
+
+.timelineContent {
+  padding-top: 2px;
+}
+
+.timelineTop {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.timelineTop strong {
+  display: block;
+  font-size: 11px;
+}
+
+.activityTypeLabel {
+  display: block;
+  margin-top: 3px;
+  color: var(--primary);
+  font-size: 8px;
+  font-weight: 700;
+  text-transform: capitalize;
+}
+
+.timelineTop time {
+  flex: 0 0 auto;
+  color: var(--muted);
+  font-size: 8px;
+}
+
+.timelineContent p {
+  margin: 8px 0 0;
+  color: #6e7482;
+  font-size: 10px;
+  line-height: 1.55;
+}
+
+.miniEmptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 42px 15px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.miniEmptyState.compact {
+  padding: 26px 10px;
+}
+
+.miniEmptyState svg {
+  margin-bottom: 9px;
+  color: #9386dd;
+}
+
+.miniEmptyState strong {
+  color: var(--text);
+  font-size: 11px;
+}
+
+.miniEmptyState span {
+  margin-top: 4px;
+  font-size: 9px;
+}
+
+.aiAccountCard {
+  background:
+    linear-gradient(
+      145deg,
+      #ffffff,
+      #faf8ff
+    );
+}
+
+.aivaPlaceholder span {
+  color: var(--primary);
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+}
+
+.aivaPlaceholder strong {
+  display: block;
+  margin: 6px 0;
+  font-size: 11px;
+}
+
+.aivaPlaceholder p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 9px;
+  line-height: 1.55;
+}
+
+.accountForm textarea {
+  width: 100%;
+  resize: vertical;
+  padding: 10px 11px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  outline: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+}
+
+.accountForm textarea:focus {
+  border-color: #9789ec;
+  box-shadow:
+    0 0 0 3px
+    rgba(104, 84, 231, 0.09);
+}
+
+.checkboxLabel {
+  flex-direction: row !important;
+  align-items: center;
+  gap: 8px !important;
+}
+
+.checkboxLabel input {
+  width: auto;
+}
+
+.detailLoading,
+.detailError {
+  padding: 70px 20px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: white;
+  color: var(--muted);
+  font-size: 12px;
+  text-align: center;
+}
+
+.detailError strong {
+  color: var(--danger);
+}
+
+.detailError p {
+  margin: 6px 0 0;
+}
+
+@media (max-width: 1000px) {
+  .accountDetailGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 650px) {
+  .accountHero {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .detailActions {
+    width: 100%;
+  }
+
+  .detailActions button {
+    flex: 1;
+    justify-content: center;
+  }
+
+  .timelineTop {
+    flex-direction: column;
+    gap: 4px;
+  }
+}
