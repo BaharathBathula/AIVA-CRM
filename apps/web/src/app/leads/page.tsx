@@ -6,6 +6,8 @@ import {
   useState,
 } from "react";
 
+import Link from "next/link";
+
 import {
   Filter,
   Plus,
@@ -381,7 +383,12 @@ export default function LeadsPage() {
                             key={lead.id}
                           >
                             <td>
-                              <div className="accountIdentity">
+                              <Link
+                                href={
+                                  `/leads/${lead.id}`
+                                }
+                                className="accountIdentity"
+                              >
                                 <div className="accountLogo">
                                   {
                                     lead
@@ -407,7 +414,7 @@ export default function LeadsPage() {
                                     }
                                   </span>
                                 </div>
-                              </div>
+                              </Link>
                             </td>
 
                             <td>
