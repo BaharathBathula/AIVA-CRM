@@ -1,5 +1,5 @@
 fastapi[standard]==0.142.2
-SQLAlchemy==2.1.1
+SQLAlchemy[asyncio]==2.1.1
 asyncpg==0.31.0
 pydantic-settings==2.15.0
 redis==8.1.0
