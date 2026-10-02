@@ -1,11 +1,26 @@
 import uuid
-from datetime import datetime
+from datetime import date, datetime
+from decimal import Decimal
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+)
 
 
 LeadStatus = Literal[
+    "new",
+    "contacted",
+    "qualified",
+    "unqualified",
+    "nurture",
+    "converted",
+]
+
+
+EditableLeadStatus = Literal[
     "new",
     "contacted",
     "qualified",
@@ -51,7 +66,7 @@ class LeadCreate(BaseModel):
         max_length=80,
     )
 
-    status: LeadStatus = "new"
+    status: EditableLeadStatus = "new"
 
     score: int = Field(
         default=0,
@@ -103,7 +118,7 @@ class LeadUpdate(BaseModel):
         max_length=80,
     )
 
-    status: LeadStatus | None = None
+    status: EditableLeadStatus | None = None
 
     score: int | None = Field(
         default=None,
@@ -134,7 +149,7 @@ class LeadResponse(BaseModel):
     job_title: str | None
 
     source: str
-    status: str
+    status: LeadStatus
     score: int
 
     notes: str | None
@@ -148,3 +163,31 @@ class LeadResponse(BaseModel):
 
     created_at: datetime
     updated_at: datetime
+
+
+class LeadConvertRequest(BaseModel):
+    opportunity_name: str | None = Field(
+        default=None,
+        min_length=1,
+        max_length=250,
+    )
+
+    opportunity_amount: Decimal | None = Field(
+        default=None,
+        ge=0,
+    )
+
+    expected_close_date: date | None = None
+
+
+class LeadConvertResponse(BaseModel):
+    lead_id: uuid.UUID
+
+    account_id: uuid.UUID
+    contact_id: uuid.UUID
+    opportunity_id: uuid.UUID
+
+    pipeline_id: uuid.UUID
+    stage_id: uuid.UUID
+
+    status: Literal["converted"] = "converted"
