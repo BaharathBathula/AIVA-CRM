@@ -52,6 +52,7 @@ const groups = [
       {
         label: "Leads",
         icon: Target,
+        href: "/leads",
       },
       {
         label: "Accounts",
