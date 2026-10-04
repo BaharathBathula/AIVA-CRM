@@ -295,8 +295,3 @@ export function Sidebar({
     </aside>
   );
 }
-TSX
-
-npx tsc --noEmit
-
-echo "=== SIDEBAR EMAIL LINK PASSED ==="
