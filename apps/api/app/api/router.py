@@ -21,6 +21,9 @@ from app.api.routes.opportunities import (
 from app.api.routes.pipelines import (
     router as pipelines_router,
 )
+from app.api.routes.tasks import (
+    router as tasks_router,
+)
 
 
 api_router = APIRouter()
@@ -52,4 +55,8 @@ api_router.include_router(
 
 api_router.include_router(
     pipelines_router
+)
+
+api_router.include_router(
+    tasks_router
 )
