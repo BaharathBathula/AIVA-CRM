@@ -10,6 +10,7 @@ from app.models.opportunity import Opportunity
 from app.models.organization import Organization
 from app.models.pipeline import Pipeline
 from app.models.pipeline_stage import PipelineStage
+from app.models.task import Task
 from app.models.user import User
 
 
@@ -26,5 +27,6 @@ __all__ = [
     "OrganizationMembership",
     "Pipeline",
     "PipelineStage",
+    "Task",
     "User",
 ]
