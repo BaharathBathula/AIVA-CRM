@@ -13,6 +13,7 @@ import {
   Clock3,
   Filter,
   ListTodo,
+  Plus,
   RotateCcw,
   Search,
   Sparkles,
@@ -21,6 +22,10 @@ import {
 import {
   Sidebar,
 } from "@/components/sidebar";
+
+import {
+  CreateTaskModal,
+} from "@/components/tasks/create-task-modal";
 
 import {
   Topbar,
@@ -80,7 +85,9 @@ function isTaskOverdue(
   }
 
   return (
-    new Date(task.due_at).getTime()
+    new Date(
+      task.due_at
+    ).getTime()
     < Date.now()
   );
 }
@@ -114,7 +121,9 @@ export default function TasksPage() {
     useState(true);
 
   const [error, setError] =
-    useState<string | null>(null);
+    useState<string | null>(
+      null
+    );
 
   const [query, setQuery] =
     useState("");
@@ -132,6 +141,11 @@ export default function TasksPage() {
   ] = useState<string | null>(
     null
   );
+
+  const [
+    createOpen,
+    setCreateOpen,
+  ] = useState(false);
 
 
   useEffect(() => {
@@ -215,7 +229,8 @@ export default function TasksPage() {
   const completedCount =
     tasks.filter(
       (task) =>
-        task.status === "completed"
+        task.status
+        === "completed"
     ).length;
 
 
@@ -223,6 +238,18 @@ export default function TasksPage() {
     tasks.filter(
       isTaskOverdue
     ).length;
+
+
+  function addCreatedTask(
+    task: Task
+  ) {
+    setTasks(
+      (current) => [
+        task,
+        ...current,
+      ]
+    );
+  }
 
 
   async function toggleComplete(
@@ -233,8 +260,11 @@ export default function TasksPage() {
         task.id
       );
 
+      setError(null);
+
       const updated =
-        task.status === "completed"
+        task.status
+        === "completed"
           ? await reopenTask(
               task.id
             )
@@ -247,7 +277,7 @@ export default function TasksPage() {
           current.map(
             (item) =>
               item.id
-                === updated.id
+              === updated.id
                 ? updated
                 : item
           )
@@ -290,6 +320,17 @@ export default function TasksPage() {
                 work across your CRM.
               </p>
             </div>
+
+            <button
+              type="button"
+              className="createButton taskCreateButton"
+              onClick={() =>
+                setCreateOpen(true)
+              }
+            >
+              <Plus size={16} />
+              New Task
+            </button>
           </div>
 
           <div className="statsGrid">
@@ -402,8 +443,7 @@ export default function TasksPage() {
                     event
                   ) =>
                     setQuery(
-                      event
-                        .target
+                      event.target
                         .value
                     )
                   }
@@ -423,7 +463,7 @@ export default function TasksPage() {
                       type="button"
                       className={
                         statusFilter
-                          === item
+                        === item
                           ? "filterChip active"
                           : "filterChip"
                       }
@@ -479,6 +519,21 @@ export default function TasksPage() {
                     your team or AIVA
                     will appear here.
                   </p>
+
+                  <button
+                    type="button"
+                    className="createButton taskCreateButton"
+                    onClick={() =>
+                      setCreateOpen(
+                        true
+                      )
+                    }
+                  >
+                    <Plus
+                      size={15}
+                    />
+                    New Task
+                  </button>
                 </div>
               )}
 
@@ -530,7 +585,9 @@ export default function TasksPage() {
 
                           return (
                             <tr
-                              key={task.id}
+                              key={
+                                task.id
+                              }
                             >
                               <td>
                                 <div className="accountIdentity">
@@ -540,11 +597,15 @@ export default function TasksPage() {
                                       ===
                                     "completed" ? (
                                       <CheckCircle2
-                                        size={16}
+                                        size={
+                                          16
+                                        }
                                       />
                                     ) : (
                                       <Circle
-                                        size={16}
+                                        size={
+                                          16
+                                        }
                                       />
                                     )}
                                   </div>
@@ -568,7 +629,11 @@ export default function TasksPage() {
                               </td>
 
                               <td>
-                                <span className="stageBadge">
+                                <span
+                                  className={
+                                    `taskStatus taskStatus-${task.status}`
+                                  }
+                                >
                                   {label(
                                     task.status
                                   )}
@@ -576,11 +641,15 @@ export default function TasksPage() {
                               </td>
 
                               <td>
-                                <strong>
+                                <span
+                                  className={
+                                    `taskPriority taskPriority-${task.priority}`
+                                  }
+                                >
                                   {label(
                                     task.priority
                                   )}
-                                </strong>
+                                </span>
                               </td>
 
                               <td>
@@ -599,7 +668,9 @@ export default function TasksPage() {
                                 >
                                   {overdue && (
                                     <AlertTriangle
-                                      size={12}
+                                      size={
+                                        12
+                                      }
                                     />
                                   )}
 
@@ -636,19 +707,24 @@ export default function TasksPage() {
                                     )
                                   }
                                 >
-                                  {task.status
+                                  {task
+                                    .status
                                     ===
                                   "completed" ? (
                                     <>
                                       <RotateCcw
-                                        size={13}
+                                        size={
+                                          13
+                                        }
                                       />
                                       Reopen
                                     </>
                                   ) : (
                                     <>
                                       <CheckCircle2
-                                        size={13}
+                                        size={
+                                          13
+                                        }
                                       />
                                       Complete
                                     </>
@@ -666,6 +742,16 @@ export default function TasksPage() {
           </section>
         </div>
       </main>
+
+      <CreateTaskModal
+        open={createOpen}
+        onClose={() =>
+          setCreateOpen(false)
+        }
+        onCreated={
+          addCreatedTask
+        }
+      />
     </div>
   );
 }
