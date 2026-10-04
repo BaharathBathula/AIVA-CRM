@@ -1,4 +1,3 @@
-cat > src/components/sidebar.tsx <<'TSX'
 import Link from "next/link";
 
 import {
