@@ -83,9 +83,10 @@ const groups = [
         icon: Activity,
       },
       {
-        label: "Tasks",
-        icon: Gauge,
-      },
+  label: "Tasks",
+  icon: Gauge,
+  href: "/tasks",
+},
       {
         label: "Email",
         icon: Mail,
