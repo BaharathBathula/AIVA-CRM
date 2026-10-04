@@ -1,4 +1,3 @@
-cat > apps/api/app/models/task.py <<'PY'
 from __future__ import annotations
 
 import uuid
@@ -13,10 +12,7 @@ from sqlalchemy import (
     Text,
 )
 from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.orm import (
-    Mapped,
-    mapped_column,
-)
+from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
 from app.db.mixins import (
@@ -55,9 +51,7 @@ class Task(
         ),
     )
 
-    account_id: Mapped[
-        uuid.UUID | None
-    ] = mapped_column(
+    account_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey(
             "accounts.id",
             ondelete="SET NULL",
@@ -66,9 +60,7 @@ class Task(
         index=True,
     )
 
-    contact_id: Mapped[
-        uuid.UUID | None
-    ] = mapped_column(
+    contact_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey(
             "contacts.id",
             ondelete="SET NULL",
@@ -77,9 +69,7 @@ class Task(
         index=True,
     )
 
-    lead_id: Mapped[
-        uuid.UUID | None
-    ] = mapped_column(
+    lead_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey(
             "leads.id",
             ondelete="SET NULL",
@@ -88,9 +78,7 @@ class Task(
         index=True,
     )
 
-    opportunity_id: Mapped[
-        uuid.UUID | None
-    ] = mapped_column(
+    opportunity_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey(
             "opportunities.id",
             ondelete="SET NULL",
@@ -99,9 +87,7 @@ class Task(
         index=True,
     )
 
-    assigned_to_user_id: Mapped[
-        uuid.UUID | None
-    ] = mapped_column(
+    assigned_to_user_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey(
             "users.id",
             ondelete="SET NULL",
@@ -110,9 +96,7 @@ class Task(
         index=True,
     )
 
-    created_by_user_id: Mapped[
-        uuid.UUID | None
-    ] = mapped_column(
+    created_by_user_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey(
             "users.id",
             ondelete="SET NULL",
@@ -121,9 +105,7 @@ class Task(
         index=True,
     )
 
-    parent_task_id: Mapped[
-        uuid.UUID | None
-    ] = mapped_column(
+    parent_task_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey(
             "tasks.id",
             ondelete="SET NULL",
@@ -137,9 +119,7 @@ class Task(
         nullable=False,
     )
 
-    description: Mapped[
-        str | None
-    ] = mapped_column(
+    description: Mapped[str | None] = mapped_column(
         Text,
         nullable=True,
     )
@@ -176,32 +156,24 @@ class Task(
         index=True,
     )
 
-    start_at: Mapped[
-        datetime | None
-    ] = mapped_column(
+    start_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True),
         nullable=True,
     )
 
-    due_at: Mapped[
-        datetime | None
-    ] = mapped_column(
+    due_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True),
         nullable=True,
         index=True,
     )
 
-    reminder_at: Mapped[
-        datetime | None
-    ] = mapped_column(
+    reminder_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True),
         nullable=True,
         index=True,
     )
 
-    completed_at: Mapped[
-        datetime | None
-    ] = mapped_column(
+    completed_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True),
         nullable=True,
     )
@@ -213,9 +185,7 @@ class Task(
         server_default="false",
     )
 
-    recurrence_rule: Mapped[
-        str | None
-    ] = mapped_column(
+    recurrence_rule: Mapped[str | None] = mapped_column(
         String(500),
         nullable=True,
     )
@@ -228,39 +198,23 @@ class Task(
         index=True,
     )
 
-    external_id: Mapped[
-        str | None
-    ] = mapped_column(
+    external_id: Mapped[str | None] = mapped_column(
         String(500),
         nullable=True,
         index=True,
     )
 
-    tags: Mapped[
-        list[str]
-    ] = mapped_column(
+    tags: Mapped[list[str]] = mapped_column(
         JSONB,
         nullable=False,
         default=list,
         server_default="[]",
     )
 
-    task_metadata: Mapped[
-        dict
-    ] = mapped_column(
+    task_metadata: Mapped[dict] = mapped_column(
         "metadata",
         JSONB,
         nullable=False,
         default=dict,
         server_default="{}",
     )
-PY
-
-echo "=== TASK MODEL CREATED ==="
-
-ls -l apps/api/app/models/task.py
-
-python -m py_compile \
-  apps/api/app/models/task.py
-
-echo "=== PHASE 5A.1 PASSED ==="
