@@ -80,6 +80,29 @@ type MeetingFilter =
   | "cancelled";
 
 
+const MEETING_FILTERS: MeetingFilter[] = [
+  "all",
+  "scheduled",
+  "completed",
+  "cancelled",
+];
+
+
+function parseMeetingStatus(
+  value: string
+): MeetingStatus | null {
+  if (
+    value === "scheduled"
+    || value === "completed"
+    || value === "cancelled"
+  ) {
+    return value;
+  }
+
+  return null;
+}
+
+
 function formatDateTime(
   value: string
 ) {
@@ -129,11 +152,11 @@ function formatDuration(
       minutes / 60
     );
 
-  const remaining =
+  const remainder =
     minutes % 60;
 
-  if (remaining) {
-    return `${hours}h ${remaining}m`;
+  if (remainder > 0) {
+    return `${hours}h ${remainder}m`;
   }
 
   return `${hours}h`;
@@ -368,15 +391,15 @@ export default function MeetingsPage() {
           === filter
       );
     }, [
-      meetings,
       filter,
+      meetings,
     ]);
 
 
   const upcomingCount =
     useMemo(() => {
       const now =
-        new Date();
+        Date.now();
 
       return meetings.filter(
         (meeting) =>
@@ -385,7 +408,8 @@ export default function MeetingsPage() {
           &&
           new Date(
             meeting.start_at
-          ) >= now
+          ).getTime()
+          >= now
       ).length;
     }, [meetings]);
 
@@ -422,8 +446,8 @@ export default function MeetingsPage() {
           === accountId
       );
     }, [
-      contacts,
       accountId,
+      contacts,
     ]);
 
 
@@ -439,8 +463,8 @@ export default function MeetingsPage() {
           === accountId
       );
     }, [
-      opportunities,
       accountId,
+      opportunities,
     ]);
 
 
@@ -454,6 +478,12 @@ export default function MeetingsPage() {
     setLocation("");
     setMeetingUrl("");
     setDescription("");
+  }
+
+
+  function closeModal() {
+    resetForm();
+    setCreateOpen(false);
   }
 
 
@@ -606,9 +636,7 @@ export default function MeetingsPage() {
           )
       );
 
-      resetForm();
-
-      setCreateOpen(false);
+      closeModal();
     } catch (err) {
       setError(
         err instanceof Error
@@ -800,14 +828,7 @@ export default function MeetingsPage() {
           </section>
 
           <section className="meetingToolbar">
-            {(
-              [
-                "all",
-                "scheduled",
-                "completed",
-                "cancelled",
-              ] as MeetingFilter[]
-            ).map(
+            {MEETING_FILTERS.map(
               (value) => (
                 <button
                   type="button"
@@ -977,15 +998,20 @@ export default function MeetingsPage() {
                                 event
                               ) => {
                                 const nextStatus =
-                                  event
-                                    .target
-                                    .value
-                                  as MeetingStatus;
+                                  parseMeetingStatus(
+                                    event
+                                      .target
+                                      .value
+                                  );
 
-                                void changeStatus(
-                                  meeting,
+                                if (
                                   nextStatus
-                                );
+                                ) {
+                                  void changeStatus(
+                                    meeting,
+                                    nextStatus
+                                  );
+                                }
                               }}
                             >
                               <option
@@ -1129,13 +1155,9 @@ export default function MeetingsPage() {
 
               <button
                 type="button"
-                onClick={() => {
-                  resetForm();
-
-                  setCreateOpen(
-                    false
-                  );
-                }}
+                onClick={
+                  closeModal
+                }
               >
                 <X
                   size={18}
@@ -1165,7 +1187,6 @@ export default function MeetingsPage() {
                           .value
                       )
                     }
-                    placeholder="Acme CRM Automation Demo"
                     required
                   />
                 </label>
@@ -1362,7 +1383,6 @@ export default function MeetingsPage() {
                           .value
                       )
                     }
-                    placeholder="Microsoft Teams"
                   />
                 </label>
 
@@ -1384,7 +1404,6 @@ export default function MeetingsPage() {
                           .value
                       )
                     }
-                    placeholder="https://..."
                   />
                 </label>
 
@@ -1407,7 +1426,6 @@ export default function MeetingsPage() {
                           .value
                       )
                     }
-                    placeholder="Meeting agenda and context..."
                   />
                 </label>
               </div>
@@ -1416,13 +1434,9 @@ export default function MeetingsPage() {
                 <button
                   type="button"
                   className="secondaryButton"
-                  onClick={() => {
-                    resetForm();
-
-                    setCreateOpen(
-                      false
-                    );
-                  }}
+                  onClick={
+                    closeModal
+                  }
                 >
                   Cancel
                 </button>
@@ -1457,8 +1471,8 @@ export default function MeetingsPage() {
       <style jsx>{`
         .meetingHeader {
           display: flex;
-          align-items: flex-end;
           justify-content: space-between;
+          align-items: flex-end;
           gap: 18px;
           margin-bottom: 20px;
         }
@@ -1466,7 +1480,6 @@ export default function MeetingsPage() {
         .meetingHeader h1 {
           margin: 4px 0 5px;
           font-size: 26px;
-          letter-spacing: -0.035em;
         }
 
         .meetingHeader p {
@@ -1510,10 +1523,7 @@ export default function MeetingsPage() {
           grid-template-columns:
             repeat(
               4,
-              minmax(
-                0,
-                1fr
-              )
+              minmax(0, 1fr)
             );
           gap: 12px;
           margin-bottom: 16px;
@@ -1598,7 +1608,6 @@ export default function MeetingsPage() {
         }
 
         .meetingDateBlock strong {
-          margin-top: 2px;
           color: var(--primary);
           font-size: 21px;
         }
@@ -1616,8 +1625,8 @@ export default function MeetingsPage() {
 
         .meetingTitleLine {
           display: flex;
-          align-items: center;
           flex-wrap: wrap;
+          align-items: center;
           gap: 8px;
         }
 
@@ -1631,7 +1640,6 @@ export default function MeetingsPage() {
           border-radius: 999px;
           font-size: 8px;
           font-weight: 800;
-          text-transform: capitalize;
         }
 
         .status-scheduled {
@@ -1649,23 +1657,28 @@ export default function MeetingsPage() {
           color: #c95454;
         }
 
-        .meetingTime {
+        .meetingTime,
+        .meetingMeta {
           display: flex;
-          align-items: center;
           flex-wrap: wrap;
-          gap: 5px;
-          margin-top: 6px;
+          align-items: center;
+          gap: 6px;
+          margin-top: 8px;
           color: var(--muted);
           font-size: 9px;
         }
 
-        .meetingTop select {
-          height: 32px;
-          padding: 0 8px;
-          border: 1px solid var(--border);
-          border-radius: 8px;
-          background: white;
-          font-size: 9px;
+        .meetingMeta {
+          gap: 12px;
+        }
+
+        .meetingMeta a,
+        .meetingMeta span {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          color: inherit;
+          text-decoration: none;
         }
 
         .meetingDescription {
@@ -1675,28 +1688,17 @@ export default function MeetingsPage() {
           line-height: 1.5;
         }
 
-        .meetingMeta {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 12px;
-          margin-top: 12px;
-          color: var(--muted);
-          font-size: 9px;
-        }
-
-        .meetingMeta span,
-        .meetingMeta a {
-          display: inline-flex;
-          align-items: center;
-          gap: 5px;
-          color: inherit;
-          text-decoration: none;
+        .meetingTop select {
+          height: 32px;
+          border: 1px solid var(--border);
+          border-radius: 8px;
+          background: white;
         }
 
         .meetingFooter {
           display: flex;
-          align-items: center;
           justify-content: space-between;
+          align-items: center;
           gap: 10px;
           margin-top: 12px;
           padding-top: 10px;
@@ -1705,8 +1707,8 @@ export default function MeetingsPage() {
 
         .meetingFooter a {
           display: inline-flex;
-          align-items: center;
           gap: 5px;
+          align-items: center;
           color: var(--primary);
           font-size: 9px;
           font-weight: 700;
@@ -1730,16 +1732,6 @@ export default function MeetingsPage() {
           flex-direction: column;
         }
 
-        .meetingEmpty strong {
-          color: var(--text);
-          font-size: 12px;
-        }
-
-        .meetingEmpty p {
-          margin: 0;
-          font-size: 10px;
-        }
-
         .meetingModalBackdrop {
           position: fixed;
           inset: 0;
@@ -1747,39 +1739,20 @@ export default function MeetingsPage() {
           display: grid;
           place-items: center;
           padding: 20px;
-          background:
-            rgba(
-              19,
-              21,
-              29,
-              0.46
-            );
+          background: rgba(19,21,29,0.46);
         }
 
         .meetingModal {
-          width: min(
-            700px,
-            100%
-          );
+          width: min(700px, 100%);
           max-height: 90vh;
           overflow-y: auto;
           border-radius: 15px;
           background: white;
-          box-shadow:
-            0 24px 70px
-            rgba(
-              18,
-              22,
-              35,
-              0.18
-            );
         }
 
         .meetingModalHeader {
           display: flex;
-          align-items: flex-start;
           justify-content: space-between;
-          gap: 15px;
           padding: 18px;
           border-bottom: 1px solid #eef0f4;
         }
@@ -1795,14 +1768,11 @@ export default function MeetingsPage() {
           font-size: 10px;
         }
 
-        .meetingModalHeader > button {
+        .meetingModalHeader button {
           width: 32px;
           height: 32px;
-          display: grid;
-          place-items: center;
           border: 0;
           border-radius: 8px;
-          background: #f4f5f8;
         }
 
         .meetingModal form {
@@ -1814,10 +1784,7 @@ export default function MeetingsPage() {
           grid-template-columns:
             repeat(
               2,
-              minmax(
-                0,
-                1fr
-              )
+              minmax(0, 1fr)
             );
           gap: 13px;
         }
@@ -1828,25 +1795,21 @@ export default function MeetingsPage() {
           gap: 6px;
         }
 
-        .meetingFormGrid label > span {
+        .meetingFormGrid label span {
           color: var(--muted);
           font-size: 9px;
           font-weight: 700;
-          text-transform: uppercase;
         }
 
         .meetingFormGrid input,
         .meetingFormGrid select,
         .meetingFormGrid textarea {
-          box-sizing: border-box;
           width: 100%;
+          box-sizing: border-box;
           border: 1px solid var(--border);
           border-radius: 8px;
-          background: white;
           padding: 9px 10px;
-          outline: none;
           font: inherit;
-          font-size: 10px;
         }
 
         .meetingFormGrid input,
@@ -1854,15 +1817,8 @@ export default function MeetingsPage() {
           height: 38px;
         }
 
-        .meetingFormGrid input:focus,
-        .meetingFormGrid select:focus,
-        .meetingFormGrid textarea:focus {
-          border-color: var(--primary);
-        }
-
         .fullWidth {
-          grid-column:
-            1 / -1;
+          grid-column: 1 / -1;
         }
 
         .meetingModalFooter {
@@ -1874,9 +1830,7 @@ export default function MeetingsPage() {
           border-top: 1px solid #eef0f4;
         }
 
-        @media (
-          max-width: 900px
-        ) {
+        @media (max-width: 900px) {
           .meetingHeader {
             align-items: flex-start;
             flex-direction: column;
@@ -1884,20 +1838,14 @@ export default function MeetingsPage() {
 
           .meetingMetrics {
             grid-template-columns:
-              repeat(
-                2,
-                1fr
-              );
+              repeat(2, 1fr);
           }
         }
 
-        @media (
-          max-width: 650px
-        ) {
+        @media (max-width: 650px) {
           .meetingMetrics,
           .meetingFormGrid {
-            grid-template-columns:
-              1fr;
+            grid-template-columns: 1fr;
           }
 
           .fullWidth {
@@ -1906,8 +1854,8 @@ export default function MeetingsPage() {
 
           .meetingTop,
           .meetingFooter {
-            align-items: flex-start;
             flex-direction: column;
+            align-items: flex-start;
           }
         }
       `}</style>
