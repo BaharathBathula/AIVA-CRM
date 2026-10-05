@@ -2,7 +2,11 @@ import uuid
 from datetime import datetime, timezone
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+)
 
 
 ActivityType = Literal[
@@ -26,6 +30,8 @@ ActivityDirection = Literal[
 class ActivityCreate(BaseModel):
     account_id: uuid.UUID | None = None
     contact_id: uuid.UUID | None = None
+    lead_id: uuid.UUID | None = None
+    opportunity_id: uuid.UUID | None = None
 
     activity_type: ActivityType
 
@@ -64,6 +70,9 @@ class ActivityResponse(BaseModel):
 
     account_id: uuid.UUID | None
     contact_id: uuid.UUID | None
+    lead_id: uuid.UUID | None
+    opportunity_id: uuid.UUID | None
+
     created_by_user_id: uuid.UUID | None
 
     activity_type: str
@@ -74,6 +83,7 @@ class ActivityResponse(BaseModel):
     occurred_at: datetime
 
     external_id: str | None
+
     activity_metadata: dict
 
     created_at: datetime
