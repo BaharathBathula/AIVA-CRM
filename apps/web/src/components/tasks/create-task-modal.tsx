@@ -180,9 +180,7 @@ export function CreateTaskModal({
             <input
               required
               value={title}
-              onChange={(
-                event
-              ) =>
+              onChange={(event) =>
                 setTitle(
                   event.target.value
                 )
@@ -196,12 +194,8 @@ export function CreateTaskModal({
 
             <textarea
               rows={4}
-              value={
-                description
-              }
-              onChange={(
-                event
-              ) =>
+              value={description}
+              onChange={(event) =>
                 setDescription(
                   event.target.value
                 )
@@ -216,13 +210,9 @@ export function CreateTaskModal({
 
               <select
                 value={taskType}
-                onChange={(
-                  event
-                ) =>
+                onChange={(event) =>
                   setTaskType(
-                    event.target
-                      .value
-                      as TaskType
+                    event.target.value as TaskType
                   )
                 }
               >
@@ -269,13 +259,9 @@ export function CreateTaskModal({
 
               <select
                 value={priority}
-                onChange={(
-                  event
-                ) =>
+                onChange={(event) =>
                   setPriority(
-                    event.target
-                      .value
-                      as TaskPriority
+                    event.target.value as TaskPriority
                   )
                 }
               >
@@ -304,9 +290,7 @@ export function CreateTaskModal({
             <input
               type="datetime-local"
               value={dueAt}
-              onChange={(
-                event
-              ) =>
+              onChange={(event) =>
                 setDueAt(
                   event.target.value
                 )
