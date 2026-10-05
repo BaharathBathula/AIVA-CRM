@@ -1543,3 +1543,251 @@ button {
     gap: 4px;
   }
 }
+
+/* =========================================================
+   Tasks advanced workspace
+   ========================================================= */
+
+.taskToolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 15px 17px;
+  border-bottom: 1px solid var(--border);
+}
+
+.taskSelectFilters {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.taskSelectFilters > svg {
+  color: var(--muted);
+}
+
+.taskSelectFilters select {
+  padding: 7px 9px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  outline: none;
+  background: white;
+  color: #5c6270;
+  font-size: 10px;
+}
+
+.taskStatusFilters {
+  display: flex;
+  gap: 6px;
+  padding: 10px 17px;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--border);
+  background: #fbfbfd;
+}
+
+.taskIdentityButton {
+  width: 100%;
+  border: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+}
+
+.taskIdentityButton strong,
+.taskIdentityButton span {
+  display: block;
+}
+
+.taskIdentityButton strong {
+  margin-bottom: 3px;
+  color: var(--text);
+  font-size: 11px;
+}
+
+.taskIdentityButton span {
+  max-width: 340px;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.taskActions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.taskIconButton {
+  width: 31px;
+  height: 31px;
+  border: 1px solid var(--border);
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  background: white;
+  color: #697080;
+}
+
+.taskIconButton:hover {
+  background: #f5f6fa;
+}
+
+.taskIconButton.danger {
+  color: var(--danger);
+}
+
+.taskIconButton.danger:hover {
+  border-color: #ecc7cb;
+  background: #fff5f6;
+}
+
+.taskDue {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.taskAiSource {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #654fd7;
+  font-weight: 700;
+}
+
+.taskDrawer {
+  width: min(430px, 100vw);
+  position: fixed;
+  z-index: 80;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  overflow-y: auto;
+  border-left: 1px solid var(--border);
+  background: white;
+  box-shadow:
+    -18px 0 50px
+    rgba(19, 23, 37, 0.12);
+}
+
+.taskDrawerHeader {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 22px;
+  border-bottom: 1px solid var(--border);
+  background: white;
+}
+
+.taskDrawerHeader span {
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.taskDrawerHeader h2 {
+  margin: 5px 0 0;
+  font-size: 18px;
+}
+
+.taskDrawerBody {
+  padding: 22px;
+}
+
+.taskDrawerBadges {
+  display: flex;
+  gap: 7px;
+  margin-bottom: 22px;
+}
+
+.taskDetailBlock {
+  padding-bottom: 20px;
+  border-bottom: 1px solid #eef0f4;
+}
+
+.taskDetailBlock > span,
+.taskDetailGrid span {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.taskDetailBlock p {
+  margin: 0;
+  color: #555c69;
+  font-size: 12px;
+  line-height: 1.65;
+}
+
+.taskDetailGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+  padding: 20px 0;
+}
+
+.taskDetailGrid strong {
+  font-size: 11px;
+}
+
+.taskDetailNotice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 12px;
+  border: 1px solid #e7e2ff;
+  border-radius: 9px;
+  background: #f8f6ff;
+  color: #6653d9;
+  font-size: 10px;
+}
+
+.taskDrawerActions {
+  display: flex;
+  gap: 8px;
+  margin-top: 22px;
+}
+
+.taskDeleteButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--danger);
+}
+
+@media (max-width: 900px) {
+  .taskToolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .taskSelectFilters {
+    overflow-x: auto;
+  }
+}
+
+@media (max-width: 560px) {
+  .taskDrawer {
+    width: 100%;
+  }
+
+  .taskDetailGrid {
+    grid-template-columns: 1fr;
+  }
+}
