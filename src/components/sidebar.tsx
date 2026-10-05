@@ -80,9 +80,10 @@ const groups = [
     title: "Engagement",
     items: [
       {
-        label: "Activities",
-        icon: Activity,
-      },
+  label: "Activities",
+  icon: Activity,
+  href: "/activities",
+},
       {
         label: "Tasks",
         icon: Gauge,
