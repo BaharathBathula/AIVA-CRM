@@ -8,15 +8,20 @@ import {
 
 import {
   AlertTriangle,
+  Bot,
+  CalendarDays,
   CheckCircle2,
   Circle,
   Clock3,
   Filter,
   ListTodo,
+  Pencil,
   Plus,
   RotateCcw,
   Search,
   Sparkles,
+  Trash2,
+  X,
 } from "lucide-react";
 
 import {
@@ -28,18 +33,25 @@ import {
 } from "@/components/tasks/create-task-modal";
 
 import {
+  EditTaskModal,
+} from "@/components/tasks/edit-task-modal";
+
+import {
   Topbar,
 } from "@/components/topbar";
 
 import {
   completeTask,
+  deleteTask,
   getTasks,
   reopenTask,
 } from "@/lib/tasks";
 
 import type {
   Task,
+  TaskPriority,
   TaskStatus,
+  TaskType,
 } from "@/types/task";
 
 
@@ -47,14 +59,23 @@ type StatusFilter =
   | "all"
   | TaskStatus;
 
+type PriorityFilter =
+  | "all"
+  | TaskPriority;
 
-const statusFilters: StatusFilter[] = [
-  "all",
-  "open",
-  "in_progress",
-  "completed",
-  "cancelled",
-];
+type TypeFilter =
+  | "all"
+  | TaskType;
+
+
+const statusFilters:
+  StatusFilter[] = [
+    "all",
+    "open",
+    "in_progress",
+    "completed",
+    "cancelled",
+  ];
 
 
 function label(
@@ -106,6 +127,8 @@ function formatDueDate(
       month: "short",
       day: "numeric",
       year: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
     }
   ).format(
     new Date(value)
@@ -136,8 +159,34 @@ export default function TasksPage() {
   );
 
   const [
+    priorityFilter,
+    setPriorityFilter,
+  ] = useState<PriorityFilter>(
+    "all"
+  );
+
+  const [
+    typeFilter,
+    setTypeFilter,
+  ] = useState<TypeFilter>(
+    "all"
+  );
+
+  const [
+    overdueOnly,
+    setOverdueOnly,
+  ] = useState(false);
+
+  const [
     updatingTaskId,
     setUpdatingTaskId,
+  ] = useState<string | null>(
+    null
+  );
+
+  const [
+    deletingTaskId,
+    setDeletingTaskId,
   ] = useState<string | null>(
     null
   );
@@ -146,6 +195,18 @@ export default function TasksPage() {
     createOpen,
     setCreateOpen,
   ] = useState(false);
+
+  const [
+    editOpen,
+    setEditOpen,
+  ] = useState(false);
+
+  const [
+    selectedTask,
+    setSelectedTask,
+  ] = useState<Task | null>(
+    null
+  );
 
 
   useEffect(() => {
@@ -187,6 +248,22 @@ export default function TasksPage() {
             task.status
               === statusFilter;
 
+          const matchesPriority =
+            priorityFilter === "all" ||
+            task.priority
+              === priorityFilter;
+
+          const matchesType =
+            typeFilter === "all" ||
+            task.task_type
+              === typeFilter;
+
+          const matchesOverdue =
+            !overdueOnly ||
+            isTaskOverdue(
+              task
+            );
+
           const searchable = [
             task.title,
             task.description,
@@ -206,6 +283,9 @@ export default function TasksPage() {
 
           return (
             matchesStatus &&
+            matchesPriority &&
+            matchesType &&
+            matchesOverdue &&
             matchesQuery
           );
         }
@@ -214,6 +294,9 @@ export default function TasksPage() {
       tasks,
       query,
       statusFilter,
+      priorityFilter,
+      typeFilter,
+      overdueOnly,
     ]);
 
 
@@ -240,6 +323,30 @@ export default function TasksPage() {
     ).length;
 
 
+  function replaceTask(
+    updated: Task
+  ) {
+    setTasks(
+      (current) =>
+        current.map(
+          (task) =>
+            task.id
+            === updated.id
+              ? updated
+              : task
+        )
+    );
+
+    setSelectedTask(
+      (current) =>
+        current?.id
+        === updated.id
+          ? updated
+          : current
+    );
+  }
+
+
   function addCreatedTask(
     task: Task
   ) {
@@ -248,6 +355,28 @@ export default function TasksPage() {
         task,
         ...current,
       ]
+    );
+  }
+
+
+  function openDetails(
+    task: Task
+  ) {
+    setSelectedTask(
+      task
+    );
+  }
+
+
+  function openEdit(
+    task: Task
+  ) {
+    setSelectedTask(
+      task
+    );
+
+    setEditOpen(
+      true
     );
   }
 
@@ -272,15 +401,8 @@ export default function TasksPage() {
               task.id
             );
 
-      setTasks(
-        (current) =>
-          current.map(
-            (item) =>
-              item.id
-              === updated.id
-                ? updated
-                : item
-          )
+      replaceTask(
+        updated
       );
     } catch (err) {
       setError(
@@ -290,6 +412,60 @@ export default function TasksPage() {
       );
     } finally {
       setUpdatingTaskId(
+        null
+      );
+    }
+  }
+
+
+  async function removeTask(
+    task: Task
+  ) {
+    const confirmed =
+      window.confirm(
+        `Delete "${task.title}"?`
+      );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      setDeletingTaskId(
+        task.id
+      );
+
+      setError(null);
+
+      await deleteTask(
+        task.id
+      );
+
+      setTasks(
+        (current) =>
+          current.filter(
+            (item) =>
+              item.id
+              !== task.id
+          )
+      );
+
+      if (
+        selectedTask?.id
+        === task.id
+      ) {
+        setSelectedTask(
+          null
+        );
+      }
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Unable to delete task."
+      );
+    } finally {
+      setDeletingTaskId(
         null
       );
     }
@@ -325,7 +501,9 @@ export default function TasksPage() {
               type="button"
               className="createButton taskCreateButton"
               onClick={() =>
-                setCreateOpen(true)
+                setCreateOpen(
+                  true
+                )
               }
             >
               <Plus size={16} />
@@ -344,9 +522,7 @@ export default function TasksPage() {
               </div>
 
               <div className="statMeta">
-                <ListTodo
-                  size={14}
-                />
+                <ListTodo size={14} />
                 All CRM tasks
               </div>
             </div>
@@ -361,9 +537,7 @@ export default function TasksPage() {
               </div>
 
               <div className="statMeta">
-                <Clock3
-                  size={14}
-                />
+                <Clock3 size={14} />
                 Needs attention
               </div>
             </div>
@@ -421,17 +595,16 @@ export default function TasksPage() {
               </strong>
 
               <p>
-                Tasks can be associated
-                with leads, contacts,
-                accounts and opportunities,
-                including AI-generated
-                follow-ups.
+                Review manual and
+                AI-generated work,
+                overdue follow-ups and
+                priority actions.
               </p>
             </div>
           </div>
 
           <section className="accountsPanel">
-            <div className="accountToolbar">
+            <div className="taskToolbar">
               <div className="accountSearch">
                 <Search
                   size={17}
@@ -439,45 +612,141 @@ export default function TasksPage() {
 
                 <input
                   value={query}
-                  onChange={(
-                    event
-                  ) =>
+                  onChange={(event) =>
                     setQuery(
-                      event.target
-                        .value
+                      event.target.value
                     )
                   }
                   placeholder="Search tasks..."
                 />
               </div>
 
-              <div className="accountFilters">
-                <Filter
-                  size={15}
-                />
+              <div className="taskSelectFilters">
+                <Filter size={15} />
 
-                {statusFilters.map(
-                  (item) => (
-                    <button
-                      key={item}
-                      type="button"
-                      className={
-                        statusFilter
-                        === item
-                          ? "filterChip active"
-                          : "filterChip"
-                      }
-                      onClick={() =>
-                        setStatusFilter(
-                          item
-                        )
-                      }
-                    >
-                      {label(item)}
-                    </button>
-                  )
-                )}
+                <select
+                  value={
+                    priorityFilter
+                  }
+                  onChange={(event) =>
+                    setPriorityFilter(
+                      event.target.value
+                        as PriorityFilter
+                    )
+                  }
+                >
+                  <option value="all">
+                    All priorities
+                  </option>
+
+                  <option value="low">
+                    Low
+                  </option>
+
+                  <option value="medium">
+                    Medium
+                  </option>
+
+                  <option value="high">
+                    High
+                  </option>
+
+                  <option value="urgent">
+                    Urgent
+                  </option>
+                </select>
+
+                <select
+                  value={typeFilter}
+                  onChange={(event) =>
+                    setTypeFilter(
+                      event.target.value
+                        as TypeFilter
+                    )
+                  }
+                >
+                  <option value="all">
+                    All types
+                  </option>
+
+                  <option value="general">
+                    General
+                  </option>
+
+                  <option value="call">
+                    Call
+                  </option>
+
+                  <option value="email">
+                    Email
+                  </option>
+
+                  <option value="meeting">
+                    Meeting
+                  </option>
+
+                  <option value="follow_up">
+                    Follow Up
+                  </option>
+
+                  <option value="demo">
+                    Demo
+                  </option>
+
+                  <option value="proposal">
+                    Proposal
+                  </option>
+
+                  <option value="review">
+                    Review
+                  </option>
+
+                  <option value="renewal">
+                    Renewal
+                  </option>
+                </select>
+
+                <button
+                  type="button"
+                  className={
+                    overdueOnly
+                      ? "filterChip active"
+                      : "filterChip"
+                  }
+                  onClick={() =>
+                    setOverdueOnly(
+                      (current) =>
+                        !current
+                    )
+                  }
+                >
+                  Overdue
+                </button>
               </div>
+            </div>
+
+            <div className="taskStatusFilters">
+              {statusFilters.map(
+                (item) => (
+                  <button
+                    key={item}
+                    type="button"
+                    className={
+                      statusFilter
+                      === item
+                        ? "filterChip active"
+                        : "filterChip"
+                    }
+                    onClick={() =>
+                      setStatusFilter(
+                        item
+                      )
+                    }
+                  >
+                    {label(item)}
+                  </button>
+                )
+              )}
             </div>
 
             {loading && (
@@ -515,9 +784,9 @@ export default function TasksPage() {
                   </h3>
 
                   <p>
-                    Tasks created by
-                    your team or AIVA
-                    will appear here.
+                    Try changing your
+                    filters or create
+                    a new task.
                   </p>
 
                   <button
@@ -529,9 +798,7 @@ export default function TasksPage() {
                       )
                     }
                   >
-                    <Plus
-                      size={15}
-                    />
+                    <Plus size={15} />
                     New Task
                   </button>
                 </div>
@@ -570,7 +837,7 @@ export default function TasksPage() {
                         </th>
 
                         <th>
-                          Action
+                          Actions
                         </th>
                       </tr>
                     </thead>
@@ -585,47 +852,44 @@ export default function TasksPage() {
 
                           return (
                             <tr
-                              key={
-                                task.id
-                              }
+                              key={task.id}
                             >
                               <td>
-                                <div className="accountIdentity">
+                                <button
+                                  type="button"
+                                  className="taskIdentityButton"
+                                  onClick={() =>
+                                    openDetails(
+                                      task
+                                    )
+                                  }
+                                >
                                   <div className="accountLogo">
-                                    {task
-                                      .status
+                                    {task.status
                                       ===
                                     "completed" ? (
                                       <CheckCircle2
-                                        size={
-                                          16
-                                        }
+                                        size={16}
                                       />
                                     ) : (
                                       <Circle
-                                        size={
-                                          16
-                                        }
+                                        size={16}
                                       />
                                     )}
                                   </div>
 
                                   <div>
                                     <strong>
-                                      {
-                                        task.title
-                                      }
+                                      {task.title}
                                     </strong>
 
                                     <span>
-                                      {
-                                        task.description
+                                      {task.description
                                         ||
-                                        "No description"
-                                      }
+                                        "No description"}
                                     </span>
                                   </div>
-                                </div>
+                                </button>
                               </td>
 
                               <td>
@@ -662,15 +926,13 @@ export default function TasksPage() {
                                 <span
                                   className={
                                     overdue
-                                      ? "negative"
-                                      : ""
+                                      ? "negative taskDue"
+                                      : "taskDue"
                                   }
                                 >
                                   {overdue && (
                                     <AlertTriangle
-                                      size={
-                                        12
-                                      }
+                                      size={12}
                                     />
                                   )}
 
@@ -681,55 +943,86 @@ export default function TasksPage() {
                               </td>
 
                               <td>
-                                {task
-                                  .is_ai_generated ? (
-                                  <span>
-                                    AIVA AI
-                                  </span>
-                                ) : (
-                                  label(
-                                    task.source
+                                {task.is_ai_generated
+                                  ? (
+                                    <span className="taskAiSource">
+                                      <Bot size={12} />
+                                      AIVA AI
+                                    </span>
                                   )
-                                )}
+                                  : label(
+                                      task.source
+                                    )}
                               </td>
 
                               <td>
-                                <button
-                                  type="button"
-                                  className="secondaryButton"
-                                  disabled={
-                                    updatingTaskId
-                                    === task.id
-                                  }
-                                  onClick={() =>
-                                    toggleComplete(
-                                      task
-                                    )
-                                  }
-                                >
-                                  {task
-                                    .status
-                                    ===
-                                  "completed" ? (
-                                    <>
-                                      <RotateCcw
-                                        size={
-                                          13
-                                        }
-                                      />
-                                      Reopen
-                                    </>
-                                  ) : (
-                                    <>
-                                      <CheckCircle2
-                                        size={
-                                          13
-                                        }
-                                      />
-                                      Complete
-                                    </>
-                                  )}
-                                </button>
+                                <div className="taskActions">
+                                  <button
+                                    type="button"
+                                    className="taskIconButton"
+                                    title="Edit task"
+                                    onClick={() =>
+                                      openEdit(
+                                        task
+                                      )
+                                    }
+                                  >
+                                    <Pencil
+                                      size={14}
+                                    />
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    className="secondaryButton"
+                                    disabled={
+                                      updatingTaskId
+                                      === task.id
+                                    }
+                                    onClick={() =>
+                                      toggleComplete(
+                                        task
+                                      )
+                                    }
+                                  >
+                                    {task.status
+                                      ===
+                                    "completed" ? (
+                                      <>
+                                        <RotateCcw
+                                          size={13}
+                                        />
+                                        Reopen
+                                      </>
+                                    ) : (
+                                      <>
+                                        <CheckCircle2
+                                          size={13}
+                                        />
+                                        Complete
+                                      </>
+                                    )}
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    className="taskIconButton danger"
+                                    title="Delete task"
+                                    disabled={
+                                      deletingTaskId
+                                      === task.id
+                                    }
+                                    onClick={() =>
+                                      removeTask(
+                                        task
+                                      )
+                                    }
+                                  >
+                                    <Trash2
+                                      size={14}
+                                    />
+                                  </button>
+                                </div>
                               </td>
                             </tr>
                           );
@@ -743,6 +1036,166 @@ export default function TasksPage() {
         </div>
       </main>
 
+      {selectedTask && (
+        <div className="taskDrawer">
+          <div className="taskDrawerHeader">
+            <div>
+              <span>
+                Task Details
+              </span>
+
+              <h2>
+                {selectedTask.title}
+              </h2>
+            </div>
+
+            <button
+              type="button"
+              className="modalClose"
+              onClick={() =>
+                setSelectedTask(
+                  null
+                )
+              }
+            >
+              <X size={18} />
+            </button>
+          </div>
+
+          <div className="taskDrawerBody">
+            <div className="taskDrawerBadges">
+              <span
+                className={
+                  `taskStatus taskStatus-${selectedTask.status}`
+                }
+              >
+                {label(
+                  selectedTask.status
+                )}
+              </span>
+
+              <span
+                className={
+                  `taskPriority taskPriority-${selectedTask.priority}`
+                }
+              >
+                {label(
+                  selectedTask.priority
+                )}
+              </span>
+            </div>
+
+            <div className="taskDetailBlock">
+              <span>
+                Description
+              </span>
+
+              <p>
+                {selectedTask.description
+                  ||
+                  "No description provided."}
+              </p>
+            </div>
+
+            <div className="taskDetailGrid">
+              <div>
+                <span>
+                  Type
+                </span>
+
+                <strong>
+                  {label(
+                    selectedTask.task_type
+                  )}
+                </strong>
+              </div>
+
+              <div>
+                <span>
+                  Due
+                </span>
+
+                <strong>
+                  {formatDueDate(
+                    selectedTask.due_at
+                  )}
+                </strong>
+              </div>
+
+              <div>
+                <span>
+                  Source
+                </span>
+
+                <strong>
+                  {selectedTask
+                    .is_ai_generated
+                    ? "AIVA AI"
+                    : label(
+                        selectedTask.source
+                      )}
+                </strong>
+              </div>
+
+              <div>
+                <span>
+                  Recurring
+                </span>
+
+                <strong>
+                  {selectedTask
+                    .is_recurring
+                    ? "Yes"
+                    : "No"}
+                </strong>
+              </div>
+            </div>
+
+            {selectedTask.due_at && (
+              <div className="taskDetailNotice">
+                <CalendarDays
+                  size={15}
+                />
+
+                {isTaskOverdue(
+                  selectedTask
+                )
+                  ? "This task is overdue."
+                  : "This task has a scheduled due date."}
+              </div>
+            )}
+
+            <div className="taskDrawerActions">
+              <button
+                type="button"
+                className="createButton taskCreateButton"
+                onClick={() =>
+                  openEdit(
+                    selectedTask
+                  )
+                }
+              >
+                <Pencil size={14} />
+                Edit Task
+              </button>
+
+              <button
+                type="button"
+                className="secondaryButton taskDeleteButton"
+                onClick={() =>
+                  removeTask(
+                    selectedTask
+                  )
+                }
+              >
+                <Trash2 size={14} />
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <CreateTaskModal
         open={createOpen}
         onClose={() =>
@@ -750,6 +1203,17 @@ export default function TasksPage() {
         }
         onCreated={
           addCreatedTask
+        }
+      />
+
+      <EditTaskModal
+        open={editOpen}
+        task={selectedTask}
+        onClose={() =>
+          setEditOpen(false)
+        }
+        onUpdated={
+          replaceTask
         }
       />
     </div>
