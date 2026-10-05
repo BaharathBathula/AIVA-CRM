@@ -1545,10 +1545,23 @@ button {
 }
 
 /* =========================================================
-   Tasks advanced workspace
+   Activities workspace
    ========================================================= */
 
-.taskToolbar {
+.activityCreateButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.activitiesPanel {
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: white;
+}
+
+.activitiesToolbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1557,18 +1570,13 @@ button {
   border-bottom: 1px solid var(--border);
 }
 
-.taskSelectFilters {
+.activitySelectFilters {
   display: flex;
-  align-items: center;
-  gap: 7px;
+  gap: 8px;
 }
 
-.taskSelectFilters > svg {
-  color: var(--muted);
-}
-
-.taskSelectFilters select {
-  padding: 7px 9px;
+.activitySelectFilters select {
+  padding: 8px 10px;
   border: 1px solid var(--border);
   border-radius: 8px;
   outline: none;
@@ -1577,92 +1585,123 @@ button {
   font-size: 10px;
 }
 
-.taskStatusFilters {
+.activityFeed {
   display: flex;
-  gap: 6px;
-  padding: 10px 17px;
-  overflow-x: auto;
-  border-bottom: 1px solid var(--border);
-  background: #fbfbfd;
+  flex-direction: column;
 }
 
-.taskIdentityButton {
+.activityFeedItem {
   width: 100%;
+  display: grid;
+  grid-template-columns: 38px 1fr;
+  gap: 12px;
+  padding: 16px 18px;
   border: 0;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 0;
-  background: transparent;
+  border-bottom: 1px solid #eef0f4;
+  background: white;
   color: inherit;
   text-align: left;
 }
 
-.taskIdentityButton strong,
-.taskIdentityButton span {
-  display: block;
+.activityFeedItem:last-child {
+  border-bottom: 0;
 }
 
-.taskIdentityButton strong {
-  margin-bottom: 3px;
+.activityFeedItem:hover {
+  background: #fafaff;
+}
+
+.activityFeedIcon {
+  width: 35px;
+  height: 35px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+
+.activity-email {
+  background: #eef5ff;
+  color: #3974d9;
+}
+
+.activity-call {
+  background: #edf9f3;
+  color: #21865e;
+}
+
+.activity-meeting {
+  background: #fff5e8;
+  color: #b86a14;
+}
+
+.activity-ai_action {
+  background: #f2edff;
+  color: #7155dc;
+}
+
+.activityFeedBody {
+  min-width: 0;
+}
+
+.activityFeedTop {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.activityFeedTop strong {
+  display: block;
   color: var(--text);
   font-size: 11px;
 }
 
-.taskIdentityButton span {
-  max-width: 340px;
-  overflow: hidden;
+.activityFeedTop time {
+  flex: 0 0 auto;
   color: var(--muted);
-  font-size: 9px;
+  font-size: 8px;
+}
+
+.activityMetaRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 7px;
+  margin-top: 5px;
+  color: var(--muted);
+  font-size: 8px;
+}
+
+.activityTypePill,
+.activityDirectionPill {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: #f0edff;
+  color: var(--primary);
+  font-size: 8px;
+  font-weight: 750;
+}
+
+.activityDirectionPill {
+  background: #f1f3f7;
+  color: #626978;
+}
+
+.activityFeedBody > p {
+  max-width: 800px;
+  margin: 8px 0 0;
+  overflow: hidden;
+  color: #686f7d;
+  font-size: 10px;
+  line-height: 1.55;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.taskActions {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.taskIconButton {
-  width: 31px;
-  height: 31px;
-  border: 1px solid var(--border);
-  display: grid;
-  place-items: center;
-  border-radius: 8px;
-  background: white;
-  color: #697080;
-}
-
-.taskIconButton:hover {
-  background: #f5f6fa;
-}
-
-.taskIconButton.danger {
-  color: var(--danger);
-}
-
-.taskIconButton.danger:hover {
-  border-color: #ecc7cb;
-  background: #fff5f6;
-}
-
-.taskDue {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-}
-
-.taskAiSource {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  color: #654fd7;
-  font-weight: 700;
-}
-
-.taskDrawer {
+.activityDrawer {
   width: min(430px, 100vw);
   position: fixed;
   z-index: 80;
@@ -1677,7 +1716,7 @@ button {
     rgba(19, 23, 37, 0.12);
 }
 
-.taskDrawerHeader {
+.activityDrawerHeader {
   position: sticky;
   top: 0;
   z-index: 2;
@@ -1689,7 +1728,7 @@ button {
   background: white;
 }
 
-.taskDrawerHeader span {
+.activityDrawerHeader span {
   color: var(--muted);
   font-size: 9px;
   font-weight: 750;
@@ -1697,97 +1736,228 @@ button {
   text-transform: uppercase;
 }
 
-.taskDrawerHeader h2 {
+.activityDrawerHeader h2 {
   margin: 5px 0 0;
   font-size: 18px;
 }
 
-.taskDrawerBody {
+.activityDrawerBody {
   padding: 22px;
 }
 
-.taskDrawerBadges {
+.activityDrawerIcon {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  margin-bottom: 14px;
+  border-radius: 11px;
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+
+.activityDrawerBadges {
   display: flex;
   gap: 7px;
   margin-bottom: 22px;
 }
 
-.taskDetailBlock {
+.activityDetailBlock {
   padding-bottom: 20px;
   border-bottom: 1px solid #eef0f4;
 }
 
-.taskDetailBlock > span,
-.taskDetailGrid span {
+.activityDetailBlock > span,
+.activityDetailGrid span {
   display: block;
   margin-bottom: 6px;
   color: var(--muted);
   font-size: 9px;
   font-weight: 700;
-  text-transform: uppercase;
   letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
-.taskDetailBlock p {
+.activityDetailBlock p {
   margin: 0;
   color: #555c69;
   font-size: 12px;
   line-height: 1.65;
 }
 
-.taskDetailGrid {
+.activityDetailGrid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 18px;
   padding: 20px 0;
 }
 
-.taskDetailGrid strong {
-  font-size: 11px;
-}
-
-.taskDetailNotice {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 11px 12px;
-  border: 1px solid #e7e2ff;
-  border-radius: 9px;
-  background: #f8f6ff;
-  color: #6653d9;
+.activityDetailGrid strong {
   font-size: 10px;
+  overflow-wrap: anywhere;
 }
 
-.taskDrawerActions {
-  display: flex;
-  gap: 8px;
-  margin-top: 22px;
-}
-
-.taskDeleteButton {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--danger);
-}
-
-@media (max-width: 900px) {
-  .taskToolbar {
+@media (max-width: 850px) {
+  .activitiesToolbar {
     align-items: stretch;
     flex-direction: column;
   }
 
-  .taskSelectFilters {
+  .activitySelectFilters {
     overflow-x: auto;
   }
 }
 
 @media (max-width: 560px) {
-  .taskDrawer {
+  .activityDrawer {
     width: 100%;
   }
 
-  .taskDetailGrid {
+  .activityDetailGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .activityFeedTop {
+    flex-direction: column;
+    gap: 5px;
+  }
+}
+/* Activities detail drawer */
+
+.activityTimelineButton {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.activityTimelineButton:hover {
+  border-radius: 10px;
+  background: #fafaff;
+}
+
+.activityDrawer {
+  width: min(430px, 100vw);
+  position: fixed;
+  z-index: 80;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  overflow-y: auto;
+  border-left: 1px solid var(--border);
+  background: white;
+  box-shadow:
+    -18px 0 50px
+    rgba(19, 23, 37, 0.12);
+}
+
+.activityDrawerHeader {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 22px;
+  border-bottom: 1px solid var(--border);
+  background: white;
+}
+
+.activityDrawerHeader span {
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.activityDrawerHeader h2 {
+  margin: 5px 0 0;
+  font-size: 18px;
+}
+
+.activityDrawerBody {
+  padding: 22px;
+}
+
+.activityDrawerIcon {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  margin-bottom: 14px;
+  border-radius: 11px;
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+
+.activityDrawerBadges {
+  display: flex;
+  gap: 7px;
+  margin-bottom: 22px;
+}
+
+.activityTypePill,
+.activityDirectionPill {
+  display: inline-flex;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: #f0edff;
+  color: var(--primary);
+  font-size: 8px;
+  font-weight: 750;
+  text-transform: capitalize;
+}
+
+.activityDirectionPill {
+  background: #f1f3f7;
+  color: #626978;
+}
+
+.activityDetailBlock {
+  padding-bottom: 20px;
+  border-bottom: 1px solid #eef0f4;
+}
+
+.activityDetailBlock > span,
+.activityDetailGrid span {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.activityDetailBlock p {
+  margin: 0;
+  color: #555c69;
+  font-size: 12px;
+  line-height: 1.65;
+}
+
+.activityDetailGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+  padding: 20px 0;
+}
+
+.activityDetailGrid strong {
+  display: block;
+  font-size: 10px;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 560px) {
+  .activityDrawer {
+    width: 100%;
+  }
+
+  .activityDetailGrid {
     grid-template-columns: 1fr;
   }
 }

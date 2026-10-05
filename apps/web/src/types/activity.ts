@@ -21,6 +21,9 @@ export interface Activity {
 
   account_id: string | null;
   contact_id: string | null;
+  lead_id: string | null;
+  opportunity_id: string | null;
+
   created_by_user_id: string | null;
 
   activity_type: ActivityType;
@@ -47,10 +50,13 @@ export interface Activity {
 export interface ActivityCreatePayload {
   account_id?: string | null;
   contact_id?: string | null;
+  lead_id?: string | null;
+  opportunity_id?: string | null;
 
   activity_type: ActivityType;
 
   subject: string;
+
   body?: string | null;
 
   direction?: ActivityDirection | null;
