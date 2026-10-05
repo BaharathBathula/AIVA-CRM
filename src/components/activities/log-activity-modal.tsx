@@ -24,6 +24,11 @@ import type {
 type Props = {
   open: boolean;
 
+  accountId?: string;
+  contactId?: string;
+  leadId?: string;
+  opportunityId?: string;
+
   onClose: () => void;
 
   onCreated: (
@@ -34,6 +39,10 @@ type Props = {
 
 export function LogActivityModal({
   open,
+  accountId,
+  contactId,
+  leadId,
+  opportunityId,
   onClose,
   onCreated,
 }: Props) {
@@ -51,24 +60,32 @@ export function LogActivityModal({
     ActivityDirection | ""
   >("");
 
-  const [subject, setSubject] =
-    useState("");
+  const [
+    subject,
+    setSubject,
+  ] = useState("");
 
-  const [body, setBody] =
-    useState("");
+  const [
+    body,
+    setBody,
+  ] = useState("");
 
   const [
     occurredAt,
     setOccurredAt,
   ] = useState("");
 
-  const [saving, setSaving] =
-    useState(false);
+  const [
+    saving,
+    setSaving,
+  ] = useState(false);
 
-  const [error, setError] =
-    useState<string | null>(
-      null
-    );
+  const [
+    error,
+    setError,
+  ] = useState<string | null>(
+    null
+  );
 
 
   if (!open) {
@@ -91,6 +108,18 @@ export function LogActivityModal({
 
       const activity =
         await createActivity({
+          account_id:
+            accountId ?? null,
+
+          contact_id:
+            contactId ?? null,
+
+          lead_id:
+            leadId ?? null,
+
+          opportunity_id:
+            opportunityId ?? null,
+
           activity_type:
             activityType,
 
@@ -98,12 +127,10 @@ export function LogActivityModal({
             subject.trim(),
 
           body:
-            body.trim()
-              || null,
+            body.trim() || null,
 
           direction:
-            direction
-              || null,
+            direction || null,
 
           occurred_at:
             occurredAt
@@ -131,6 +158,26 @@ export function LogActivityModal({
     } finally {
       setSaving(false);
     }
+  }
+
+
+  function handleActivityTypeChange(
+    value: string
+  ) {
+    setActivityType(
+      value as ActivityType
+    );
+  }
+
+
+  function handleDirectionChange(
+    value: string
+  ) {
+    setDirection(
+      value as
+        | ActivityDirection
+        | ""
+    );
   }
 
 
@@ -177,9 +224,8 @@ export function LogActivityModal({
               <select
                 value={activityType}
                 onChange={(event) =>
-                  setActivityType(
+                  handleActivityTypeChange(
                     event.target.value
-                      as ActivityType
                   )
                 }
               >
@@ -215,10 +261,8 @@ export function LogActivityModal({
               <select
                 value={direction}
                 onChange={(event) =>
-                  setDirection(
+                  handleDirectionChange(
                     event.target.value
-                      as ActivityDirection
-                      | ""
                   )
                 }
               >
