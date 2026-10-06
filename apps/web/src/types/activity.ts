@@ -9,11 +9,9 @@ export type ActivityType =
   | "system"
   | "ai_action";
 
-
 export type ActivityDirection =
   | "inbound"
   | "outbound";
-
 
 export interface Activity {
   id: string;
@@ -27,25 +25,18 @@ export interface Activity {
   created_by_user_id: string | null;
 
   activity_type: ActivityType;
-
   subject: string;
   body: string | null;
-
   direction: ActivityDirection | null;
 
   occurred_at: string;
-
   external_id: string | null;
 
-  activity_metadata: Record<
-    string,
-    unknown
-  >;
+  activity_metadata: Record<string, unknown>;
 
   created_at: string;
   updated_at: string;
 }
-
 
 export interface ActivityCreatePayload {
   account_id?: string | null;
@@ -54,19 +45,11 @@ export interface ActivityCreatePayload {
   opportunity_id?: string | null;
 
   activity_type: ActivityType;
-
   subject: string;
 
   body?: string | null;
-
   direction?: ActivityDirection | null;
-
   occurred_at?: string;
-
   external_id?: string | null;
-
-  activity_metadata?: Record<
-    string,
-    unknown
-  >;
+  activity_metadata?: Record<string, unknown>;
 }

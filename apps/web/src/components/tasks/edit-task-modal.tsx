@@ -150,7 +150,10 @@ export function EditTaskModal({
   ) {
     event.preventDefault();
 
-    if (!title.trim()) {
+    if (
+      !task ||
+      !title.trim()
+    ) {
       return;
     }
 
@@ -271,8 +274,7 @@ export function EditTaskModal({
                 value={taskType}
                 onChange={(event) =>
                   setTaskType(
-                    event.target.value
-                      as TaskType
+                    event.target.value as TaskType
                   )
                 }
               >
@@ -321,8 +323,7 @@ export function EditTaskModal({
                 value={priority}
                 onChange={(event) =>
                   setPriority(
-                    event.target.value
-                      as TaskPriority
+                    event.target.value as TaskPriority
                   )
                 }
               >
@@ -351,8 +352,7 @@ export function EditTaskModal({
                 value={status}
                 onChange={(event) =>
                   setStatus(
-                    event.target.value
-                      as TaskStatus
+                    event.target.value as TaskStatus
                   )
                 }
               >

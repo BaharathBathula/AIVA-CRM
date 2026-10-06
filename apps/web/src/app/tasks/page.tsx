@@ -630,8 +630,7 @@ export default function TasksPage() {
                   }
                   onChange={(event) =>
                     setPriorityFilter(
-                      event.target.value
-                        as PriorityFilter
+                      event.target.value as PriorityFilter
                     )
                   }
                 >
@@ -660,8 +659,7 @@ export default function TasksPage() {
                   value={typeFilter}
                   onChange={(event) =>
                     setTypeFilter(
-                      event.target.value
-                        as TypeFilter
+                      event.target.value as TypeFilter
                     )
                   }
                 >

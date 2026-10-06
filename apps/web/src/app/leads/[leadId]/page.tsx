@@ -23,6 +23,14 @@ import {
 } from "next/navigation";
 
 import {
+  ActivityTimeline,
+} from "@/components/activities/activity-timeline";
+
+import {
+  LogActivityModal,
+} from "@/components/activities/log-activity-modal";
+
+import {
   ConvertLeadModal,
 } from "@/components/leads/convert-lead-modal";
 
@@ -35,9 +43,17 @@ import {
 } from "@/components/topbar";
 
 import {
+  getLeadActivities,
+} from "@/lib/activities";
+
+import {
   getLead,
   updateLead,
 } from "@/lib/leads";
+
+import type {
+  Activity,
+} from "@/types/activity";
 
 import type {
   Lead,
@@ -89,6 +105,11 @@ export default function LeadDetailPage() {
   const [lead, setLead] =
     useState<Lead | null>(null);
 
+  const [
+    activities,
+    setActivities,
+  ] = useState<Activity[]>([]);
+
   const [loading, setLoading] =
     useState(true);
 
@@ -101,6 +122,11 @@ export default function LeadDetailPage() {
   const [
     convertOpen,
     setConvertOpen,
+  ] = useState(false);
+
+  const [
+    activityModalOpen,
+    setActivityModalOpen,
   ] = useState(false);
 
   const [
@@ -121,12 +147,25 @@ export default function LeadDetailPage() {
         setLoading(true);
         setError(null);
 
-        const result =
-          await getLead(
+        const [
+          leadResult,
+          activityResult,
+        ] = await Promise.all([
+          getLead(
             leadId
-          );
+          ),
+          getLeadActivities(
+            leadId
+          ),
+        ]);
 
-        setLead(result);
+        setLead(
+          leadResult
+        );
+
+        setActivities(
+          activityResult
+        );
       } catch (err) {
         setError(
           err instanceof Error
@@ -459,6 +498,15 @@ export default function LeadDetailPage() {
 
           <div className="accountDetailGrid">
             <div className="accountMainColumn">
+              <ActivityTimeline
+                activities={activities}
+                onLogActivity={() =>
+                  setActivityModalOpen(
+                    true
+                  )
+                }
+              />
+
               <section className="detailPanel">
                 <div className="detailPanelHeader">
                   <div>
@@ -737,6 +785,24 @@ export default function LeadDetailPage() {
           </div>
         </div>
       </main>
+
+      <LogActivityModal
+        open={activityModalOpen}
+        leadId={lead.id}
+        onClose={() =>
+          setActivityModalOpen(
+            false
+          )
+        }
+        onCreated={(activity) =>
+          setActivities(
+            (current) => [
+              activity,
+              ...current,
+            ]
+          )
+        }
+      />
 
       <ConvertLeadModal
         lead={lead}
