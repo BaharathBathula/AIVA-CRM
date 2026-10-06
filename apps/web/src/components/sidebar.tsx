@@ -1,27 +1,29 @@
+"use client";
+
+import Image from "next/image";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 import {
   Activity,
   BarChart3,
   Bot,
-  Building2,
+  Box,
+  BriefcaseBusiness,
   CalendarDays,
   ChartNoAxesCombined,
-  Contact,
-  FileSignature,
-  Gauge,
+  CircleGauge,
+  ContactRound,
+  FilePenLine,
   Handshake,
   Inbox,
   LayoutDashboard,
   Mail,
   Megaphone,
-  Package,
-  RefreshCcw,
-  Settings,
+  RefreshCw,
   Sparkles,
-  SquareKanban,
   Target,
-  Users,
+  UserRound,
   Workflow,
 } from "lucide-react";
 
@@ -31,124 +33,159 @@ type SidebarProps = {
 };
 
 
-const groups = [
+type MenuItem = {
+  label: string;
+  href: string;
+  icon: React.ComponentType<{
+    size?: number;
+    strokeWidth?: number;
+  }>;
+};
+
+
+type MenuSection = {
+  title: string;
+  items: MenuItem[];
+};
+
+
+const sections: MenuSection[] = [
   {
     title: "Workspace",
     items: [
       {
         label: "Dashboard",
-        icon: LayoutDashboard,
         href: "/",
+        icon: LayoutDashboard,
       },
       {
         label: "Inbox",
+        href: "/inbox",
         icon: Inbox,
       },
     ],
   },
+
   {
     title: "Sales",
     items: [
       {
         label: "Leads",
-        icon: Target,
         href: "/leads",
+        icon: Target,
       },
       {
         label: "Accounts",
-        icon: Building2,
         href: "/accounts",
+        icon: BriefcaseBusiness,
       },
       {
         label: "Contacts",
-        icon: Contact,
+        href: "/contacts",
+        icon: ContactRound,
       },
       {
         label: "Opportunities",
-        icon: Handshake,
         href: "/opportunities",
+        icon: Handshake,
       },
       {
         label: "Pipeline",
-        icon: SquareKanban,
         href: "/pipeline",
+        icon: BarChart3,
       },
     ],
   },
+
   {
     title: "Engagement",
     items: [
       {
         label: "Activities",
+        href: "/activities",
         icon: Activity,
       },
       {
-  label: "Tasks",
-  icon: Gauge,
-  href: "/tasks",
-},
+        label: "Tasks",
+        href: "/tasks",
+        icon: CircleGauge,
+      },
       {
         label: "Email",
-        icon: Mail,
         href: "/email",
+        icon: Mail,
       },
       {
         label: "Meetings",
+        href: "/meetings",
         icon: CalendarDays,
       },
     ],
   },
+
   {
     title: "Operations",
     items: [
       {
         label: "Products",
-        icon: Package,
+        href: "/products",
+        icon: Box,
       },
       {
         label: "Quotes",
-        icon: FileSignature,
+        href: "/quotes",
+        icon: FilePenLine,
       },
       {
         label: "Contracts",
-        icon: FileSignature,
+        href: "/contracts",
+        icon: FilePenLine,
       },
       {
         label: "Renewals",
-        icon: RefreshCcw,
+        href: "/renewals",
+        icon: RefreshCw,
       },
     ],
   },
+
   {
     title: "Intelligence",
     items: [
       {
         label: "AIVA Agents",
+        href: "/agents",
         icon: Bot,
       },
       {
         label: "Workflows",
+        href: "/workflows",
         icon: Workflow,
       },
       {
         label: "AI Insights",
+        href: "/insights",
         icon: Sparkles,
       },
     ],
   },
+
   {
     title: "Growth",
     items: [
       {
         label: "Marketing",
+        href: "/marketing",
         icon: Megaphone,
       },
       {
         label: "Analytics",
+        href: "/analytics",
         icon: BarChart3,
       },
       {
         label: "Forecasting",
+        href: "/forecasting",
         icon: ChartNoAxesCombined,
       },
     ],
@@ -157,138 +194,130 @@ const groups = [
 
 
 export function Sidebar({
-  active = "Dashboard",
+  active,
 }: SidebarProps) {
+  const pathname =
+    usePathname();
+
+
+  function isActive(
+    item: MenuItem
+  ) {
+    if (
+      active
+      &&
+      active.toLowerCase()
+      ===
+      item.label.toLowerCase()
+    ) {
+      return true;
+    }
+
+    if (
+      item.href === "/"
+    ) {
+      return pathname === "/";
+    }
+
+    return (
+      pathname === item.href
+      ||
+      pathname.startsWith(
+        `${item.href}/`
+      )
+    );
+  }
+
+
   return (
     <aside className="sidebar">
-      <div className="brand">
-        <div className="brandMark">
-          <Sparkles size={19} />
-        </div>
+      <div className="sidebarInner">
+        {/* =========================================
+            AIVA Brand
+            ========================================= */}
 
-        <div>
-          <div className="brandName">
-            AIVA
-          </div>
+        <Link
+          href="/"
+          className="sidebarBrand"
+          aria-label="AIVA CRM Home"
+        >
+          <Image
+            src="/aiva-logo.png"
+            alt="AIVA CRM"
+            width={172}
+            height={60}
+            priority
+            className="sidebarBrandImage"
+          />
+        </Link>
 
-          <div className="brandProduct">
-            CRM
-          </div>
-        </div>
-      </div>
 
-      <nav className="navigation">
-        {groups.map(
-          (group) => (
-            <div
-              className="navGroup"
-              key={group.title}
-            >
-              <div className="navGroupTitle">
-                {group.title}
+        {/* =========================================
+            Navigation
+            ========================================= */}
+
+        <nav className="sidebarNav">
+          {sections.map(
+            (section) => (
+              <div
+                className="sidebarSection"
+                key={section.title}
+              >
+                <div className="sidebarSectionTitle">
+                  {section.title}
+                </div>
+
+                <div className="sidebarSectionItems">
+                  {section.items.map(
+                    (item) => {
+                      const Icon =
+                        item.icon;
+
+                      const selected =
+                        isActive(item);
+
+                      return (
+                        <Link
+                          key={item.label}
+                          href={item.href}
+                          className={
+                            `sidebarItem${
+                              selected
+                                ? " active"
+                                : ""
+                            }`
+                          }
+                        >
+                          <span className="sidebarItemIcon">
+                            <Icon
+                              size={18}
+                              strokeWidth={1.8}
+                            />
+                          </span>
+
+                          <span className="sidebarItemLabel">
+                            {item.label}
+                          </span>
+                        </Link>
+                      );
+                    }
+                  )}
+                </div>
               </div>
+            )
+          )}
+        </nav>
 
-              {group.items.map(
-                (item) => {
-                  const Icon =
-                    item.icon;
 
-                  const className =
-                    `navItem ${
-                      active
-                      === item.label
-                        ? "active"
-                        : ""
-                    }`;
+        {/* =========================================
+            Sidebar footer
+            ========================================= */}
 
-                  if (item.href) {
-                    return (
-                      <Link
-                        className={
-                          className
-                        }
-                        href={
-                          item.href
-                        }
-                        key={
-                          item.label
-                        }
-                      >
-                        <Icon
-                          size={18}
-                          strokeWidth={1.9}
-                        />
+        <div className="sidebarFooter">
+          <div className="sidebarFooterDivider" />
 
-                        <span>
-                          {item.label}
-                        </span>
-                      </Link>
-                    );
-                  }
-
-                  return (
-                    <button
-                      type="button"
-                      className={
-                        className
-                      }
-                      key={
-                        item.label
-                      }
-                    >
-                      <Icon
-                        size={18}
-                        strokeWidth={1.9}
-                      />
-
-                      <span>
-                        {item.label}
-                      </span>
-                    </button>
-                  );
-                }
-              )}
-            </div>
-          )
-        )}
-      </nav>
-
-      <div className="sidebarBottom">
-        <button
-          className="navItem"
-          type="button"
-        >
-          <Users size={18} />
-
-          <span>
-            Team
-          </span>
-        </button>
-
-        <button
-          className="navItem"
-          type="button"
-        >
-          <Settings size={18} />
-
-          <span>
-            Settings
-          </span>
-        </button>
-
-        <div className="profile">
-          <div className="avatar">
-            BB
-          </div>
-
-          <div>
-            <strong>
-              Baharath
-            </strong>
-
-            <span>
-              Administrator
-            </span>
+          <div className="sidebarFooterBrand">
+            AIVA CRM
           </div>
         </div>
       </div>
