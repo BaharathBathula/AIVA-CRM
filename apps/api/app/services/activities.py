@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 
 from fastapi import HTTPException, status
 from sqlalchemy import or_, select
@@ -211,6 +211,46 @@ async def create_activity(
 
     await db.commit()
     await db.refresh(activity)
+
+    return activity
+
+
+async def add_automated_activity(
+    db: AsyncSession,
+    organization_id: uuid.UUID,
+    *,
+    activity_type: str,
+    subject: str,
+    body: str | None = None,
+    account_id: uuid.UUID | None = None,
+    contact_id: uuid.UUID | None = None,
+    lead_id: uuid.UUID | None = None,
+    opportunity_id: uuid.UUID | None = None,
+    occurred_at: datetime | None = None,
+    activity_metadata: dict | None = None,
+) -> Activity:
+    activity = Activity(
+        organization_id=organization_id,
+        account_id=account_id,
+        contact_id=contact_id,
+        lead_id=lead_id,
+        opportunity_id=opportunity_id,
+        created_by_user_id=None,
+        activity_type=activity_type,
+        subject=subject,
+        body=body,
+        direction=None,
+        occurred_at=(
+            occurred_at
+            or datetime.now(timezone.utc)
+        ),
+        external_id=None,
+        activity_metadata=(
+            activity_metadata or {}
+        ),
+    )
+
+    db.add(activity)
 
     return activity
 

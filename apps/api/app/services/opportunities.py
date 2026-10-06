@@ -11,6 +11,10 @@ from app.models.membership import OrganizationMembership
 from app.models.opportunity import Opportunity
 from app.models.pipeline import Pipeline
 from app.models.pipeline_stage import PipelineStage
+from app.services.activities import (
+    add_automated_activity,
+)
+
 from app.schemas.opportunity import (
     OpportunityCreate,
     OpportunityUpdate,
@@ -566,6 +570,26 @@ async def update_opportunity(
         opportunity_id,
     )
 
+    previous_stage_id = (
+        opportunity.stage_id
+    )
+
+    previous_stage_result = (
+        await db.execute(
+            select(PipelineStage).where(
+                PipelineStage.id
+                == previous_stage_id,
+                PipelineStage.organization_id
+                == organization_id,
+            )
+        )
+    )
+
+    previous_stage = (
+        previous_stage_result
+        .scalar_one_or_none()
+    )
+
     updates = payload.model_dump(
         exclude_unset=True
     )
@@ -789,6 +813,69 @@ async def update_opportunity(
             opportunity,
             selected_stage,
         )
+
+        if (
+            selected_stage.id
+            != previous_stage_id
+        ):
+            previous_name = (
+                previous_stage.name
+                if previous_stage
+                is not None
+                else "Unknown"
+            )
+
+            await add_automated_activity(
+                db,
+                organization_id,
+                activity_type="system",
+                subject=(
+                    "Opportunity stage changed: "
+                    f"{previous_name} → "
+                    f"{selected_stage.name}"
+                ),
+                body=(
+                    f"{opportunity.name} moved "
+                    "through the sales pipeline."
+                ),
+                account_id=(
+                    opportunity.account_id
+                ),
+                contact_id=(
+                    opportunity
+                    .primary_contact_id
+                ),
+                opportunity_id=(
+                    opportunity.id
+                ),
+                activity_metadata={
+                    "automated": True,
+                    "trigger": (
+                        "opportunity_stage_changed"
+                    ),
+                    "opportunity_id": str(
+                        opportunity.id
+                    ),
+                    "from_stage_id": str(
+                        previous_stage_id
+                    ),
+                    "from_stage_name": (
+                        previous_name
+                    ),
+                    "to_stage_id": str(
+                        selected_stage.id
+                    ),
+                    "to_stage_name": (
+                        selected_stage.name
+                    ),
+                    "pipeline_id": str(
+                        selected_stage.pipeline_id
+                    ),
+                    "category": (
+                        selected_stage.category
+                    ),
+                },
+            )
 
     elif (
         "probability" in updates

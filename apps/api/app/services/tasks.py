@@ -11,6 +11,10 @@ from app.models.lead import Lead
 from app.models.membership import OrganizationMembership
 from app.models.opportunity import Opportunity
 from app.models.task import Task
+from app.services.activities import (
+    add_automated_activity,
+)
+
 from app.schemas.task import (
     TaskAssign,
     TaskCreate,
@@ -359,6 +363,44 @@ async def resolve_task_relationships(
             )
 
     return effective_account_id
+
+
+async def add_task_completed_activity(
+    db: AsyncSession,
+    organization_id: uuid.UUID,
+    task: Task,
+) -> None:
+    await add_automated_activity(
+        db,
+        organization_id,
+        activity_type="task_completed",
+        subject=(
+            f"Task completed: {task.title}"
+        ),
+        body=task.description,
+        account_id=task.account_id,
+        contact_id=task.contact_id,
+        lead_id=task.lead_id,
+        opportunity_id=(
+            task.opportunity_id
+        ),
+        occurred_at=(
+            task.completed_at
+            or datetime.now(
+                timezone.utc
+            )
+        ),
+        activity_metadata={
+            "task_id": str(task.id),
+            "task_type": task.task_type,
+            "priority": task.priority,
+            "source": task.source,
+            "automated": True,
+            "trigger": (
+                "task_completed"
+            ),
+        },
+    )
 
 
 async def create_task(
@@ -760,6 +802,12 @@ async def update_task(
             datetime.now(timezone.utc)
         )
 
+        await add_task_completed_activity(
+            db,
+            organization_id,
+            task,
+        )
+
     elif (
         old_status == "completed"
         and new_status != "completed"
@@ -794,6 +842,12 @@ async def update_task_status(
     ):
         task.completed_at = (
             datetime.now(timezone.utc)
+        )
+
+        await add_task_completed_activity(
+            db,
+            organization_id,
+            task,
         )
 
     elif payload.status != "completed":
@@ -845,11 +899,20 @@ async def complete_task(
         task_id,
     )
 
+    previous_status = task.status
+
     task.status = "completed"
 
     if task.completed_at is None:
         task.completed_at = (
             datetime.now(timezone.utc)
+        )
+
+    if previous_status != "completed":
+        await add_task_completed_activity(
+            db,
+            organization_id,
+            task,
         )
 
     await db.commit()

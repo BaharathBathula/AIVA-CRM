@@ -12,6 +12,10 @@ from app.models.membership import OrganizationMembership
 from app.models.opportunity import Opportunity
 from app.models.pipeline import Pipeline
 from app.models.pipeline_stage import PipelineStage
+from app.services.activities import (
+    add_automated_activity,
+)
+
 from app.schemas.lead import (
     LeadConvertRequest,
     LeadConvertResponse,
@@ -177,6 +181,10 @@ async def update_lead(
             ),
         )
 
+    previous_status = (
+        lead.status
+    )
+
     updates = payload.model_dump(
         exclude_unset=True
     )
@@ -215,6 +223,45 @@ async def update_lead(
             lead,
             field,
             value,
+        )
+
+    if (
+        lead.status == "qualified"
+        and previous_status
+        != "qualified"
+    ):
+        await add_automated_activity(
+            db,
+            organization_id,
+            activity_type="system",
+            subject=(
+                "Lead qualified: "
+                f"{lead.first_name} "
+                f"{lead.last_name}"
+            ),
+            body=(
+                "Lead status changed to "
+                "Qualified."
+            ),
+            lead_id=lead.id,
+            activity_metadata={
+                "automated": True,
+                "trigger": (
+                    "lead_qualified"
+                ),
+                "lead_id": str(
+                    lead.id
+                ),
+                "previous_status": (
+                    previous_status
+                ),
+                "new_status": (
+                    lead.status
+                ),
+                "score": (
+                    lead.score
+                ),
+            },
         )
 
     await db.commit()
@@ -525,6 +572,55 @@ async def convert_lead(
 
         lead.converted_opportunity_id = (
             opportunity.id
+        )
+
+        await add_automated_activity(
+            db,
+            organization_id,
+            activity_type="system",
+            subject=(
+                "Lead converted: "
+                f"{lead.first_name} "
+                f"{lead.last_name}"
+            ),
+            body=(
+                "Lead converted into "
+                "Account, Contact and "
+                "Opportunity records."
+            ),
+            account_id=account.id,
+            contact_id=contact.id,
+            lead_id=lead.id,
+            opportunity_id=(
+                opportunity.id
+            ),
+            occurred_at=(
+                lead.converted_at
+            ),
+            activity_metadata={
+                "automated": True,
+                "trigger": (
+                    "lead_converted"
+                ),
+                "lead_id": str(
+                    lead.id
+                ),
+                "account_id": str(
+                    account.id
+                ),
+                "contact_id": str(
+                    contact.id
+                ),
+                "opportunity_id": str(
+                    opportunity.id
+                ),
+                "pipeline_id": str(
+                    pipeline.id
+                ),
+                "stage_id": str(
+                    stage.id
+                ),
+            },
         )
 
         await db.commit()
