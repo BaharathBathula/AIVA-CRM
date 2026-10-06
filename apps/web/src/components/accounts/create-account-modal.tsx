@@ -2,20 +2,28 @@
 
 import {
   FormEvent,
+  useEffect,
   useState,
 } from "react";
 
 import {
+  AlertTriangle,
   Building2,
+  GitBranch,
+  ShieldAlert,
   X,
 } from "lucide-react";
 
 import {
+  checkAccountDuplicates,
   createAccount,
+  getAccounts,
 } from "@/lib/accounts";
 
 import type {
   Account,
+  AccountCreatePayload,
+  AccountDuplicateCheckResponse,
   LifecycleStage,
 } from "@/types/account";
 
@@ -114,20 +122,154 @@ export function CreateAccountModal({
   ] = useState("");
 
   const [
+    parentAccountId,
+    setParentAccountId,
+  ] = useState("");
+
+  const [
+    parentAccounts,
+    setParentAccounts,
+  ] = useState<Account[]>([]);
+
+  const [
+    loadingParents,
+    setLoadingParents,
+  ] = useState(false);
+
+  const [
     saving,
     setSaving,
   ] = useState(false);
 
   const [
+    checkingDuplicates,
+    setCheckingDuplicates,
+  ] = useState(false);
+
+  const [
+    duplicateResult,
+    setDuplicateResult,
+  ] = useState<
+    AccountDuplicateCheckResponse
+    | null
+  >(null);
+
+  const [
     error,
     setError,
-  ] = useState<string | null>(
-    null
-  );
+  ] = useState<
+    string | null
+  >(null);
+
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    let cancelled =
+      false;
+
+    async function loadParentAccounts() {
+      try {
+        setLoadingParents(
+          true
+        );
+
+        const result =
+          await getAccounts({
+            limit: 100,
+            includeArchived:
+              false,
+          });
+
+        if (!cancelled) {
+          setParentAccounts(
+            result
+          );
+        }
+      } catch {
+        if (!cancelled) {
+          setParentAccounts(
+            []
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setLoadingParents(
+            false
+          );
+        }
+      }
+    }
+
+    void loadParentAccounts();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    open,
+  ]);
 
 
   if (!open) {
     return null;
+  }
+
+
+  function clearDuplicateResult() {
+    setDuplicateResult(
+      null
+    );
+  }
+
+
+  function handleLifecycleStageChange(
+    value: string
+  ) {
+    switch (value) {
+      case "prospect":
+        setLifecycleStage(
+          "prospect"
+        );
+        break;
+
+      case "lead":
+        setLifecycleStage(
+          "lead"
+        );
+        break;
+
+      case "customer":
+        setLifecycleStage(
+          "customer"
+        );
+        break;
+
+      case "partner":
+        setLifecycleStage(
+          "partner"
+        );
+        break;
+
+      case "inactive":
+        setLifecycleStage(
+          "inactive"
+        );
+        break;
+
+      case "churned":
+        setLifecycleStage(
+          "churned"
+        );
+        break;
+
+      default:
+        setLifecycleStage(
+          "prospect"
+        );
+    }
   }
 
 
@@ -153,12 +295,22 @@ export function CreateAccountModal({
     setBillingPostalCode("");
     setBillingCountry("");
 
+    setParentAccountId("");
+
+    setDuplicateResult(
+      null
+    );
+
     setError(null);
   }
 
 
   function handleClose() {
-    if (saving) {
+    if (
+      saving
+      ||
+      checkingDuplicates
+    ) {
       return;
     }
 
@@ -167,11 +319,9 @@ export function CreateAccountModal({
   }
 
 
-  async function submit(
-    event: FormEvent
-  ) {
-    event.preventDefault();
-
+  function buildPayload():
+    AccountCreatePayload
+    | null {
     const normalizedName =
       name.trim();
 
@@ -180,7 +330,7 @@ export function CreateAccountModal({
         "Account name is required."
       );
 
-      return;
+      return null;
     }
 
 
@@ -193,21 +343,23 @@ export function CreateAccountModal({
 
 
     if (
-      parsedEmployeeCount !== null
+      parsedEmployeeCount
+      !== null
       &&
       (
         !Number.isInteger(
           parsedEmployeeCount
         )
         ||
-        parsedEmployeeCount < 0
+        parsedEmployeeCount
+        < 0
       )
     ) {
       setError(
         "Employee count must be a whole number of 0 or greater."
       );
 
-      return;
+      return null;
     }
 
 
@@ -220,91 +372,109 @@ export function CreateAccountModal({
 
 
     if (
-      parsedRevenue !== null
+      parsedRevenue
+      !== null
       &&
       (
         !Number.isFinite(
           parsedRevenue
         )
         ||
-        parsedRevenue < 0
+        parsedRevenue
+        < 0
       )
     ) {
       setError(
         "Annual revenue must be 0 or greater."
       );
 
-      return;
+      return null;
     }
 
 
+    return {
+      name:
+        normalizedName,
+
+      domain:
+        domain.trim()
+        || null,
+
+      website:
+        website.trim()
+        || null,
+
+      industry:
+        industry.trim()
+        || null,
+
+      phone:
+        phone.trim()
+        || null,
+
+      lifecycle_stage:
+        lifecycleStage,
+
+      employee_count:
+        parsedEmployeeCount,
+
+      annual_revenue:
+        parsedRevenue,
+
+      description:
+        description.trim()
+        || null,
+
+      billing_address_line1:
+        billingAddressLine1
+          .trim()
+        || null,
+
+      billing_address_line2:
+        billingAddressLine2
+          .trim()
+        || null,
+
+      billing_city:
+        billingCity.trim()
+        || null,
+
+      billing_state:
+        billingState.trim()
+        || null,
+
+      billing_postal_code:
+        billingPostalCode
+          .trim()
+        || null,
+
+      billing_country:
+        billingCountry.trim()
+        || null,
+
+      parent_account_id:
+        parentAccountId
+        || null,
+    };
+  }
+
+
+  async function performCreate(
+    payload:
+      AccountCreatePayload
+  ) {
     try {
       setSaving(true);
       setError(null);
 
       const account =
-        await createAccount({
-          name:
-            normalizedName,
+        await createAccount(
+          payload
+        );
 
-          domain:
-            domain.trim()
-            || null,
-
-          website:
-            website.trim()
-            || null,
-
-          industry:
-            industry.trim()
-            || null,
-
-          phone:
-            phone.trim()
-            || null,
-
-          lifecycle_stage:
-            lifecycleStage,
-
-          employee_count:
-            parsedEmployeeCount,
-
-          annual_revenue:
-            parsedRevenue,
-
-          description:
-            description.trim()
-            || null,
-
-          billing_address_line1:
-            billingAddressLine1
-              .trim()
-            || null,
-
-          billing_address_line2:
-            billingAddressLine2
-              .trim()
-            || null,
-
-          billing_city:
-            billingCity.trim()
-            || null,
-
-          billing_state:
-            billingState.trim()
-            || null,
-
-          billing_postal_code:
-            billingPostalCode
-              .trim()
-            || null,
-
-          billing_country:
-            billingCountry.trim()
-            || null,
-        });
-
-      onCreated(account);
+      onCreated(
+        account
+      );
 
       resetForm();
       onClose();
@@ -320,13 +490,93 @@ export function CreateAccountModal({
   }
 
 
+  async function submit(
+    event: FormEvent
+  ) {
+    event.preventDefault();
+
+    const payload =
+      buildPayload();
+
+    if (!payload) {
+      return;
+    }
+
+
+    try {
+      setCheckingDuplicates(
+        true
+      );
+
+      setError(null);
+
+      const result =
+        await checkAccountDuplicates({
+          name:
+            payload.name,
+
+          domain:
+            payload.domain
+            ?? null,
+        });
+
+
+      if (
+        result.has_duplicates
+      ) {
+        setDuplicateResult(
+          result
+        );
+
+        return;
+      }
+
+
+      setDuplicateResult(
+        null
+      );
+
+      await performCreate(
+        payload
+      );
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Unable to check for duplicate accounts."
+      );
+    } finally {
+      setCheckingDuplicates(
+        false
+      );
+    }
+  }
+
+
+  async function createAnyway() {
+    const payload =
+      buildPayload();
+
+    if (!payload) {
+      return;
+    }
+
+    await performCreate(
+      payload
+    );
+  }
+
+
   return (
     <div className="modalBackdrop">
       <div
         className="modalCard"
         style={{
-          maxHeight: "92vh",
-          overflowY: "auto",
+          maxHeight:
+            "92vh",
+
+          overflowY:
+            "auto",
         }}
       >
         <div className="modalHeader">
@@ -356,7 +606,11 @@ export function CreateAccountModal({
               handleClose
             }
             aria-label="Close"
-            disabled={saving}
+            disabled={
+              saving
+              ||
+              checkingDuplicates
+            }
           >
             <X size={18} />
           </button>
@@ -365,7 +619,9 @@ export function CreateAccountModal({
 
         <form
           className="accountForm"
-          onSubmit={submit}
+          onSubmit={
+            submit
+          }
         >
           <label>
             Account name
@@ -373,12 +629,18 @@ export function CreateAccountModal({
             <input
               required
               autoFocus
-              value={name}
-              onChange={(event) =>
+              value={
+                name
+              }
+              onChange={(
+                event
+              ) => {
                 setName(
                   event.target.value
-                )
-              }
+                );
+
+                clearDuplicateResult();
+              }}
               placeholder="Northstar Technologies"
             />
           </label>
@@ -392,10 +654,11 @@ export function CreateAccountModal({
                 value={
                   lifecycleStage
                 }
-                onChange={(event) =>
-                  setLifecycleStage(
+                onChange={(
+                  event
+                ) =>
+                  handleLifecycleStageChange(
                     event.target.value
-                      as LifecycleStage
                   )
                 }
               >
@@ -430,8 +693,12 @@ export function CreateAccountModal({
               Industry
 
               <input
-                value={industry}
-                onChange={(event) =>
+                value={
+                  industry
+                }
+                onChange={(
+                  event
+                ) =>
                   setIndustry(
                     event.target.value
                   )
@@ -447,12 +714,18 @@ export function CreateAccountModal({
               Domain
 
               <input
-                value={domain}
-                onChange={(event) =>
+                value={
+                  domain
+                }
+                onChange={(
+                  event
+                ) => {
                   setDomain(
                     event.target.value
-                  )
-                }
+                  );
+
+                  clearDuplicateResult();
+                }}
                 placeholder="northstar.com"
               />
             </label>
@@ -462,8 +735,12 @@ export function CreateAccountModal({
               Website
 
               <input
-                value={website}
-                onChange={(event) =>
+                value={
+                  website
+                }
+                onChange={(
+                  event
+                ) =>
                   setWebsite(
                     event.target.value
                   )
@@ -475,12 +752,105 @@ export function CreateAccountModal({
 
 
           <label>
+            Parent Account
+
+            <select
+              value={
+                parentAccountId
+              }
+              onChange={(
+                event
+              ) =>
+                setParentAccountId(
+                  event.target.value
+                )
+              }
+              disabled={
+                loadingParents
+              }
+            >
+              <option value="">
+                {loadingParents
+                  ? "Loading accounts..."
+                  : "No parent account"}
+              </option>
+
+              {parentAccounts.map(
+                (
+                  parent
+                ) => (
+                  <option
+                    key={
+                      parent.id
+                    }
+                    value={
+                      parent.id
+                    }
+                  >
+                    {
+                      parent.name
+                    }
+                  </option>
+                )
+              )}
+            </select>
+          </label>
+
+
+          <div
+            style={{
+              display:
+                "flex",
+
+              gap:
+                "8px",
+
+              alignItems:
+                "flex-start",
+
+              padding:
+                "10px 12px",
+
+              border:
+                "1px solid var(--border)",
+
+              borderRadius:
+                "10px",
+
+              color:
+                "var(--muted)",
+
+              fontSize:
+                "10px",
+
+              lineHeight:
+                1.5,
+            }}
+          >
+            <GitBranch
+              size={15}
+            />
+
+            <span>
+              Use Parent Account for
+              subsidiaries, divisions or
+              related companies. Leave it
+              empty for a top-level account.
+            </span>
+          </div>
+
+
+          <label>
             Phone
 
             <input
               type="tel"
-              value={phone}
-              onChange={(event) =>
+              value={
+                phone
+              }
+              onChange={(
+                event
+              ) =>
                 setPhone(
                   event.target.value
                 )
@@ -501,7 +871,9 @@ export function CreateAccountModal({
                 value={
                   employeeCount
                 }
-                onChange={(event) =>
+                onChange={(
+                  event
+                ) =>
                   setEmployeeCount(
                     event.target.value
                   )
@@ -521,7 +893,9 @@ export function CreateAccountModal({
                 value={
                   annualRevenue
                 }
-                onChange={(event) =>
+                onChange={(
+                  event
+                ) =>
                   setAnnualRevenue(
                     event.target.value
                   )
@@ -537,8 +911,12 @@ export function CreateAccountModal({
 
             <textarea
               rows={4}
-              value={description}
-              onChange={(event) =>
+              value={
+                description
+              }
+              onChange={(
+                event
+              ) =>
                 setDescription(
                   event.target.value
                 )
@@ -551,9 +929,14 @@ export function CreateAccountModal({
           <div>
             <strong
               style={{
-                display: "block",
-                marginBottom: "10px",
-                fontSize: "11px",
+                display:
+                  "block",
+
+                marginBottom:
+                  "10px",
+
+                fontSize:
+                  "11px",
               }}
             >
               Billing Address
@@ -561,9 +944,14 @@ export function CreateAccountModal({
 
             <div
               style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: "13px",
+                display:
+                  "flex",
+
+                flexDirection:
+                  "column",
+
+                gap:
+                  "13px",
               }}
             >
               <label>
@@ -573,7 +961,9 @@ export function CreateAccountModal({
                   value={
                     billingAddressLine1
                   }
-                  onChange={(event) =>
+                  onChange={(
+                    event
+                  ) =>
                     setBillingAddressLine1(
                       event.target.value
                     )
@@ -590,7 +980,9 @@ export function CreateAccountModal({
                   value={
                     billingAddressLine2
                   }
-                  onChange={(event) =>
+                  onChange={(
+                    event
+                  ) =>
                     setBillingAddressLine2(
                       event.target.value
                     )
@@ -608,7 +1000,9 @@ export function CreateAccountModal({
                     value={
                       billingCity
                     }
-                    onChange={(event) =>
+                    onChange={(
+                      event
+                    ) =>
                       setBillingCity(
                         event.target.value
                       )
@@ -625,7 +1019,9 @@ export function CreateAccountModal({
                     value={
                       billingState
                     }
-                    onChange={(event) =>
+                    onChange={(
+                      event
+                    ) =>
                       setBillingState(
                         event.target.value
                       )
@@ -644,7 +1040,9 @@ export function CreateAccountModal({
                     value={
                       billingPostalCode
                     }
-                    onChange={(event) =>
+                    onChange={(
+                      event
+                    ) =>
                       setBillingPostalCode(
                         event.target.value
                       )
@@ -661,7 +1059,9 @@ export function CreateAccountModal({
                     value={
                       billingCountry
                     }
-                    onChange={(event) =>
+                    onChange={(
+                      event
+                    ) =>
                       setBillingCountry(
                         event.target.value
                       )
@@ -674,8 +1074,214 @@ export function CreateAccountModal({
           </div>
 
 
+          {duplicateResult
+            ?.has_duplicates
+            && (
+            <div
+              style={{
+                border:
+                  "1px solid #f59e0b",
+
+                borderRadius:
+                  "10px",
+
+                padding:
+                  "12px",
+
+                background:
+                  "rgba(245, 158, 11, 0.08)",
+              }}
+            >
+              <div
+                style={{
+                  display:
+                    "flex",
+
+                  gap:
+                    "8px",
+
+                  alignItems:
+                    "flex-start",
+                }}
+              >
+                <ShieldAlert
+                  size={18}
+                />
+
+                <div
+                  style={{
+                    flex:
+                      1,
+                  }}
+                >
+                  <strong>
+                    Possible duplicate account
+                  </strong>
+
+                  <p
+                    style={{
+                      margin:
+                        "4px 0 10px",
+
+                      fontSize:
+                        "10px",
+
+                      lineHeight:
+                        1.5,
+                    }}
+                  >
+                    AIVA found an existing
+                    account with matching
+                    company information.
+                    Review it before creating
+                    another record.
+                  </p>
+
+
+                  <div
+                    style={{
+                      display:
+                        "flex",
+
+                      flexDirection:
+                        "column",
+
+                      gap:
+                        "8px",
+                    }}
+                  >
+                    {duplicateResult
+                      .matches
+                      .slice(
+                        0,
+                        5
+                      )
+                      .map(
+                        (
+                          match
+                        ) => (
+                          <div
+                            key={
+                              match
+                                .account
+                                .id
+                            }
+                            style={{
+                              padding:
+                                "9px",
+
+                              border:
+                                "1px solid var(--border)",
+
+                              borderRadius:
+                                "8px",
+
+                              background:
+                                "var(--surface)",
+                            }}
+                          >
+                            <strong>
+                              {
+                                match
+                                  .account
+                                  .name
+                              }
+                            </strong>
+
+                            <div
+                              style={{
+                                marginTop:
+                                  "3px",
+
+                                fontSize:
+                                  "9px",
+
+                                color:
+                                  "var(--muted)",
+                              }}
+                            >
+                              {match
+                                .match_reasons
+                                .map(
+                                  (
+                                    reason
+                                  ) =>
+                                    reason
+                                      .replaceAll(
+                                        "_",
+                                        " "
+                                      )
+                                )
+                                .join(
+                                  " · "
+                                )}
+                              {" · "}
+                              {
+                                match.confidence
+                              }{" "}
+                              confidence
+
+                              {match
+                                .account
+                                .is_archived
+                                ? " · Archived"
+                                : ""}
+                            </div>
+                          </div>
+                        )
+                      )}
+                  </div>
+
+
+                  <div
+                    style={{
+                      display:
+                        "flex",
+
+                      gap:
+                        "8px",
+
+                      marginTop:
+                        "10px",
+                    }}
+                  >
+                    <button
+                      type="button"
+                      className="secondaryButton"
+                      onClick={() =>
+                        setDuplicateResult(
+                          null
+                        )
+                      }
+                    >
+                      Review Details
+                    </button>
+
+                    <button
+                      type="button"
+                      className="createButton"
+                      onClick={() =>
+                        void createAnyway()
+                      }
+                      disabled={
+                        saving
+                      }
+                    >
+                      Create Anyway
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+
           {error && (
             <div className="formError">
+              <AlertTriangle
+                size={14}
+              />
+
               {error}
             </div>
           )}
@@ -688,7 +1294,11 @@ export function CreateAccountModal({
               onClick={
                 handleClose
               }
-              disabled={saving}
+              disabled={
+                saving
+                ||
+                checkingDuplicates
+              }
             >
               Cancel
             </button>
@@ -699,12 +1309,16 @@ export function CreateAccountModal({
               disabled={
                 saving
                 ||
+                checkingDuplicates
+                ||
                 !name.trim()
               }
             >
               {saving
                 ? "Creating..."
-                : "Create Account"}
+                : checkingDuplicates
+                  ? "Checking..."
+                  : "Create Account"}
             </button>
           </div>
         </form>

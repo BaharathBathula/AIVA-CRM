@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 import uuid
+from datetime import datetime
 from decimal import Decimal
 
 from sqlalchemy import (
+    Boolean,
+    DateTime,
     ForeignKey,
     Integer,
     Numeric,
@@ -119,6 +122,28 @@ class Account(
         ),
         nullable=True,
         index=True,
+    )
+
+    parent_account_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey(
+            "accounts.id",
+            ondelete="SET NULL",
+        ),
+        nullable=True,
+        index=True,
+    )
+
+    is_archived: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=False,
+        server_default="false",
+        index=True,
+    )
+
+    archived_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
     )
 
     contacts: Mapped[list["Contact"]] = relationship(

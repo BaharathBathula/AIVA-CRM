@@ -3,7 +3,11 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+)
 
 
 LifecycleStage = Literal[
@@ -65,6 +69,8 @@ class AccountCreate(BaseModel):
 
     owner_user_id: uuid.UUID | None = None
 
+    parent_account_id: uuid.UUID | None = None
+
 
 class AccountUpdate(BaseModel):
     name: str | None = Field(
@@ -101,6 +107,8 @@ class AccountUpdate(BaseModel):
 
     owner_user_id: uuid.UUID | None = None
 
+    parent_account_id: uuid.UUID | None = None
+
 
 class AccountResponse(BaseModel):
     model_config = ConfigDict(
@@ -132,5 +140,29 @@ class AccountResponse(BaseModel):
 
     owner_user_id: uuid.UUID | None
 
+    parent_account_id: uuid.UUID | None
+
+    is_archived: bool
+    archived_at: datetime | None
+
     created_at: datetime
     updated_at: datetime
+
+
+class AccountDuplicateMatch(BaseModel):
+    account: AccountResponse
+
+    match_reasons: list[str]
+
+    confidence: Literal[
+        "high",
+        "medium",
+    ]
+
+
+class AccountDuplicateCheckResponse(BaseModel):
+    has_duplicates: bool
+
+    matches: list[
+        AccountDuplicateMatch
+    ]
