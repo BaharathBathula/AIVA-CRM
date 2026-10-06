@@ -394,9 +394,8 @@ export function CreateAccountModal({
                 }
                 onChange={(event) =>
                   setLifecycleStage(
-                    event.target
-                      .value
-                    as LifecycleStage
+                    event.target.value
+                      as LifecycleStage
                   )
                 }
               >
