@@ -23,7 +23,14 @@ import type {
 
 type Props = {
   open: boolean;
+
+  accountId?: string;
+  contactId?: string;
+  leadId?: string;
+  opportunityId?: string;
+
   onClose: () => void;
+
   onCreated: (
     activity: Activity
   ) => void;
@@ -32,6 +39,10 @@ type Props = {
 
 export function LogActivityModal({
   open,
+  accountId,
+  contactId,
+  leadId,
+  opportunityId,
   onClose,
   onCreated,
 }: Props) {
@@ -82,6 +93,24 @@ export function LogActivityModal({
   }
 
 
+  function handleActivityTypeChange(
+    value: string
+  ) {
+    setActivityType(
+      value as ActivityType
+    );
+  }
+
+
+  function handleDirectionChange(
+    value: string
+  ) {
+    setDirection(
+      value as ActivityDirection | ""
+    );
+  }
+
+
   async function submit(
     event: FormEvent
   ) {
@@ -97,6 +126,18 @@ export function LogActivityModal({
 
       const activity =
         await createActivity({
+          account_id:
+            accountId ?? null,
+
+          contact_id:
+            contactId ?? null,
+
+          lead_id:
+            leadId ?? null,
+
+          opportunity_id:
+            opportunityId ?? null,
+
           activity_type:
             activityType,
 
@@ -135,26 +176,6 @@ export function LogActivityModal({
     } finally {
       setSaving(false);
     }
-  }
-
-
-  function handleActivityTypeChange(
-    value: string
-  ) {
-    setActivityType(
-      value as ActivityType
-    );
-  }
-
-
-  function handleDirectionChange(
-    value: string
-  ) {
-    setDirection(
-      value as
-        | ActivityDirection
-        | ""
-    );
   }
 
 

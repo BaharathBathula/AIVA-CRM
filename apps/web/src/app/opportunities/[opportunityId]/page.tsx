@@ -24,12 +24,24 @@ import {
 } from "next/navigation";
 
 import {
+  ActivityTimeline,
+} from "@/components/activities/activity-timeline";
+
+import {
+  LogActivityModal,
+} from "@/components/activities/log-activity-modal";
+
+import {
   Sidebar,
 } from "@/components/sidebar";
 
 import {
   Topbar,
 } from "@/components/topbar";
+
+import {
+  getOpportunityActivities,
+} from "@/lib/activities";
 
 import {
   getAccount,
@@ -48,6 +60,10 @@ import {
   getPipeline,
   getPipelineStages,
 } from "@/lib/pipelines";
+
+import type {
+  Activity,
+} from "@/types/activity";
 
 import type {
   Account,
@@ -125,6 +141,11 @@ export default function OpportunityDetailPage() {
     null
   );
 
+  const [
+    activities,
+    setActivities,
+  ] = useState<Activity[]>([]);
+
   const [account, setAccount] =
     useState<Account | null>(null);
 
@@ -146,6 +167,11 @@ export default function OpportunityDetailPage() {
   const [error, setError] =
     useState<string | null>(null);
 
+  const [
+    activityModalOpen,
+    setActivityModalOpen,
+  ] = useState(false);
+
 
   useEffect(() => {
     if (!opportunityId) {
@@ -157,13 +183,24 @@ export default function OpportunityDetailPage() {
         setLoading(true);
         setError(null);
 
-        const opportunityData =
-          await getOpportunity(
+        const [
+          opportunityData,
+          activityData,
+        ] = await Promise.all([
+          getOpportunity(
             opportunityId
-          );
+          ),
+          getOpportunityActivities(
+            opportunityId
+          ),
+        ]);
 
         setOpportunity(
           opportunityData
+        );
+
+        setActivities(
+          activityData
         );
 
         const [
@@ -446,6 +483,15 @@ export default function OpportunityDetailPage() {
 
           <div className="accountDetailGrid">
             <div className="accountMainColumn">
+              <ActivityTimeline
+                activities={activities}
+                onLogActivity={() =>
+                  setActivityModalOpen(
+                    true
+                  )
+                }
+              />
+
               <section className="detailPanel">
                 <div className="detailPanelHeader">
                   <div>
@@ -781,6 +827,32 @@ export default function OpportunityDetailPage() {
           </div>
         </div>
       </main>
+      <LogActivityModal
+        open={activityModalOpen}
+        opportunityId={
+          opportunity.id
+        }
+        accountId={
+          opportunity.account_id
+        }
+        contactId={
+          opportunity.primary_contact_id
+            ?? undefined
+        }
+        onClose={() =>
+          setActivityModalOpen(
+            false
+          )
+        }
+        onCreated={(activity) =>
+          setActivities(
+            (current) => [
+              activity,
+              ...current,
+            ]
+          )
+        }
+      />
     </div>
   );
 }
