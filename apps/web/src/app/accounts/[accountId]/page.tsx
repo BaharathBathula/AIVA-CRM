@@ -11,6 +11,7 @@ import Link from "next/link";
 import {
   Activity as ActivityIcon,
   ArrowLeft,
+  Archive,
   Building2,
   CalendarDays,
   CheckSquare2,
@@ -26,6 +27,7 @@ import {
   Pencil,
   Phone,
   Plus,
+  RotateCcw,
   Send,
   Sparkles,
   Users,
@@ -56,7 +58,10 @@ import {
 } from "@/components/topbar";
 
 import {
+  archiveAccount,
   getAccount,
+  getChildAccounts,
+  reactivateAccount,
 } from "@/lib/accounts";
 
 import {
@@ -414,6 +419,28 @@ export default function AccountDetailPage() {
   const [
     editModalOpen,
     setEditModalOpen,
+  ] = useState(false);
+
+  const [
+    archiveBusy,
+    setArchiveBusy,
+  ] = useState(false);
+
+  const [
+    parentAccount,
+    setParentAccount,
+  ] = useState<Account | null>(
+    null
+  );
+
+  const [
+    childAccounts,
+    setChildAccounts,
+  ] = useState<Account[]>([]);
+
+  const [
+    hierarchyLoading,
+    setHierarchyLoading,
   ] = useState(false);
 
 
@@ -1118,6 +1145,137 @@ const accountHealth =
   ]);
 
 
+  useEffect(() => {
+    if (!account) {
+      return;
+    }
+
+    const currentAccount =
+      account;
+
+    let cancelled = false;
+
+    async function loadHierarchy() {
+      try {
+        setHierarchyLoading(
+          true
+        );
+
+        const childrenRequest =
+          getChildAccounts(
+            currentAccount.id
+          );
+
+        const parentAccountId =
+          currentAccount.parent_account_id;
+
+        const parentRequest =
+          parentAccountId
+            ? getAccount(
+                parentAccountId
+              )
+            : Promise.resolve(
+                null
+              );
+
+        const [
+          childrenResult,
+          parentResult,
+        ] =
+          await Promise.allSettled([
+            childrenRequest,
+            parentRequest,
+          ]);
+
+        if (cancelled) {
+          return;
+        }
+
+        setChildAccounts(
+          childrenResult.status
+          === "fulfilled"
+            ? childrenResult.value
+            : []
+        );
+
+        setParentAccount(
+          parentResult.status
+          === "fulfilled"
+            ? parentResult.value
+            : null
+        );
+      } finally {
+        if (!cancelled) {
+          setHierarchyLoading(
+            false
+          );
+        }
+      }
+    }
+
+    void loadHierarchy();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    account?.id,
+    account?.parent_account_id,
+  ]);
+
+
+  async function handleArchiveToggle() {
+    if (
+      !account
+      ||
+      archiveBusy
+    ) {
+      return;
+    }
+
+    const currentlyArchived =
+      account.is_archived;
+
+    const confirmed =
+      window.confirm(
+        currentlyArchived
+          ? `Reactivate ${account.name}?`
+          : `Archive ${account.name}? The account will be hidden from the normal Accounts list until it is reactivated.`
+      );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      setArchiveBusy(true);
+
+      const updatedAccount =
+        currentlyArchived
+          ? await reactivateAccount(
+              account.id
+            )
+          : await archiveAccount(
+              account.id
+            );
+
+      setAccount(
+        updatedAccount
+      );
+    } catch (err) {
+      window.alert(
+        err instanceof Error
+          ? err.message
+          : currentlyArchived
+            ? "Unable to reactivate account."
+            : "Unable to archive account."
+      );
+    } finally {
+      setArchiveBusy(false);
+    }
+  }
+
+
   if (loading) {
     return (
       <div className="appShell">
@@ -1284,6 +1442,42 @@ const accountHealth =
 
 
             <div className="detailActions">
+              <button
+                type="button"
+                className="secondaryButton"
+                disabled={
+                  archiveBusy
+                }
+                onClick={() =>
+                  void handleArchiveToggle()
+                }
+                style={
+                  account.is_archived
+                    ? undefined
+                    : {
+                        color: "#b42318",
+                      }
+                }
+              >
+                {account.is_archived ? (
+                  <RotateCcw
+                    size={15}
+                  />
+                ) : (
+                  <Archive
+                    size={15}
+                  />
+                )}
+
+                {archiveBusy
+                  ? account.is_archived
+                    ? "Reactivating..."
+                    : "Archiving..."
+                  : account.is_archived
+                    ? "Reactivate"
+                    : "Archive"}
+              </button>
+
               <button
                 type="button"
                 className="secondaryButton"
@@ -2431,6 +2625,152 @@ const accountHealth =
                     )}
                   </div>
                 </div>
+              </section>
+
+
+              <section className="detailPanel">
+                <div className="detailPanelHeader">
+                  <div>
+                    <h2>
+                      Account Hierarchy
+                    </h2>
+
+                    <p>
+                      Parent company and subsidiary relationships.
+                    </p>
+                  </div>
+                </div>
+
+                {hierarchyLoading ? (
+                  <div
+                    style={{
+                      color:
+                        "var(--muted)",
+                      fontSize:
+                        "10px",
+                    }}
+                  >
+                    Loading hierarchy...
+                  </div>
+                ) : (
+                  <div className="detailFields">
+                    <div>
+                      <span>
+                        Parent Account
+                      </span>
+
+                      {parentAccount ? (
+                        <Link
+                          href={
+                            `/accounts/${parentAccount.id}`
+                          }
+                        >
+                          {
+                            parentAccount.name
+                          }
+                        </Link>
+                      ) : (
+                        <strong>
+                          Top-level account
+                        </strong>
+                      )}
+                    </div>
+
+                    <div>
+                      <span>
+                        Child Accounts
+                      </span>
+
+                      <strong>
+                        {
+                          childAccounts.length
+                        }
+                      </strong>
+                    </div>
+
+                    {childAccounts.length > 0 && (
+                      <div
+                        style={{
+                          display:
+                            "block",
+                        }}
+                      >
+                        <span
+                          style={{
+                            display:
+                              "block",
+                            marginBottom:
+                              "8px",
+                          }}
+                        >
+                          Subsidiaries / Divisions
+                        </span>
+
+                        <div
+                          style={{
+                            display:
+                              "flex",
+                            flexDirection:
+                              "column",
+                            gap:
+                              "7px",
+                          }}
+                        >
+                          {childAccounts.map(
+                            (
+                              child
+                            ) => (
+                              <Link
+                                key={
+                                  child.id
+                                }
+                                href={
+                                  `/accounts/${child.id}`
+                                }
+                                style={{
+                                  display:
+                                    "flex",
+                                  justifyContent:
+                                    "space-between",
+                                  alignItems:
+                                    "center",
+                                  gap:
+                                    "8px",
+                                  padding:
+                                    "8px 10px",
+                                  border:
+                                    "1px solid var(--border)",
+                                  borderRadius:
+                                    "8px",
+                                  textDecoration:
+                                    "none",
+                                }}
+                              >
+                                <span>
+                                  {
+                                    child.name
+                                  }
+                                </span>
+
+                                <span
+                                  className={
+                                    `stageBadge stage-${child.lifecycle_stage}`
+                                  }
+                                >
+                                  {
+                                    displayLabel(
+                                      child.lifecycle_stage
+                                    )
+                                  }
+                                </span>
+                              </Link>
+                            )
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </section>
 
 

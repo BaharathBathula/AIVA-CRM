@@ -8,10 +8,12 @@ import {
 
 import {
   Building2,
+  GitBranch,
   X,
 } from "lucide-react";
 
 import {
+  getAccounts,
   updateAccount,
 } from "@/lib/accounts";
 
@@ -117,6 +119,21 @@ export function EditAccountModal({
   ] = useState("");
 
   const [
+    parentAccountId,
+    setParentAccountId,
+  ] = useState("");
+
+  const [
+    parentAccounts,
+    setParentAccounts,
+  ] = useState<Account[]>([]);
+
+  const [
+    loadingParents,
+    setLoadingParents,
+  ] = useState(false);
+
+  const [
     saving,
     setSaving,
   ] = useState(false);
@@ -206,9 +223,74 @@ export function EditAccountModal({
         ?? ""
     );
 
+    setParentAccountId(
+      account.parent_account_id
+        ?? ""
+    );
+
     setError(null);
   }, [
     account,
+    open,
+  ]);
+
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    let cancelled =
+      false;
+
+    async function loadParentAccounts() {
+      try {
+        setLoadingParents(
+          true
+        );
+
+        const accounts =
+          await getAccounts({
+            limit: 100,
+            includeArchived:
+              false,
+          });
+
+        if (cancelled) {
+          return;
+        }
+
+        setParentAccounts(
+          accounts.filter(
+            (
+              candidate
+            ) =>
+              candidate.id
+              !== account.id
+          )
+        );
+      } catch {
+        if (!cancelled) {
+          setParentAccounts(
+            []
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setLoadingParents(
+            false
+          );
+        }
+      }
+    }
+
+    void loadParentAccounts();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    account.id,
     open,
   ]);
 
@@ -302,7 +384,8 @@ export function EditAccountModal({
 
 
     if (
-      parsedEmployeeCount !== null
+      parsedEmployeeCount
+      !== null
       &&
       (
         !Number.isInteger(
@@ -329,7 +412,8 @@ export function EditAccountModal({
 
 
     if (
-      parsedRevenue !== null
+      parsedRevenue
+      !== null
       &&
       (
         !Number.isFinite(
@@ -350,6 +434,15 @@ export function EditAccountModal({
     try {
       setSaving(true);
       setError(null);
+
+      const originalParentId =
+        account.parent_account_id
+        ?? "";
+
+      const parentChanged =
+        parentAccountId
+        !== originalParentId;
+
 
       const updatedAccount =
         await updateAccount(
@@ -413,6 +506,14 @@ export function EditAccountModal({
             billing_country:
               billingCountry.trim()
               || null,
+
+            ...(parentChanged
+              ? {
+                  parent_account_id:
+                    parentAccountId
+                    || null,
+                }
+              : {}),
           }
         );
 
@@ -438,8 +539,10 @@ export function EditAccountModal({
       <div
         className="modalCard"
         style={{
-          maxHeight: "92vh",
-          overflowY: "auto",
+          maxHeight:
+            "92vh",
+          overflowY:
+            "auto",
         }}
       >
         <div className="modalHeader">
@@ -585,6 +688,88 @@ export function EditAccountModal({
 
 
           <label>
+            Parent Account
+
+            <select
+              value={
+                parentAccountId
+              }
+              disabled={
+                loadingParents
+                ||
+                saving
+              }
+              onChange={(event) =>
+                setParentAccountId(
+                  event.target.value
+                )
+              }
+            >
+              <option value="">
+                {loadingParents
+                  ? "Loading accounts..."
+                  : "No parent — top-level account"}
+              </option>
+
+              {parentAccounts.map(
+                (
+                  candidate
+                ) => (
+                  <option
+                    key={
+                      candidate.id
+                    }
+                    value={
+                      candidate.id
+                    }
+                  >
+                    {
+                      candidate.name
+                    }
+                  </option>
+                )
+              )}
+            </select>
+          </label>
+
+
+          <div
+            style={{
+              display:
+                "flex",
+              alignItems:
+                "flex-start",
+              gap:
+                "8px",
+              padding:
+                "10px 12px",
+              border:
+                "1px solid var(--border)",
+              borderRadius:
+                "10px",
+              color:
+                "var(--muted)",
+              fontSize:
+                "10px",
+              lineHeight:
+                1.5,
+            }}
+          >
+            <GitBranch
+              size={15}
+            />
+
+            <span>
+              Select the parent company
+              when this account is a
+              subsidiary, division or
+              related business. An account
+              cannot be its own parent.
+            </span>
+          </div>
+
+
+          <label>
             Phone
 
             <input
@@ -659,9 +844,12 @@ export function EditAccountModal({
           <div>
             <strong
               style={{
-                display: "block",
-                marginBottom: "10px",
-                fontSize: "11px",
+                display:
+                  "block",
+                marginBottom:
+                  "10px",
+                fontSize:
+                  "11px",
               }}
             >
               Billing Address
@@ -669,9 +857,12 @@ export function EditAccountModal({
 
             <div
               style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: "13px",
+                display:
+                  "flex",
+                flexDirection:
+                  "column",
+                gap:
+                  "13px",
               }}
             >
               <label>
