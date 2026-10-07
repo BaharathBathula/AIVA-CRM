@@ -11,6 +11,7 @@ import type {
 
 export interface OpportunityFilters {
   accountId?: string;
+  primaryContactId?: string;
   pipelineId?: string;
   stageId?: string;
   ownerUserId?: string;
@@ -28,6 +29,13 @@ export function getOpportunities(
     params.set(
       "account_id",
       filters.accountId
+    );
+  }
+
+  if (filters.primaryContactId) {
+    params.set(
+      "primary_contact_id",
+      filters.primaryContactId
     );
   }
 

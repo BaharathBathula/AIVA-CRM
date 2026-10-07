@@ -459,6 +459,7 @@ async def list_opportunities(
     db: AsyncSession,
     organization_id: uuid.UUID,
     account_id: uuid.UUID | None = None,
+    primary_contact_id: uuid.UUID | None = None,
     pipeline_id: uuid.UUID | None = None,
     stage_id: uuid.UUID | None = None,
     owner_user_id: uuid.UUID | None = None,
@@ -477,6 +478,12 @@ async def list_opportunities(
         statement = statement.where(
             Opportunity.account_id
             == account_id
+        )
+
+    if primary_contact_id is not None:
+        statement = statement.where(
+            Opportunity.primary_contact_id
+            == primary_contact_id
         )
 
     if pipeline_id is not None:

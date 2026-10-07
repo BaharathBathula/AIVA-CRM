@@ -50,6 +50,18 @@ import {
   getContact,
 } from "@/lib/contacts";
 
+import {
+  getContactEmailThreads,
+} from "@/lib/emails";
+
+import {
+  getTasks,
+} from "@/lib/tasks";
+
+import {
+  getOpportunities,
+} from "@/lib/opportunities";
+
 import type {
   Account,
 } from "@/types/account";
@@ -61,6 +73,18 @@ import type {
 import type {
   Contact,
 } from "@/types/contact";
+
+import type {
+  EmailThread,
+} from "@/types/email";
+
+import type {
+  Task,
+} from "@/types/task";
+
+import type {
+  Opportunity,
+} from "@/types/opportunity";
 
 import {
   useParams,
@@ -198,6 +222,30 @@ export default function ContactDetailPage() {
     []
   );
 
+
+  const [
+    emailThreads,
+    setEmailThreads,
+  ] = useState<EmailThread[]>(
+    []
+  );
+
+
+  const [
+    tasks,
+    setTasks,
+  ] = useState<Task[]>(
+    []
+  );
+
+
+  const [
+    opportunities,
+    setOpportunities,
+  ] = useState<Opportunity[]>(
+    []
+  );
+
   const [
     editOpen,
     setEditOpen,
@@ -246,6 +294,9 @@ export default function ContactDetailPage() {
         const [
           activityResult,
           accountResult,
+          emailThreadsResult,
+          taskResult,
+          opportunityResult,
         ] = await Promise.all([
           getContactActivities(
             contactId,
@@ -260,6 +311,21 @@ export default function ContactDetailPage() {
             : Promise.resolve(
                 null
               ),
+
+          getContactEmailThreads(
+            contactId,
+            100
+          ),
+
+          getTasks({
+            contactId,
+            limit: 100,
+          }),
+
+          getOpportunities({
+            primaryContactId:
+              contactId,
+          }),
         ]);
 
         if (cancelled) {
@@ -272,6 +338,20 @@ export default function ContactDetailPage() {
 
         setAccount(
           accountResult
+        );
+
+        setEmailThreads(
+          emailThreadsResult
+        );
+
+
+        setTasks(
+          taskResult
+        );
+
+
+        setOpportunities(
+          opportunityResult
         );
       } catch (err) {
         if (!cancelled) {
@@ -396,6 +476,424 @@ export default function ContactDetailPage() {
       </div>
     );
   }
+
+
+  const opportunityValue =
+    opportunities.reduce(
+      (
+        total,
+        opportunity
+      ) => {
+        const amount =
+          Number(
+            opportunity.amount
+            ?? 0
+          );
+
+        return (
+          total
+          +
+          (
+            Number.isFinite(
+              amount
+            )
+              ? amount
+              : 0
+          )
+        );
+      },
+      0
+    );
+
+
+  const averageOpportunityProbability =
+    opportunities.length
+      ? Math.round(
+          opportunities.reduce(
+            (
+              total,
+              opportunity
+            ) =>
+              total
+              +
+              opportunity.probability,
+            0
+          )
+          /
+          opportunities.length
+        )
+      : 0;
+
+
+  const openTaskCount =
+    tasks.filter(
+      (
+        task
+      ) =>
+        task.status === "open"
+        ||
+        task.status === "in_progress"
+    ).length;
+
+
+  const completedTaskCount =
+    tasks.filter(
+      (
+        task
+      ) =>
+        task.status === "completed"
+    ).length;
+
+
+  const overdueTaskCount =
+    tasks.filter(
+      (
+        task
+      ) => {
+        if (
+          !task.due_at
+          ||
+          task.status === "completed"
+          ||
+          task.status === "cancelled"
+        ) {
+          return false;
+        }
+
+        return (
+          new Date(
+            task.due_at
+          ).getTime()
+          <
+          Date.now()
+        );
+      }
+    ).length;
+
+
+  const interactionDates =
+    [
+      ...activities.map(
+        (
+          activity
+        ) =>
+          activity.occurred_at
+      ),
+
+      ...emailThreads
+        .map(
+          (
+            thread
+          ) =>
+            thread.last_message_at
+        )
+        .filter(
+          (
+            value
+          ): value is string =>
+            Boolean(value)
+        ),
+    ]
+      .map(
+        (
+          value
+        ) =>
+          new Date(
+            value
+          ).getTime()
+      )
+      .filter(
+        (
+          value
+        ) =>
+          Number.isFinite(
+            value
+          )
+      );
+
+
+  const latestInteractionTime =
+    interactionDates.length
+      ? Math.max(
+          ...interactionDates
+        )
+      : null;
+
+
+  const lastInteraction =
+    latestInteractionTime
+      ? new Date(
+          latestInteractionTime
+        )
+      : null;
+
+
+  const thirtyDaysAgo =
+    Date.now()
+    -
+    30
+    *
+    24
+    *
+    60
+    *
+    60
+    *
+    1000;
+
+
+  const recentTouchpoints =
+    activities.filter(
+      (
+        activity
+      ) =>
+        new Date(
+          activity.occurred_at
+        ).getTime()
+        >=
+        thirtyDaysAgo
+    ).length
+    +
+    emailThreads.filter(
+      (
+        thread
+      ) =>
+        Boolean(
+          thread.last_message_at
+        )
+        &&
+        new Date(
+          thread.last_message_at!
+        ).getTime()
+        >=
+        thirtyDaysAgo
+    ).length;
+
+
+  const daysSinceLastInteraction =
+    lastInteraction
+      ? Math.max(
+          0,
+          Math.floor(
+            (
+              Date.now()
+              -
+              lastInteraction.getTime()
+            )
+            /
+            (
+              24
+              *
+              60
+              *
+              60
+              *
+              1000
+            )
+          )
+        )
+      : null;
+
+
+  let engagementScore = 0;
+
+  if (
+    daysSinceLastInteraction
+    !== null
+  ) {
+    if (
+      daysSinceLastInteraction
+      <= 7
+    ) {
+      engagementScore += 40;
+    } else if (
+      daysSinceLastInteraction
+      <= 30
+    ) {
+      engagementScore += 30;
+    } else if (
+      daysSinceLastInteraction
+      <= 60
+    ) {
+      engagementScore += 20;
+    } else if (
+      daysSinceLastInteraction
+      <= 90
+    ) {
+      engagementScore += 10;
+    }
+  }
+
+  engagementScore += Math.min(
+    recentTouchpoints * 5,
+    30
+  );
+
+  engagementScore += Math.min(
+    emailThreads.length * 5,
+    15
+  );
+
+  if (
+    opportunities.length > 0
+  ) {
+    engagementScore += 10;
+  }
+
+  if (
+    contact.is_active
+  ) {
+    engagementScore += 5;
+  }
+
+  engagementScore = Math.min(
+    engagementScore,
+    100
+  );
+
+
+  const engagementLabel =
+    engagementScore >= 70
+      ? "Engaged"
+      : engagementScore >= 40
+        ? "Moderate"
+        : "Low";
+
+
+  const relationshipTimeline = [
+    ...activities.map(
+      (
+        activity
+      ) => ({
+        id:
+          `activity-${activity.id}`,
+
+        kind:
+          "activity",
+
+        timestamp:
+          activity.occurred_at,
+
+        title:
+          activity.subject,
+
+        body:
+          activity.body,
+
+        meta:
+          `${activity.activity_type}${
+            activity.direction
+              ? ` · ${activity.direction}`
+              : ""
+          }`,
+      })
+    ),
+
+    ...emailThreads
+      .filter(
+        (
+          thread
+        ) =>
+          Boolean(
+            thread.last_message_at
+          )
+      )
+      .map(
+        (
+          thread
+        ) => ({
+          id:
+            `email-${thread.id}`,
+
+          kind:
+            "email",
+
+          timestamp:
+            thread.last_message_at!,
+
+          title:
+            thread.subject,
+
+          body:
+            thread.snippet,
+
+          meta:
+            "email conversation",
+        })
+      ),
+
+    ...tasks
+      .filter(
+        (
+          task
+        ) =>
+          task.status
+            === "completed"
+          &&
+          Boolean(
+            task.completed_at
+          )
+      )
+      .map(
+        (
+          task
+        ) => ({
+          id:
+            `task-${task.id}`,
+
+          kind:
+            "task",
+
+          timestamp:
+            task.completed_at!,
+
+          title:
+            `Task completed: ${task.title}`,
+
+          body:
+            task.description,
+
+          meta:
+            `${task.task_type} · ${task.priority}`,
+        })
+      ),
+
+    ...opportunities.map(
+      (
+        opportunity
+      ) => ({
+        id:
+          `opportunity-${opportunity.id}`,
+
+        kind:
+          "opportunity",
+
+        timestamp:
+          opportunity.created_at,
+
+        title:
+          `Opportunity: ${opportunity.name}`,
+
+        body:
+          opportunity.description,
+
+        meta:
+          `${opportunity.probability}% probability`,
+      })
+    ),
+  ].sort(
+    (
+      a,
+      b
+    ) =>
+      new Date(
+        b.timestamp
+      ).getTime()
+      -
+      new Date(
+        a.timestamp
+      ).getTime()
+  );
 
 
   const fullName =
@@ -527,6 +1025,211 @@ export default function ContactDetailPage() {
           </section>
 
 
+          <section
+            style={{
+              display: "grid",
+              gridTemplateColumns:
+                "repeat(auto-fit, minmax(170px, 1fr))",
+              gap: "12px",
+              marginBottom: "15px",
+            }}
+          >
+            <div
+              className="detailPanel"
+              style={{
+                padding: "16px",
+              }}
+            >
+              <span
+                style={{
+                  display: "block",
+                  color: "var(--muted)",
+                  fontSize: "9px",
+                  marginBottom: "6px",
+                }}
+              >
+                Last Interaction
+              </span>
+
+              <strong
+                style={{
+                  display: "block",
+                  fontSize: "12px",
+                }}
+              >
+                {
+                  lastInteraction
+                    ? formatDate(
+                        lastInteraction.toISOString()
+                      )
+                    : "No interactions"
+                }
+              </strong>
+
+              {daysSinceLastInteraction
+                !== null && (
+                <span
+                  style={{
+                    display: "block",
+                    marginTop: "4px",
+                    color: "var(--muted)",
+                    fontSize: "8px",
+                  }}
+                >
+                  {
+                    daysSinceLastInteraction
+                  }{" "}
+                  day{
+                    daysSinceLastInteraction
+                    === 1
+                      ? ""
+                      : "s"
+                  } ago
+                </span>
+              )}
+            </div>
+
+
+            <div
+              className="detailPanel"
+              style={{
+                padding: "16px",
+              }}
+            >
+              <span
+                style={{
+                  display: "block",
+                  color: "var(--muted)",
+                  fontSize: "9px",
+                  marginBottom: "6px",
+                }}
+              >
+                Recent Touchpoints
+              </span>
+
+              <strong
+                style={{
+                  display: "block",
+                  fontSize: "20px",
+                }}
+              >
+                {
+                  recentTouchpoints
+                }
+              </strong>
+
+              <span
+                style={{
+                  display: "block",
+                  marginTop: "4px",
+                  color: "var(--muted)",
+                  fontSize: "8px",
+                }}
+              >
+                Last 30 days
+              </span>
+            </div>
+
+
+            <div
+              className="detailPanel"
+              style={{
+                padding: "16px",
+              }}
+            >
+              <span
+                style={{
+                  display: "block",
+                  color: "var(--muted)",
+                  fontSize: "9px",
+                  marginBottom: "6px",
+                }}
+              >
+                Email Conversations
+              </span>
+
+              <strong
+                style={{
+                  display: "block",
+                  fontSize: "20px",
+                }}
+              >
+                {
+                  emailThreads.length
+                }
+              </strong>
+
+              <span
+                style={{
+                  display: "block",
+                  marginTop: "4px",
+                  color: "var(--muted)",
+                  fontSize: "8px",
+                }}
+              >
+                Contact-linked threads
+              </span>
+            </div>
+
+
+            <div
+              className="detailPanel"
+              style={{
+                padding: "16px",
+              }}
+            >
+              <span
+                style={{
+                  display: "block",
+                  color: "var(--muted)",
+                  fontSize: "9px",
+                  marginBottom: "6px",
+                }}
+              >
+                Engagement Score
+              </span>
+
+              <strong
+                style={{
+                  display: "block",
+                  fontSize: "20px",
+                }}
+              >
+                {
+                  engagementScore
+                }/100
+              </strong>
+
+              <span
+                style={{
+                  display: "inline-flex",
+                  marginTop: "5px",
+                  padding: "3px 7px",
+                  borderRadius: "999px",
+                  background:
+                    engagementScore >= 70
+                      ? "#e6f7ef"
+                      : engagementScore >= 40
+                        ? "#fff6dd"
+                        : "#f7ecee",
+                  color:
+                    engagementScore >= 70
+                      ? "#197757"
+                      : engagementScore >= 40
+                        ? "#8a6700"
+                        : "#a94d57",
+                  fontSize: "8px",
+                  fontWeight: 700,
+                }}
+              >
+                {
+                  engagementLabel
+                }
+              </span>
+            </div>
+          </section>
+
+
           <div className="accountDetailGrid">
             <div className="accountMainColumn">
 
@@ -534,20 +1237,846 @@ export default function ContactDetailPage() {
                 <div className="detailPanelHeader">
                   <div>
                     <h2>
-                      Activity Timeline
+                      Email Communications
                     </h2>
 
                     <p>
-                      Calls, emails,
-                      meetings, notes and
-                      other interactions
-                      with this contact.
+                      Email conversations linked
+                      directly to this contact.
+                    </p>
+                  </div>
+
+                  <Link
+                    href="/email"
+                    className="textButton"
+                  >
+                    Open Email
+                  </Link>
+                </div>
+
+
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns:
+                      "repeat(2, minmax(0, 1fr))",
+                    gap: "10px",
+                    marginBottom: "14px",
+                  }}
+                >
+                  <div
+                    style={{
+                      padding: "12px",
+                      border:
+                        "1px solid var(--border)",
+                      borderRadius: "10px",
+                    }}
+                  >
+                    <span
+                      style={{
+                        display: "block",
+                        color: "var(--muted)",
+                        fontSize: "9px",
+                        marginBottom: "4px",
+                      }}
+                    >
+                      Conversations
+                    </span>
+
+                    <strong>
+                      {
+                        emailThreads.length
+                      }
+                    </strong>
+                  </div>
+
+                  <div
+                    style={{
+                      padding: "12px",
+                      border:
+                        "1px solid var(--border)",
+                      borderRadius: "10px",
+                    }}
+                  >
+                    <span
+                      style={{
+                        display: "block",
+                        color: "var(--muted)",
+                        fontSize: "9px",
+                        marginBottom: "4px",
+                      }}
+                    >
+                      Latest Email
+                    </span>
+
+                    <strong
+                      style={{
+                        fontSize: "10px",
+                      }}
+                    >
+                      {
+                        emailThreads.length > 0
+                        &&
+                        emailThreads[0]
+                          .last_message_at
+                          ? formatDate(
+                              emailThreads[0]
+                                .last_message_at
+                            )
+                          : "—"
+                      }
+                    </strong>
+                  </div>
+                </div>
+
+
+                {emailThreads.length
+                  === 0 ? (
+                  <div className="miniEmptyState compact">
+                    <Mail
+                      size={20}
+                    />
+
+                    <strong>
+                      No email conversations
+                    </strong>
+
+                    <span>
+                      Emails linked to this
+                      contact will appear here.
+                    </span>
+                  </div>
+                ) : (
+                  <div
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "8px",
+                    }}
+                  >
+                    {emailThreads.map(
+                      (
+                        thread
+                      ) => (
+                        <div
+                          key={
+                            thread.id
+                          }
+                          style={{
+                            padding:
+                              "12px",
+                            border:
+                              "1px solid #eceef3",
+                            borderRadius:
+                              "10px",
+                            background:
+                              "#fdfdfe",
+                          }}
+                        >
+                          <div
+                            style={{
+                              display:
+                                "flex",
+                              justifyContent:
+                                "space-between",
+                              alignItems:
+                                "flex-start",
+                              gap:
+                                "12px",
+                            }}
+                          >
+                            <div
+                              style={{
+                                minWidth:
+                                  0,
+                              }}
+                            >
+                              <strong
+                                style={{
+                                  display:
+                                    "block",
+                                  fontSize:
+                                    "10px",
+                                }}
+                              >
+                                {
+                                  thread.subject
+                                }
+                              </strong>
+
+                              {thread.snippet && (
+                                <p
+                                  style={{
+                                    margin:
+                                      "5px 0 0",
+                                    color:
+                                      "var(--muted)",
+                                    fontSize:
+                                      "9px",
+                                    lineHeight:
+                                      1.5,
+                                  }}
+                                >
+                                  {
+                                    thread.snippet
+                                  }
+                                </p>
+                              )}
+                            </div>
+
+                            <time
+                              style={{
+                                flex:
+                                  "0 0 auto",
+                                color:
+                                  "var(--muted)",
+                                fontSize:
+                                  "8px",
+                              }}
+                            >
+                              {
+                                thread.last_message_at
+                                  ? formatDate(
+                                      thread.last_message_at
+                                    )
+                                  : "—"
+                              }
+                            </time>
+                          </div>
+                        </div>
+                      )
+                    )}
+                  </div>
+                )}
+              </section>
+
+
+              <section className="detailPanel">
+                <div className="detailPanelHeader">
+                  <div>
+                    <h2>
+                      Contact Opportunities
+                    </h2>
+
+                    <p>
+                      Sales opportunities
+                      where this person is
+                      the primary contact.
+                    </p>
+                  </div>
+
+                  <Link
+                    href="/opportunities"
+                    className="textButton"
+                  >
+                    Open Opportunities
+                  </Link>
+                </div>
+
+
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns:
+                      "repeat(3, minmax(0, 1fr))",
+                    gap: "10px",
+                    marginBottom: "14px",
+                  }}
+                >
+                  <div
+                    style={{
+                      padding: "12px",
+                      border:
+                        "1px solid var(--border)",
+                      borderRadius: "10px",
+                    }}
+                  >
+                    <span
+                      style={{
+                        display: "block",
+                        color: "var(--muted)",
+                        fontSize: "9px",
+                        marginBottom: "4px",
+                      }}
+                    >
+                      Opportunities
+                    </span>
+
+                    <strong>
+                      {
+                        opportunities.length
+                      }
+                    </strong>
+                  </div>
+
+
+                  <div
+                    style={{
+                      padding: "12px",
+                      border:
+                        "1px solid var(--border)",
+                      borderRadius: "10px",
+                    }}
+                  >
+                    <span
+                      style={{
+                        display: "block",
+                        color: "var(--muted)",
+                        fontSize: "9px",
+                        marginBottom: "4px",
+                      }}
+                    >
+                      Pipeline Value
+                    </span>
+
+                    <strong>
+                      {
+                        new Intl.NumberFormat(
+                          "en-US",
+                          {
+                            style:
+                              "currency",
+                            currency:
+                              "USD",
+                            notation:
+                              "compact",
+                            maximumFractionDigits:
+                              1,
+                          }
+                        ).format(
+                          opportunityValue
+                        )
+                      }
+                    </strong>
+                  </div>
+
+
+                  <div
+                    style={{
+                      padding: "12px",
+                      border:
+                        "1px solid var(--border)",
+                      borderRadius: "10px",
+                    }}
+                  >
+                    <span
+                      style={{
+                        display: "block",
+                        color: "var(--muted)",
+                        fontSize: "9px",
+                        marginBottom: "4px",
+                      }}
+                    >
+                      Avg Probability
+                    </span>
+
+                    <strong>
+                      {
+                        averageOpportunityProbability
+                      }%
+                    </strong>
+                  </div>
+                </div>
+
+
+                {opportunities.length
+                  === 0 ? (
+                  <div className="miniEmptyState compact">
+                    <BriefcaseBusiness
+                      size={20}
+                    />
+
+                    <strong>
+                      No opportunities
+                    </strong>
+
+                    <span>
+                      Opportunities linked
+                      to this contact will
+                      appear here.
+                    </span>
+                  </div>
+                ) : (
+                  <div
+                    style={{
+                      display: "flex",
+                      flexDirection:
+                        "column",
+                      gap: "8px",
+                    }}
+                  >
+                    {opportunities.map(
+                      (
+                        opportunity
+                      ) => (
+                        <Link
+                          key={
+                            opportunity.id
+                          }
+                          href={
+                            `/opportunities/${opportunity.id}`
+                          }
+                          style={{
+                            display:
+                              "flex",
+                            justifyContent:
+                              "space-between",
+                            alignItems:
+                              "flex-start",
+                            gap:
+                              "14px",
+                            padding:
+                              "12px",
+                            border:
+                              "1px solid #eceef3",
+                            borderRadius:
+                              "10px",
+                            background:
+                              "#fdfdfe",
+                            color:
+                              "inherit",
+                            textDecoration:
+                              "none",
+                          }}
+                        >
+                          <div>
+                            <strong
+                              style={{
+                                display:
+                                  "block",
+                                fontSize:
+                                  "10px",
+                              }}
+                            >
+                              {
+                                opportunity.name
+                              }
+                            </strong>
+
+                            <span
+                              style={{
+                                display:
+                                  "block",
+                                marginTop:
+                                  "5px",
+                                color:
+                                  "var(--muted)",
+                                fontSize:
+                                  "9px",
+                              }}
+                            >
+                              Probability:{" "}
+                              {
+                                opportunity.probability
+                              }%
+                            </span>
+
+                            {opportunity.expected_close_date && (
+                              <span
+                                style={{
+                                  display:
+                                    "block",
+                                  marginTop:
+                                    "3px",
+                                  color:
+                                    "var(--muted)",
+                                  fontSize:
+                                    "9px",
+                                }}
+                              >
+                                Expected close:{" "}
+                                {
+                                  new Intl.DateTimeFormat(
+                                    "en-US",
+                                    {
+                                      month:
+                                        "short",
+                                      day:
+                                        "numeric",
+                                      year:
+                                        "numeric",
+                                    }
+                                  ).format(
+                                    new Date(
+                                      opportunity.expected_close_date
+                                    )
+                                  )
+                                }
+                              </span>
+                            )}
+                          </div>
+
+
+                          <strong
+                            style={{
+                              flex:
+                                "0 0 auto",
+                              fontSize:
+                                "10px",
+                            }}
+                          >
+                            {
+                              opportunity.amount
+                                ? new Intl.NumberFormat(
+                                    "en-US",
+                                    {
+                                      style:
+                                        "currency",
+                                      currency:
+                                        opportunity.currency
+                                        || "USD",
+                                      notation:
+                                        "compact",
+                                      maximumFractionDigits:
+                                        1,
+                                    }
+                                  ).format(
+                                    Number(
+                                      opportunity.amount
+                                    )
+                                  )
+                                : "—"
+                            }
+                          </strong>
+                        </Link>
+                      )
+                    )}
+                  </div>
+                )}
+              </section>
+
+
+              <section className="detailPanel">
+                <div className="detailPanelHeader">
+                  <div>
+                    <h2>
+                      Contact Tasks
+                    </h2>
+
+                    <p>
+                      Follow-ups and work
+                      linked directly to
+                      this contact.
+                    </p>
+                  </div>
+
+                  <Link
+                    href="/tasks"
+                    className="textButton"
+                  >
+                    Open Tasks
+                  </Link>
+                </div>
+
+
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns:
+                      "repeat(3, minmax(0, 1fr))",
+                    gap: "10px",
+                    marginBottom: "14px",
+                  }}
+                >
+                  <div
+                    style={{
+                      padding: "12px",
+                      border:
+                        "1px solid var(--border)",
+                      borderRadius: "10px",
+                    }}
+                  >
+                    <span
+                      style={{
+                        display: "block",
+                        color: "var(--muted)",
+                        fontSize: "9px",
+                        marginBottom: "4px",
+                      }}
+                    >
+                      Open
+                    </span>
+
+                    <strong>
+                      {
+                        openTaskCount
+                      }
+                    </strong>
+                  </div>
+
+
+                  <div
+                    style={{
+                      padding: "12px",
+                      border:
+                        "1px solid var(--border)",
+                      borderRadius: "10px",
+                    }}
+                  >
+                    <span
+                      style={{
+                        display: "block",
+                        color: "var(--muted)",
+                        fontSize: "9px",
+                        marginBottom: "4px",
+                      }}
+                    >
+                      Overdue
+                    </span>
+
+                    <strong>
+                      {
+                        overdueTaskCount
+                      }
+                    </strong>
+                  </div>
+
+
+                  <div
+                    style={{
+                      padding: "12px",
+                      border:
+                        "1px solid var(--border)",
+                      borderRadius: "10px",
+                    }}
+                  >
+                    <span
+                      style={{
+                        display: "block",
+                        color: "var(--muted)",
+                        fontSize: "9px",
+                        marginBottom: "4px",
+                      }}
+                    >
+                      Completed
+                    </span>
+
+                    <strong>
+                      {
+                        completedTaskCount
+                      }
+                    </strong>
+                  </div>
+                </div>
+
+
+                {tasks.length === 0 ? (
+                  <div className="miniEmptyState compact">
+                    <UserCheck
+                      size={20}
+                    />
+
+                    <strong>
+                      No tasks
+                    </strong>
+
+                    <span>
+                      Tasks linked to this
+                      contact will appear here.
+                    </span>
+                  </div>
+                ) : (
+                  <div
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "8px",
+                    }}
+                  >
+                    {tasks.map(
+                      (
+                        task
+                      ) => {
+                        const overdue =
+                          task.due_at !== null
+                          &&
+                          task.status
+                            !== "completed"
+                          &&
+                          task.status
+                            !== "cancelled"
+                          &&
+                          new Date(
+                            task.due_at
+                          ).getTime()
+                            <
+                            Date.now();
+
+                        return (
+                          <div
+                            key={
+                              task.id
+                            }
+                            style={{
+                              display: "flex",
+                              alignItems: "flex-start",
+                              justifyContent:
+                                "space-between",
+                              gap: "14px",
+                              padding: "12px",
+                              border:
+                                "1px solid #eceef3",
+                              borderRadius:
+                                "10px",
+                              background:
+                                "#fdfdfe",
+                            }}
+                          >
+                            <div
+                              style={{
+                                minWidth: 0,
+                              }}
+                            >
+                              <strong
+                                style={{
+                                  display: "block",
+                                  fontSize: "10px",
+                                }}
+                              >
+                                {
+                                  task.title
+                                }
+                              </strong>
+
+                              <div
+                                style={{
+                                  display: "flex",
+                                  flexWrap: "wrap",
+                                  gap: "6px",
+                                  marginTop: "6px",
+                                }}
+                              >
+                                <span
+                                  className={
+                                    task.status
+                                      === "completed"
+                                      ? "stageBadge stage-customer"
+                                      : task.status
+                                          === "cancelled"
+                                        ? "stageBadge stage-inactive"
+                                        : "stageBadge stage-prospect"
+                                  }
+                                >
+                                  {
+                                    task.status
+                                      .replaceAll(
+                                        "_",
+                                        " "
+                                      )
+                                  }
+                                </span>
+
+                                <span
+                                  className={
+                                    task.priority
+                                      === "urgent"
+                                      ||
+                                      task.priority
+                                        === "high"
+                                      ? "stageBadge stage-inactive"
+                                      : "stageBadge stage-prospect"
+                                  }
+                                >
+                                  {
+                                    task.priority
+                                  }
+                                </span>
+
+                                {overdue && (
+                                  <span className="stageBadge stage-inactive">
+                                    Overdue
+                                  </span>
+                                )}
+                              </div>
+
+                              {task.description && (
+                                <p
+                                  style={{
+                                    margin:
+                                      "7px 0 0",
+                                    color:
+                                      "var(--muted)",
+                                    fontSize:
+                                      "9px",
+                                    lineHeight:
+                                      1.5,
+                                  }}
+                                >
+                                  {
+                                    task.description
+                                  }
+                                </p>
+                              )}
+                            </div>
+
+
+                            <div
+                              style={{
+                                flex:
+                                  "0 0 auto",
+                                textAlign:
+                                  "right",
+                              }}
+                            >
+                              <span
+                                style={{
+                                  display:
+                                    "block",
+                                  color:
+                                    "var(--muted)",
+                                  fontSize:
+                                    "8px",
+                                }}
+                              >
+                                Due
+                              </span>
+
+                              <strong
+                                style={{
+                                  display:
+                                    "block",
+                                  marginTop:
+                                    "3px",
+                                  fontSize:
+                                    "9px",
+                                }}
+                              >
+                                {
+                                  task.due_at
+                                    ? formatDate(
+                                        task.due_at
+                                      )
+                                    : "No due date"
+                                }
+                              </strong>
+                            </div>
+                          </div>
+                        );
+                      }
+                    )}
+                  </div>
+                )}
+              </section>
+
+
+              <section className="detailPanel">
+                <div className="detailPanelHeader">
+                  <div>
+                    <h2>
+                      Unified Relationship Timeline
+                    </h2>
+
+                    <p>
+                      Communications, CRM activity,
+                      completed tasks and sales
+                      events in one chronological
+                      view.
                     </p>
                   </div>
                 </div>
 
 
-                {activities.length
+                {relationshipTimeline.length
                   === 0 ? (
                   <div className="miniEmptyState">
                     <ActivityIcon
@@ -555,32 +2084,55 @@ export default function ContactDetailPage() {
                     />
 
                     <strong>
-                      No activity yet
+                      No relationship activity yet
                     </strong>
 
                     <span>
-                      Contact interactions
-                      will appear here.
+                      Contact interactions and CRM
+                      events will appear here.
                     </span>
                   </div>
                 ) : (
                   <div className="timeline">
-                    {activities.map(
+                    {relationshipTimeline.map(
                       (
-                        activity
+                        item
                       ) => (
                         <div
                           className="timelineItem"
                           key={
-                            activity.id
+                            item.id
                           }
                         >
                           <div className="timelineMarker">
-                            <ActivityTypeIcon
-                              type={
-                                activity.activity_type
-                              }
-                            />
+                            {
+                              item.kind
+                              === "email"
+                                ? (
+                                  <Mail
+                                    size={16}
+                                  />
+                                )
+                                : item.kind
+                                  === "task"
+                                  ? (
+                                    <UserCheck
+                                      size={16}
+                                    />
+                                  )
+                                  : item.kind
+                                    === "opportunity"
+                                    ? (
+                                      <BriefcaseBusiness
+                                        size={16}
+                                      />
+                                    )
+                                    : (
+                                      <ActivityIcon
+                                        size={16}
+                                      />
+                                    )
+                            }
                           </div>
 
                           <div className="timelineContent">
@@ -588,19 +2140,13 @@ export default function ContactDetailPage() {
                               <div>
                                 <strong>
                                   {
-                                    activity.subject
+                                    item.title
                                   }
                                 </strong>
 
                                 <span className="activityTypeLabel">
                                   {
-                                    activity.activity_type
-                                  }
-
-                                  {
-                                    activity.direction
-                                      ? ` · ${activity.direction}`
-                                      : ""
+                                    item.meta
                                   }
                                 </span>
                               </div>
@@ -608,16 +2154,16 @@ export default function ContactDetailPage() {
                               <time>
                                 {
                                   formatDate(
-                                    activity.occurred_at
+                                    item.timestamp
                                   )
                                 }
                               </time>
                             </div>
 
-                            {activity.body && (
+                            {item.body && (
                               <p>
                                 {
-                                  activity.body
+                                  item.body
                                 }
                               </p>
                             )}
@@ -943,6 +2489,39 @@ export default function ContactDetailPage() {
                     <strong>
                       {
                         activities.length
+                      }
+                    </strong>
+                  </div>
+
+
+                  <div>
+                    <span>
+                      Last Interaction
+                    </span>
+
+                    <strong>
+                      {
+                        lastInteraction
+                          ? formatDate(
+                              lastInteraction
+                                .toISOString()
+                            )
+                          : "—"
+                      }
+                    </strong>
+                  </div>
+
+
+                  <div>
+                    <span>
+                      Engagement
+                    </span>
+
+                    <strong>
+                      {
+                        engagementScore
+                      }/100 · {
+                        engagementLabel
                       }
                     </strong>
                   </div>

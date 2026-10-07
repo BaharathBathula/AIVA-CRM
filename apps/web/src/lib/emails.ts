@@ -195,3 +195,27 @@ export function replyToEmailThread(
     }
   );
 }
+
+export function getContactEmailThreads(
+  contactId: string,
+  limit = 50
+): Promise<EmailThread[]> {
+  const params =
+    new URLSearchParams();
+
+  params.set(
+    "contact_id",
+    contactId
+  );
+
+  params.set(
+    "limit",
+    String(limit)
+  );
+
+  return aivaRequest<
+    EmailThread[]
+  >(
+    `/email/threads?${params.toString()}`
+  );
+}

@@ -62,6 +62,9 @@ async def list_opportunities_endpoint(
     account_id: uuid.UUID | None = Query(
         default=None,
     ),
+    primary_contact_id: uuid.UUID | None = Query(
+        default=None,
+    ),
     pipeline_id: uuid.UUID | None = Query(
         default=None,
     ),
@@ -95,6 +98,7 @@ async def list_opportunities_endpoint(
         db,
         organization_id,
         account_id,
+        primary_contact_id,
         pipeline_id,
         stage_id,
         owner_user_id,
