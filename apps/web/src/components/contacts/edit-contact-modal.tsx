@@ -861,8 +861,7 @@ export function EditContactModal({
           <label>
             Contact Segment
 
-            <input
-              list="edit-contact-segments"
+            <select
               value={
                 segment
               }
@@ -873,19 +872,68 @@ export function EditContactModal({
                   event.target.value
                 )
               }
-              placeholder="Decision Maker"
-            />
+            >
+              <option value="">
+                Unsegmented
+              </option>
 
-            <datalist id="edit-contact-segments">
-              <option value="VIP" />
-              <option value="Decision Maker" />
-              <option value="Champion" />
-              <option value="Influencer" />
-              <option value="Customer" />
-              <option value="Partner" />
-              <option value="Prospect" />
-              <option value="Vendor" />
-            </datalist>
+              {segment
+                &&
+                ![
+                  "VIP",
+                  "Decision Maker",
+                  "Champion",
+                  "Influencer",
+                  "Customer",
+                  "Partner",
+                  "Prospect",
+                  "Vendor",
+                ].includes(
+                  segment
+                ) && (
+                  <option
+                    value={
+                      segment
+                    }
+                  >
+                    {
+                      segment
+                    }
+                  </option>
+                )}
+
+              <option value="VIP">
+                VIP
+              </option>
+
+              <option value="Decision Maker">
+                Decision Maker
+              </option>
+
+              <option value="Champion">
+                Champion
+              </option>
+
+              <option value="Influencer">
+                Influencer
+              </option>
+
+              <option value="Customer">
+                Customer
+              </option>
+
+              <option value="Partner">
+                Partner
+              </option>
+
+              <option value="Prospect">
+                Prospect
+              </option>
+
+              <option value="Vendor">
+                Vendor
+              </option>
+            </select>
           </label>
 
 
