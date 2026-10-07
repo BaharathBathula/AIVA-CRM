@@ -1,12 +1,16 @@
 from __future__ import annotations
 
 import uuid
+from datetime import datetime
 
 from sqlalchemy import (
     Boolean,
+    DateTime,
     ForeignKey,
     String,
 )
+from sqlalchemy.dialects.postgresql import JSONB
+
 from sqlalchemy.orm import (
     Mapped,
     mapped_column,
@@ -32,6 +36,15 @@ class Contact(
     account_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey(
             "accounts.id",
+            ondelete="SET NULL",
+        ),
+        nullable=True,
+        index=True,
+    )
+
+    owner_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey(
+            "users.id",
             ondelete="SET NULL",
         ),
         nullable=True,
@@ -69,6 +82,20 @@ class Contact(
         nullable=True,
     )
 
+
+    segment: Mapped[str | None] = mapped_column(
+        String(100),
+        nullable=True,
+        index=True,
+    )
+
+    tags: Mapped[list[str]] = mapped_column(
+        JSONB,
+        nullable=False,
+        default=list,
+        server_default="[]",
+    )
+
     department: Mapped[str | None] = mapped_column(
         String(150),
         nullable=True,
@@ -91,6 +118,20 @@ class Contact(
         nullable=False,
         default=True,
         server_default="true",
+    )
+
+
+    is_archived: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=False,
+        server_default="false",
+        index=True,
+    )
+
+    archived_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
     )
 
     account: Mapped["Account | None"] = relationship(

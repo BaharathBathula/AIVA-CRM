@@ -49,6 +49,12 @@ import type {
 } from "@/types/contact";
 
 
+type ContactRecordView =
+  | "active"
+  | "archived"
+  | "all";
+
+
 type ContactFilter =
   | "all"
   | "primary"
@@ -132,6 +138,25 @@ export default function ContactsPage() {
     "all"
   );
 
+
+  const [
+    recordView,
+    setRecordView,
+  ] = useState<ContactRecordView>(
+    "active"
+  );
+
+
+  const [
+    segmentFilter,
+    setSegmentFilter,
+  ] = useState("all");
+
+  const [
+    tagFilter,
+    setTagFilter,
+  ] = useState("all");
+
   const [
     createOpen,
     setCreateOpen,
@@ -155,6 +180,7 @@ export default function ContactsPage() {
             undefined,
             {
               limit: 100,
+              includeArchived: true,
             }
           ),
 
@@ -210,6 +236,51 @@ export default function ContactsPage() {
     ]);
 
 
+  const contactSegments =
+    useMemo(
+      () =>
+        Array.from(
+          new Set(
+            contacts
+              .map(
+                (
+                  contact
+                ) =>
+                  contact.segment
+              )
+              .filter(
+                (
+                  value
+                ): value is string =>
+                  Boolean(value)
+              )
+          )
+        ).sort(),
+      [
+        contacts,
+      ]
+    );
+
+
+  const contactTags =
+    useMemo(
+      () =>
+        Array.from(
+          new Set(
+            contacts.flatMap(
+              (
+                contact
+              ) =>
+                contact.tags
+            )
+          )
+        ).sort(),
+      [
+        contacts,
+      ]
+    );
+
+
   const primaryCount =
     useMemo(
       () =>
@@ -247,6 +318,21 @@ export default function ContactsPage() {
         (
           contact
         ) => {
+          const matchesRecordView =
+            recordView === "all"
+            ||
+            (
+              recordView === "active"
+              &&
+              !contact.is_archived
+            )
+            ||
+            (
+              recordView === "archived"
+              &&
+              contact.is_archived
+            );
+
           const matchesFilter =
             filter === "all"
             ||
@@ -289,6 +375,8 @@ export default function ContactsPage() {
             contact.mobile,
             contact.job_title,
             contact.department,
+            contact.segment,
+            ...contact.tags,
             accountName,
           ]
             .filter(
@@ -306,8 +394,30 @@ export default function ContactsPage() {
               normalized
             );
 
+
+          const matchesSegment =
+            segmentFilter
+            === "all"
+            ||
+            contact.segment
+            === segmentFilter;
+
+          const matchesTag =
+            tagFilter
+            === "all"
+            ||
+            contact.tags.includes(
+              tagFilter
+            );
+
           return (
+            matchesRecordView
+            &&
             matchesFilter
+            &&
+            matchesSegment
+            &&
+            matchesTag
             &&
             matchesSearch
           );
@@ -318,6 +428,9 @@ export default function ContactsPage() {
       accountNames,
       filter,
       query,
+      recordView,
+      segmentFilter,
+      tagFilter,
     ]);
 
 
@@ -431,6 +544,62 @@ export default function ContactsPage() {
           </div>
 
 
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "7px",
+              marginBottom: "12px",
+            }}
+          >
+            {(
+              [
+                [
+                  "active",
+                  "Active Records",
+                ],
+                [
+                  "archived",
+                  "Archived Records",
+                ],
+                [
+                  "all",
+                  "All Records",
+                ],
+              ] as const
+            ).map(
+              (
+                [
+                  value,
+                  label,
+                ]
+              ) => (
+                <button
+                  key={
+                    value
+                  }
+                  type="button"
+                  className={
+                    recordView
+                    === value
+                      ? "filterChip active"
+                      : "filterChip"
+                  }
+                  onClick={() =>
+                    setRecordView(
+                      value
+                    )
+                  }
+                >
+                  {
+                    label
+                  }
+                </button>
+              )
+            )}
+          </div>
+
+
           <section className="accountsPanel">
             <div className="accountToolbar">
               <div className="accountSearch">
@@ -459,6 +628,104 @@ export default function ContactsPage() {
                 <Filter
                   size={15}
                 />
+
+
+                <select
+                  value={
+                    segmentFilter
+                  }
+                  onChange={(
+                    event
+                  ) =>
+                    setSegmentFilter(
+                      event.target.value
+                    )
+                  }
+                  style={{
+                    padding:
+                      "6px 9px",
+                    border:
+                      "1px solid var(--border)",
+                    borderRadius:
+                      "8px",
+                    background:
+                      "white",
+                    fontSize:
+                      "10px",
+                  }}
+                >
+                  <option value="all">
+                    All Segments
+                  </option>
+
+                  {contactSegments.map(
+                    (
+                      segment
+                    ) => (
+                      <option
+                        key={
+                          segment
+                        }
+                        value={
+                          segment
+                        }
+                      >
+                        {
+                          segment
+                        }
+                      </option>
+                    )
+                  )}
+                </select>
+
+
+                <select
+                  value={
+                    tagFilter
+                  }
+                  onChange={(
+                    event
+                  ) =>
+                    setTagFilter(
+                      event.target.value
+                    )
+                  }
+                  style={{
+                    padding:
+                      "6px 9px",
+                    border:
+                      "1px solid var(--border)",
+                    borderRadius:
+                      "8px",
+                    background:
+                      "white",
+                    fontSize:
+                      "10px",
+                  }}
+                >
+                  <option value="all">
+                    All Tags
+                  </option>
+
+                  {contactTags.map(
+                    (
+                      tag
+                    ) => (
+                      <option
+                        key={
+                          tag
+                        }
+                        value={
+                          tag
+                        }
+                      >
+                        {
+                          tag
+                        }
+                      </option>
+                    )
+                  )}
+                </select>
 
                 {filters.map(
                   (
@@ -578,6 +845,11 @@ export default function ContactsPage() {
                           Title
                         </th>
 
+
+                        <th>
+                          Segment
+                        </th>
+
                         <th>
                           Email
                         </th>
@@ -695,6 +967,51 @@ export default function ContactsPage() {
 
 
                               <td>
+                                <div>
+                                  <strong
+                                    style={{
+                                      display:
+                                        "block",
+                                      fontSize:
+                                        "10px",
+                                    }}
+                                  >
+                                    {
+                                      contact.segment
+                                      || "—"
+                                    }
+                                  </strong>
+
+                                  {contact.tags.length > 0 && (
+                                    <span
+                                      style={{
+                                        display:
+                                          "block",
+                                        marginTop:
+                                          "3px",
+                                        color:
+                                          "var(--muted)",
+                                        fontSize:
+                                          "8px",
+                                      }}
+                                    >
+                                      {
+                                        contact.tags
+                                          .slice(
+                                            0,
+                                            2
+                                          )
+                                          .join(
+                                            " · "
+                                          )
+                                      }
+                                    </span>
+                                  )}
+                                </div>
+                              </td>
+
+
+                              <td>
                                 {contact.email ? (
                                   <a
                                     href={
@@ -786,15 +1103,19 @@ export default function ContactsPage() {
                               <td>
                                 <span
                                   className={
-                                    contact.is_active
-                                      ? "stageBadge stage-customer"
-                                      : "stageBadge stage-inactive"
+                                    contact.is_archived
+                                      ? "stageBadge stage-inactive"
+                                      : contact.is_active
+                                        ? "stageBadge stage-customer"
+                                        : "stageBadge stage-inactive"
                                   }
                                 >
                                   {
-                                    contact.is_active
-                                      ? "Active"
-                                      : "Inactive"
+                                    contact.is_archived
+                                      ? "Archived"
+                                      : contact.is_active
+                                        ? "Active"
+                                        : "Inactive"
                                   }
                                 </span>
                               </td>

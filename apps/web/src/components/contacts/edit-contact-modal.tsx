@@ -16,6 +16,11 @@ import {
 } from "@/lib/accounts";
 
 import {
+  getOrganizationMembers,
+} from "@/lib/organization-members";
+
+import {
+  checkContactDuplicates,
   updateContact,
 } from "@/lib/contacts";
 
@@ -26,6 +31,10 @@ import type {
 import type {
   Contact,
 } from "@/types/contact";
+
+import type {
+  OrganizationMember,
+} from "@/types/organization-member";
 
 
 type Props = {
@@ -55,6 +64,22 @@ export function EditContactModal({
     accountId,
     setAccountId,
   ] = useState("");
+
+
+  const [
+    ownerUserId,
+    setOwnerUserId,
+  ] = useState("");
+
+  const [
+    organizationMembers,
+    setOrganizationMembers,
+  ] = useState<OrganizationMember[]>([]);
+
+  const [
+    loadingMembers,
+    setLoadingMembers,
+  ] = useState(false);
 
   const [
     firstName,
@@ -91,6 +116,17 @@ export function EditContactModal({
     setDepartment,
   ] = useState("");
 
+
+  const [
+    segment,
+    setSegment,
+  ] = useState("");
+
+  const [
+    tagsText,
+    setTagsText,
+  ] = useState("");
+
   const [
     linkedinUrl,
     setLinkedinUrl,
@@ -109,6 +145,24 @@ export function EditContactModal({
   const [
     loadingAccounts,
     setLoadingAccounts,
+  ] = useState(false);
+
+  const [
+    duplicateMatches,
+    setDuplicateMatches,
+  ] = useState<
+    Array<{
+      id: string;
+      name: string;
+      email: string | null;
+      confidence: string;
+      reasons: string[];
+    }>
+  >([]);
+
+  const [
+    duplicateConfirmed,
+    setDuplicateConfirmed,
   ] = useState(false);
 
   const [
@@ -131,6 +185,12 @@ export function EditContactModal({
 
     setAccountId(
       contact.account_id
+      ?? ""
+    );
+
+
+    setOwnerUserId(
+      contact.owner_user_id
       ?? ""
     );
 
@@ -167,6 +227,18 @@ export function EditContactModal({
       ?? ""
     );
 
+
+    setSegment(
+      contact.segment
+      ?? ""
+    );
+
+    setTagsText(
+      contact.tags.join(
+        ", "
+      )
+    );
+
     setLinkedinUrl(
       contact.linkedin_url
       ?? ""
@@ -179,6 +251,9 @@ export function EditContactModal({
     setIsActive(
       contact.is_active
     );
+
+    setDuplicateMatches([]);
+    setDuplicateConfirmed(false);
 
     setError(null);
   }, [
@@ -227,6 +302,53 @@ export function EditContactModal({
     }
 
     void loadAccounts();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    open,
+  ]);
+
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    let cancelled =
+      false;
+
+    async function loadOrganizationMembers() {
+      try {
+        setLoadingMembers(
+          true
+        );
+
+        const members =
+          await getOrganizationMembers();
+
+        if (!cancelled) {
+          setOrganizationMembers(
+            members
+          );
+        }
+      } catch {
+        if (!cancelled) {
+          setOrganizationMembers(
+            []
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setLoadingMembers(
+            false
+          );
+        }
+      }
+    }
+
+    void loadOrganizationMembers();
 
     return () => {
       cancelled = true;
@@ -305,12 +427,69 @@ export function EditContactModal({
       setSaving(true);
       setError(null);
 
+      if (!duplicateConfirmed) {
+        const duplicateResult =
+          await checkContactDuplicates({
+            firstName:
+              normalizedFirstName,
+            lastName:
+              normalizedLastName,
+            email,
+            phone,
+            mobile,
+            accountId:
+              accountId || undefined,
+            excludeContactId:
+              contact.id,
+          });
+
+        if (
+          duplicateResult
+            .has_duplicates
+        ) {
+          setDuplicateMatches(
+            duplicateResult.matches.map(
+              (
+                match
+              ) => ({
+                id:
+                  match.contact.id,
+
+                name:
+                  `${match.contact.first_name} ${match.contact.last_name}`,
+
+                email:
+                  match.contact.email,
+
+                confidence:
+                  match.confidence,
+
+                reasons:
+                  match.reasons,
+              })
+            )
+          );
+
+          setDuplicateConfirmed(
+            true
+          );
+
+          setSaving(false);
+
+          return;
+        }
+      }
+
       const updatedContact =
         await updateContact(
           contact.id,
           {
             account_id:
               accountId
+              || null,
+
+            owner_user_id:
+              ownerUserId
               || null,
 
             first_name:
@@ -338,6 +517,24 @@ export function EditContactModal({
             department:
               department.trim()
               || null,
+
+
+            segment:
+              segment.trim()
+              || null,
+
+            tags:
+              tagsText
+                .split(",")
+                .map(
+                  (
+                    tag
+                  ) =>
+                    tag.trim()
+                )
+                .filter(
+                  Boolean
+                ),
 
             linkedin_url:
               linkedinUrl.trim()
@@ -464,6 +661,58 @@ export function EditContactModal({
                   >
                     {
                       account.name
+                    }
+                  </option>
+                )
+              )}
+            </select>
+          </label>
+
+
+          <label>
+            Contact Owner
+
+            <select
+              value={
+                ownerUserId
+              }
+              disabled={
+                loadingMembers
+                ||
+                saving
+              }
+              onChange={(
+                event
+              ) =>
+                setOwnerUserId(
+                  event.target.value
+                )
+              }
+            >
+              <option value="">
+                {loadingMembers
+                  ? "Loading users..."
+                  : "Unassigned"}
+              </option>
+
+              {organizationMembers.map(
+                (
+                  member
+                ) => (
+                  <option
+                    key={
+                      member.user_id
+                    }
+                    value={
+                      member.user_id
+                    }
+                  >
+                    {
+                      member.full_name
+                    }{" "}
+                    —{" "}
+                    {
+                      member.email
                     }
                   </option>
                 )
@@ -610,6 +859,69 @@ export function EditContactModal({
 
 
           <label>
+            Contact Segment
+
+            <input
+              list="edit-contact-segments"
+              value={
+                segment
+              }
+              onChange={(
+                event
+              ) =>
+                setSegment(
+                  event.target.value
+                )
+              }
+              placeholder="Decision Maker"
+            />
+
+            <datalist id="edit-contact-segments">
+              <option value="VIP" />
+              <option value="Decision Maker" />
+              <option value="Champion" />
+              <option value="Influencer" />
+              <option value="Customer" />
+              <option value="Partner" />
+              <option value="Prospect" />
+              <option value="Vendor" />
+            </datalist>
+          </label>
+
+
+          <label>
+            Tags
+
+            <input
+              value={
+                tagsText
+              }
+              onChange={(
+                event
+              ) =>
+                setTagsText(
+                  event.target.value
+                )
+              }
+              placeholder="Executive, High Value, Renewal"
+            />
+
+            <span
+              style={{
+                color:
+                  "var(--muted)",
+                fontSize:
+                  "8px",
+                fontWeight:
+                  400,
+              }}
+            >
+              Separate multiple tags with commas.
+            </span>
+          </label>
+
+
+          <label>
             LinkedIn
 
             <input
@@ -709,6 +1021,144 @@ export function EditContactModal({
           )}
 
 
+          {duplicateMatches.length > 0 && (
+            <div
+              style={{
+                padding: "12px",
+                border:
+                  "1px solid #f0d69a",
+                borderRadius:
+                  "10px",
+                background:
+                  "#fff9e8",
+              }}
+            >
+              <strong
+                style={{
+                  display:
+                    "block",
+                  marginBottom:
+                    "7px",
+                  fontSize:
+                    "10px",
+                }}
+              >
+                Possible Duplicate Contact
+              </strong>
+
+              {duplicateMatches.map(
+                (
+                  match
+                ) => (
+                  <div
+                    key={
+                      match.id
+                    }
+                    style={{
+                      marginTop:
+                        "7px",
+                      padding:
+                        "9px",
+                      border:
+                        "1px solid #eadfbf",
+                      borderRadius:
+                        "8px",
+                      background:
+                        "white",
+                    }}
+                  >
+                    <strong
+                      style={{
+                        display:
+                          "block",
+                        fontSize:
+                          "10px",
+                      }}
+                    >
+                      {
+                        match.name
+                      }
+                    </strong>
+
+                    {match.email && (
+                      <span
+                        style={{
+                          display:
+                            "block",
+                          marginTop:
+                            "3px",
+                          color:
+                            "var(--muted)",
+                          fontSize:
+                            "9px",
+                        }}
+                      >
+                        {
+                          match.email
+                        }
+                      </span>
+                    )}
+
+                    <span
+                      style={{
+                        display:
+                          "block",
+                        marginTop:
+                          "4px",
+                        color:
+                          "#8a6700",
+                        fontSize:
+                          "8px",
+                        fontWeight:
+                          700,
+                      }}
+                    >
+                      {
+                        match.confidence
+                          .toUpperCase()
+                      }{" "}
+                      CONFIDENCE
+                    </span>
+
+                    <span
+                      style={{
+                        display:
+                          "block",
+                        marginTop:
+                          "3px",
+                        color:
+                          "var(--muted)",
+                        fontSize:
+                          "8px",
+                      }}
+                    >
+                      {
+                        match.reasons.join(
+                          " · "
+                        )
+                      }
+                    </span>
+                  </div>
+                )
+              )}
+
+              <p
+                style={{
+                  margin:
+                    "9px 0 0",
+                  fontSize:
+                    "9px",
+                  color:
+                    "#775b00",
+                }}
+              >
+                Submit again only if this
+                update is intentional.
+              </p>
+            </div>
+          )}
+
+
           {error && (
             <div className="formError">
               {error}
@@ -743,7 +1193,9 @@ export function EditContactModal({
             >
               {saving
                 ? "Saving..."
-                : "Save Changes"}
+                : duplicateMatches.length > 0
+                  ? "Save Anyway"
+                  : "Save Changes"}
             </button>
           </div>
         </form>

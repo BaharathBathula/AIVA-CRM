@@ -9,6 +9,7 @@ import Link from "next/link";
 
 import {
   Activity as ActivityIcon,
+  Archive,
   ArrowLeft,
   Building2,
   BriefcaseBusiness,
@@ -19,6 +20,7 @@ import {
   Mail,
   MessageSquare,
   Phone,
+  RotateCcw,
   Pencil,
   Smartphone,
   Star,
@@ -47,7 +49,9 @@ import {
 } from "@/lib/activities";
 
 import {
+  archiveContact,
   getContact,
+  reactivateContact,
 } from "@/lib/contacts";
 
 import {
@@ -61,6 +65,10 @@ import {
 import {
   getOpportunities,
 } from "@/lib/opportunities";
+
+import {
+  getOrganizationMembers,
+} from "@/lib/organization-members";
 
 import type {
   Account,
@@ -85,6 +93,10 @@ import type {
 import type {
   Opportunity,
 } from "@/types/opportunity";
+
+import type {
+  OrganizationMember,
+} from "@/types/organization-member";
 
 import {
   useParams,
@@ -246,9 +258,23 @@ export default function ContactDetailPage() {
     []
   );
 
+
+  const [
+    organizationMembers,
+    setOrganizationMembers,
+  ] = useState<OrganizationMember[]>(
+    []
+  );
+
   const [
     editOpen,
     setEditOpen,
+  ] = useState(false);
+
+
+  const [
+    archiveBusy,
+    setArchiveBusy,
   ] = useState(false);
 
 
@@ -380,6 +406,63 @@ export default function ContactDetailPage() {
   ]);
 
 
+  async function handleArchiveToggle() {
+    if (!contact) {
+      return;
+    }
+
+    const action =
+      contact.is_archived
+        ? "reactivate"
+        : "archive";
+
+    const confirmed =
+      window.confirm(
+        contact.is_archived
+          ? "Reactivate this contact?"
+          : (
+              "Archive this contact? "
+              + "The record will be removed "
+              + "from normal Contacts views "
+              + "but its CRM history will be preserved."
+            )
+      );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      setArchiveBusy(
+        true
+      );
+
+      const updatedContact =
+        contact.is_archived
+          ? await reactivateContact(
+              contact.id
+            )
+          : await archiveContact(
+              contact.id
+            );
+
+      setContact(
+        updatedContact
+      );
+    } catch (err) {
+      window.alert(
+        err instanceof Error
+          ? err.message
+          : `Unable to ${action} contact.`
+      );
+    } finally {
+      setArchiveBusy(
+        false
+      );
+    }
+  }
+
+
   async function handleContactUpdated(
     updatedContact: Contact
   ) {
@@ -410,6 +493,37 @@ export default function ContactDetailPage() {
       );
     }
   }
+
+
+  useEffect(() => {
+    let cancelled =
+      false;
+
+    async function loadOrganizationMembers() {
+      try {
+        const members =
+          await getOrganizationMembers();
+
+        if (!cancelled) {
+          setOrganizationMembers(
+            members
+          );
+        }
+      } catch {
+        if (!cancelled) {
+          setOrganizationMembers(
+            []
+          );
+        }
+      }
+    }
+
+    void loadOrganizationMembers();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
 
   if (loading) {
@@ -896,6 +1010,20 @@ export default function ContactDetailPage() {
   );
 
 
+  const contactOwner =
+    contact?.owner_user_id
+      ? organizationMembers.find(
+          (
+            member
+          ) =>
+            member.user_id
+            ===
+            contact.owner_user_id
+        )
+        ?? null
+      : null;
+
+
   const fullName =
     `${
       contact.first_name
@@ -963,6 +1091,13 @@ export default function ContactDetailPage() {
                         : "Inactive"
                     }
                   </span>
+
+
+                  {contact.is_archived && (
+                    <span className="stageBadge stage-inactive">
+                      Archived
+                    </span>
+                  )}
                 </div>
 
                 <div className="accountHeroMeta">
@@ -1006,6 +1141,35 @@ export default function ContactDetailPage() {
             </div>
 
             <div className="detailActions">
+              <button
+                type="button"
+                className="secondaryButton"
+                onClick={
+                  handleArchiveToggle
+                }
+                disabled={
+                  archiveBusy
+                }
+              >
+                {contact.is_archived ? (
+                  <RotateCcw
+                    size={15}
+                  />
+                ) : (
+                  <Archive
+                    size={15}
+                  />
+                )}
+
+                {
+                  archiveBusy
+                    ? "Working..."
+                    : contact.is_archived
+                      ? "Reactivate"
+                      : "Archive"
+                }
+              </button>
+
               <button
                 type="button"
                 className="secondaryButton"
@@ -2237,6 +2401,23 @@ export default function ContactDetailPage() {
 
                   <div>
                     <span>
+                      Contact Owner
+                    </span>
+
+                    <strong>
+                      {
+                        contactOwner
+                          ? contactOwner.full_name
+                          : contact.owner_user_id
+                            ? "Assigned user"
+                            : "Unassigned"
+                      }
+                    </strong>
+                  </div>
+
+
+                  <div>
+                    <span>
                       Email
                     </span>
 
@@ -2345,6 +2526,100 @@ export default function ContactDetailPage() {
                       </strong>
                     )}
                   </div>
+                </div>
+              </section>
+
+
+              <section className="detailPanel">
+                <div className="detailPanelHeader">
+                  <div>
+                    <h2>
+                      Contact Classification
+                    </h2>
+
+                    <p>
+                      Segmentation and CRM labels
+                      for this relationship.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="detailFields">
+                  <div>
+                    <span>
+                      Segment
+                    </span>
+
+                    <strong>
+                      {
+                        contact.segment
+                        || "Unsegmented"
+                      }
+                    </strong>
+                  </div>
+                </div>
+
+                <div
+                  style={{
+                    marginTop:
+                      "12px",
+                  }}
+                >
+                  <span
+                    style={{
+                      display:
+                        "block",
+                      marginBottom:
+                        "8px",
+                      color:
+                        "var(--muted)",
+                      fontSize:
+                        "9px",
+                    }}
+                  >
+                    Tags
+                  </span>
+
+                  {contact.tags.length > 0 ? (
+                    <div
+                      style={{
+                        display:
+                          "flex",
+                        flexWrap:
+                          "wrap",
+                        gap:
+                          "6px",
+                      }}
+                    >
+                      {contact.tags.map(
+                        (
+                          tag
+                        ) => (
+                          <span
+                            key={
+                              tag
+                            }
+                            className="stageBadge stage-prospect"
+                          >
+                            {
+                              tag
+                            }
+                          </span>
+                        )
+                      )}
+                    </div>
+                  ) : (
+                    <span
+                      style={{
+                        color:
+                          "var(--muted)",
+                        fontSize:
+                          "9px",
+                      }}
+                    >
+                      No tags assigned
+                    </span>
+                  )}
                 </div>
               </section>
 

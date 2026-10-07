@@ -2,6 +2,7 @@ export interface Contact {
   id: string;
   organization_id: string;
   account_id: string | null;
+  owner_user_id: string | null;
 
   first_name: string;
   last_name: string;
@@ -12,10 +13,16 @@ export interface Contact {
 
   job_title: string | null;
   department: string | null;
+
+  segment: string | null;
+  tags: string[];
   linkedin_url: string | null;
 
   is_primary: boolean;
   is_active: boolean;
+
+  is_archived: boolean;
+  archived_at: string | null;
 
   created_at: string;
   updated_at: string;
@@ -24,6 +31,7 @@ export interface Contact {
 
 export interface ContactCreatePayload {
   account_id?: string | null;
+  owner_user_id?: string | null;
 
   first_name: string;
   last_name: string;
@@ -34,6 +42,9 @@ export interface ContactCreatePayload {
 
   job_title?: string | null;
   department?: string | null;
+
+  segment?: string | null;
+  tags?: string[];
   linkedin_url?: string | null;
 
   is_primary?: boolean;
@@ -42,6 +53,7 @@ export interface ContactCreatePayload {
 
 export interface ContactUpdatePayload {
   account_id?: string | null;
+  owner_user_id?: string | null;
 
   first_name?: string;
   last_name?: string;
@@ -52,8 +64,23 @@ export interface ContactUpdatePayload {
 
   job_title?: string | null;
   department?: string | null;
+
+  segment?: string | null;
+  tags?: string[];
   linkedin_url?: string | null;
 
   is_primary?: boolean;
   is_active?: boolean;
+}
+
+export interface ContactDuplicateMatch {
+  contact: Contact;
+  confidence: string;
+  reasons: string[];
+}
+
+
+export interface ContactDuplicateCheckResponse {
+  has_duplicates: boolean;
+  matches: ContactDuplicateMatch[];
 }

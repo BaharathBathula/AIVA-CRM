@@ -16,6 +16,7 @@ import {
 } from "@/lib/accounts";
 
 import {
+  checkContactDuplicates,
   createContact,
 } from "@/lib/contacts";
 
@@ -89,6 +90,17 @@ export function CreateContactModal({
     setDepartment,
   ] = useState("");
 
+
+  const [
+    segment,
+    setSegment,
+  ] = useState("");
+
+  const [
+    tagsText,
+    setTagsText,
+  ] = useState("");
+
   const [
     linkedinUrl,
     setLinkedinUrl,
@@ -102,6 +114,24 @@ export function CreateContactModal({
   const [
     loadingAccounts,
     setLoadingAccounts,
+  ] = useState(false);
+
+  const [
+    duplicateMatches,
+    setDuplicateMatches,
+  ] = useState<
+    Array<{
+      id: string;
+      name: string;
+      email: string | null;
+      confidence: string;
+      reasons: string[];
+    }>
+  >([]);
+
+  const [
+    duplicateConfirmed,
+    setDuplicateConfirmed,
   ] = useState(false);
 
   const [
@@ -180,8 +210,12 @@ export function CreateContactModal({
     setMobile("");
     setJobTitle("");
     setDepartment("");
+    setSegment("");
+    setTagsText("");
     setLinkedinUrl("");
     setIsPrimary(false);
+    setDuplicateMatches([]);
+    setDuplicateConfirmed(false);
     setError(null);
   }
 
@@ -250,6 +284,57 @@ export function CreateContactModal({
       setSaving(true);
       setError(null);
 
+      if (!duplicateConfirmed) {
+        const duplicateResult =
+          await checkContactDuplicates({
+            firstName:
+              normalizedFirstName,
+            lastName:
+              normalizedLastName,
+            email,
+            phone,
+            mobile,
+            accountId:
+              accountId || undefined,
+          });
+
+        if (
+          duplicateResult
+            .has_duplicates
+        ) {
+          setDuplicateMatches(
+            duplicateResult.matches.map(
+              (
+                match
+              ) => ({
+                id:
+                  match.contact.id,
+
+                name:
+                  `${match.contact.first_name} ${match.contact.last_name}`,
+
+                email:
+                  match.contact.email,
+
+                confidence:
+                  match.confidence,
+
+                reasons:
+                  match.reasons,
+              })
+            )
+          );
+
+          setDuplicateConfirmed(
+            true
+          );
+
+          setSaving(false);
+
+          return;
+        }
+      }
+
       const contact =
         await createContact({
           account_id:
@@ -281,6 +366,24 @@ export function CreateContactModal({
           department:
             department.trim()
             || null,
+
+
+          segment:
+            segment.trim()
+            || null,
+
+          tags:
+            tagsText
+              .split(",")
+              .map(
+                (
+                  tag
+                ) =>
+                  tag.trim()
+              )
+              .filter(
+                Boolean
+              ),
 
           linkedin_url:
             linkedinUrl.trim()
@@ -553,6 +656,69 @@ export function CreateContactModal({
 
 
           <label>
+            Contact Segment
+
+            <input
+              list="contact-segments"
+              value={
+                segment
+              }
+              onChange={(
+                event
+              ) =>
+                setSegment(
+                  event.target.value
+                )
+              }
+              placeholder="Decision Maker"
+            />
+
+            <datalist id="contact-segments">
+              <option value="VIP" />
+              <option value="Decision Maker" />
+              <option value="Champion" />
+              <option value="Influencer" />
+              <option value="Customer" />
+              <option value="Partner" />
+              <option value="Prospect" />
+              <option value="Vendor" />
+            </datalist>
+          </label>
+
+
+          <label>
+            Tags
+
+            <input
+              value={
+                tagsText
+              }
+              onChange={(
+                event
+              ) =>
+                setTagsText(
+                  event.target.value
+                )
+              }
+              placeholder="Executive, High Value, Renewal"
+            />
+
+            <span
+              style={{
+                color:
+                  "var(--muted)",
+                fontSize:
+                  "8px",
+                fontWeight:
+                  400,
+              }}
+            >
+              Separate multiple tags with commas.
+            </span>
+          </label>
+
+
+          <label>
             LinkedIn
 
             <input
@@ -614,6 +780,161 @@ export function CreateContactModal({
           )}
 
 
+          {duplicateMatches.length > 0 && (
+            <div
+              style={{
+                padding: "12px",
+                border:
+                  "1px solid #f0d69a",
+                borderRadius:
+                  "10px",
+                background:
+                  "#fff9e8",
+              }}
+            >
+              <strong
+                style={{
+                  display:
+                    "block",
+                  marginBottom:
+                    "7px",
+                  fontSize:
+                    "10px",
+                }}
+              >
+                Possible Duplicate Contact
+              </strong>
+
+              <p
+                style={{
+                  margin:
+                    "0 0 8px",
+                  color:
+                    "var(--muted)",
+                  fontSize:
+                    "9px",
+                }}
+              >
+                AIVA found existing contacts
+                that may represent the same
+                person.
+              </p>
+
+              {duplicateMatches.map(
+                (
+                  match
+                ) => (
+                  <div
+                    key={
+                      match.id
+                    }
+                    style={{
+                      marginTop:
+                        "7px",
+                      padding:
+                        "9px",
+                      border:
+                        "1px solid #eadfbf",
+                      borderRadius:
+                        "8px",
+                      background:
+                        "white",
+                    }}
+                  >
+                    <strong
+                      style={{
+                        display:
+                          "block",
+                        fontSize:
+                          "10px",
+                      }}
+                    >
+                      {
+                        match.name
+                      }
+                    </strong>
+
+                    {match.email && (
+                      <span
+                        style={{
+                          display:
+                            "block",
+                          marginTop:
+                            "3px",
+                          color:
+                            "var(--muted)",
+                          fontSize:
+                            "9px",
+                        }}
+                      >
+                        {
+                          match.email
+                        }
+                      </span>
+                    )}
+
+                    <span
+                      style={{
+                        display:
+                          "block",
+                        marginTop:
+                          "4px",
+                        color:
+                          "#8a6700",
+                        fontSize:
+                          "8px",
+                        fontWeight:
+                          700,
+                      }}
+                    >
+                      {
+                        match.confidence
+                          .toUpperCase()
+                      }{" "}
+                      CONFIDENCE
+                    </span>
+
+                    <span
+                      style={{
+                        display:
+                          "block",
+                        marginTop:
+                          "3px",
+                        color:
+                          "var(--muted)",
+                        fontSize:
+                          "8px",
+                      }}
+                    >
+                      {
+                        match.reasons.join(
+                          " · "
+                        )
+                      }
+                    </span>
+                  </div>
+                )
+              )}
+
+              <p
+                style={{
+                  margin:
+                    "9px 0 0",
+                  fontSize:
+                    "9px",
+                  color:
+                    "#775b00",
+                }}
+              >
+                Review the matches above.
+                Submit again only if you
+                intentionally want another
+                contact record.
+              </p>
+            </div>
+          )}
+
+
           {error && (
             <div className="formError">
               {error}
@@ -648,7 +969,9 @@ export function CreateContactModal({
             >
               {saving
                 ? "Creating..."
-                : "Create Contact"}
+                : duplicateMatches.length > 0
+                  ? "Create Anyway"
+                  : "Create Contact"}
             </button>
           </div>
         </form>
