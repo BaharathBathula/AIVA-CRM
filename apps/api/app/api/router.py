@@ -21,6 +21,9 @@ from app.api.routes.leads import (
 from app.api.routes.opportunities import (
     router as opportunities_router,
 )
+from app.api.routes.organization_members import (
+    router as organization_members_router,
+)
 from app.api.routes.pipelines import (
     router as pipelines_router,
 )
@@ -54,6 +57,10 @@ api_router.include_router(
 
 api_router.include_router(
     opportunities_router
+)
+
+api_router.include_router(
+    organization_members_router
 )
 
 api_router.include_router(

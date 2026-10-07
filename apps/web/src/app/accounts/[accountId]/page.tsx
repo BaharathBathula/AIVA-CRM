@@ -69,6 +69,10 @@ import {
 } from "@/lib/activities";
 
 import {
+  getOrganizationMembers,
+} from "@/lib/organization-members";
+
+import {
   getContacts,
 } from "@/lib/contacts";
 
@@ -103,6 +107,10 @@ import type {
 import type {
   Opportunity,
 } from "@/types/opportunity";
+
+import type {
+  OrganizationMember,
+} from "@/types/organization-member";
 
 import type {
   Task,
@@ -442,6 +450,12 @@ export default function AccountDetailPage() {
     hierarchyLoading,
     setHierarchyLoading,
   ] = useState(false);
+
+
+  const [
+    organizationMembers,
+    setOrganizationMembers,
+  ] = useState<OrganizationMember[]>([]);
 
 
   useEffect(() => {
@@ -1224,6 +1238,37 @@ const accountHealth =
   ]);
 
 
+  useEffect(() => {
+    let cancelled =
+      false;
+
+    async function loadAccountMembers() {
+      try {
+        const members =
+          await getOrganizationMembers();
+
+        if (!cancelled) {
+          setOrganizationMembers(
+            members
+          );
+        }
+      } catch {
+        if (!cancelled) {
+          setOrganizationMembers(
+            []
+          );
+        }
+      }
+    }
+
+    void loadAccountMembers();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+
   async function handleArchiveToggle() {
     if (
       !account
@@ -1274,6 +1319,20 @@ const accountHealth =
       setArchiveBusy(false);
     }
   }
+
+
+  const accountOwner =
+    account?.owner_user_id
+      ? organizationMembers.find(
+          (
+            member
+          ) =>
+            member.user_id
+            ===
+            account.owner_user_id
+        )
+        ?? null
+      : null;
 
 
   if (loading) {
@@ -2591,9 +2650,11 @@ const accountHealth =
                     </span>
 
                     <strong>
-                      {account.owner_user_id
-                        ? "Assigned"
-                        : "Unassigned"}
+                      {accountOwner
+                        ? accountOwner.full_name
+                        : account.owner_user_id
+                          ? "Assigned user"
+                          : "Unassigned"}
                     </strong>
                   </div>
 

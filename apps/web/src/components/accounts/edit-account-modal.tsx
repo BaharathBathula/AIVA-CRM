@@ -17,10 +17,18 @@ import {
   updateAccount,
 } from "@/lib/accounts";
 
+import {
+  getOrganizationMembers,
+} from "@/lib/organization-members";
+
 import type {
   Account,
   LifecycleStage,
 } from "@/types/account";
+
+import type {
+  OrganizationMember,
+} from "@/types/organization-member";
 
 
 type Props = {
@@ -134,6 +142,21 @@ export function EditAccountModal({
   ] = useState(false);
 
   const [
+    ownerUserId,
+    setOwnerUserId,
+  ] = useState("");
+
+  const [
+    organizationMembers,
+    setOrganizationMembers,
+  ] = useState<OrganizationMember[]>([]);
+
+  const [
+    loadingMembers,
+    setLoadingMembers,
+  ] = useState(false);
+
+  const [
     saving,
     setSaving,
   ] = useState(false);
@@ -228,6 +251,11 @@ export function EditAccountModal({
         ?? ""
     );
 
+    setOwnerUserId(
+      account.owner_user_id
+        ?? ""
+    );
+
     setError(null);
   }, [
     account,
@@ -291,6 +319,53 @@ export function EditAccountModal({
     };
   }, [
     account.id,
+    open,
+  ]);
+
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    let cancelled =
+      false;
+
+    async function loadOrganizationMembers() {
+      try {
+        setLoadingMembers(
+          true
+        );
+
+        const members =
+          await getOrganizationMembers();
+
+        if (!cancelled) {
+          setOrganizationMembers(
+            members
+          );
+        }
+      } catch {
+        if (!cancelled) {
+          setOrganizationMembers(
+            []
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setLoadingMembers(
+            false
+          );
+        }
+      }
+    }
+
+    void loadOrganizationMembers();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
     open,
   ]);
 
@@ -507,6 +582,10 @@ export function EditAccountModal({
               billingCountry.trim()
               || null,
 
+            owner_user_id:
+              ownerUserId
+              || null,
+
             ...(parentChanged
               ? {
                   parent_account_id:
@@ -685,6 +764,56 @@ export function EditAccountModal({
               />
             </label>
           </div>
+
+
+          <label>
+            Account Owner
+
+            <select
+              value={
+                ownerUserId
+              }
+              disabled={
+                loadingMembers
+                ||
+                saving
+              }
+              onChange={(event) =>
+                setOwnerUserId(
+                  event.target.value
+                )
+              }
+            >
+              <option value="">
+                {loadingMembers
+                  ? "Loading users..."
+                  : "Unassigned"}
+              </option>
+
+              {organizationMembers.map(
+                (
+                  member
+                ) => (
+                  <option
+                    key={
+                      member.user_id
+                    }
+                    value={
+                      member.user_id
+                    }
+                  >
+                    {
+                      member.full_name
+                    }{" "}
+                    —{" "}
+                    {
+                      member.email
+                    }
+                  </option>
+                )
+              )}
+            </select>
+          </label>
 
 
           <label>
