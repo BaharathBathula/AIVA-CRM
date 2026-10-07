@@ -38,3 +38,22 @@ export interface ContactCreatePayload {
 
   is_primary?: boolean;
 }
+
+
+export interface ContactUpdatePayload {
+  account_id?: string | null;
+
+  first_name?: string;
+  last_name?: string;
+
+  email?: string | null;
+  phone?: string | null;
+  mobile?: string | null;
+
+  job_title?: string | null;
+  department?: string | null;
+  linkedin_url?: string | null;
+
+  is_primary?: boolean;
+  is_active?: boolean;
+}

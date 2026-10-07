@@ -34,14 +34,19 @@ router = APIRouter(
 @router.post(
     "",
     response_model=ContactResponse,
-    status_code=status.HTTP_201_CREATED,
+    status_code=
+    status.HTTP_201_CREATED,
 )
 async def create_contact_endpoint(
     payload: ContactCreate,
-    organization_id: uuid.UUID = Depends(
-        get_current_organization_id
-    ),
-    db: AsyncSession = Depends(get_db),
+    organization_id:
+        uuid.UUID = Depends(
+            get_current_organization_id
+        ),
+    db:
+        AsyncSession = Depends(
+            get_db
+        ),
 ):
     return await create_contact(
         db,
@@ -52,10 +57,21 @@ async def create_contact_endpoint(
 
 @router.get(
     "",
-    response_model=list[ContactResponse],
+    response_model=
+    list[ContactResponse],
 )
 async def list_contacts_endpoint(
-    account_id: uuid.UUID | None = None,
+    account_id:
+        uuid.UUID | None = None,
+    is_active:
+        bool | None = None,
+    is_primary:
+        bool | None = None,
+    search:
+        str | None = Query(
+            default=None,
+            max_length=250,
+        ),
     skip: int = Query(
         default=0,
         ge=0,
@@ -65,15 +81,22 @@ async def list_contacts_endpoint(
         ge=1,
         le=100,
     ),
-    organization_id: uuid.UUID = Depends(
-        get_current_organization_id
-    ),
-    db: AsyncSession = Depends(get_db),
+    organization_id:
+        uuid.UUID = Depends(
+            get_current_organization_id
+        ),
+    db:
+        AsyncSession = Depends(
+            get_db
+        ),
 ):
     return await list_contacts(
         db,
         organization_id,
         account_id,
+        is_active,
+        is_primary,
+        search,
         skip,
         limit,
     )
@@ -81,14 +104,19 @@ async def list_contacts_endpoint(
 
 @router.get(
     "/{contact_id}",
-    response_model=ContactResponse,
+    response_model=
+    ContactResponse,
 )
 async def get_contact_endpoint(
     contact_id: uuid.UUID,
-    organization_id: uuid.UUID = Depends(
-        get_current_organization_id
-    ),
-    db: AsyncSession = Depends(get_db),
+    organization_id:
+        uuid.UUID = Depends(
+            get_current_organization_id
+        ),
+    db:
+        AsyncSession = Depends(
+            get_db
+        ),
 ):
     return await get_contact(
         db,
@@ -99,15 +127,20 @@ async def get_contact_endpoint(
 
 @router.patch(
     "/{contact_id}",
-    response_model=ContactResponse,
+    response_model=
+    ContactResponse,
 )
 async def update_contact_endpoint(
     contact_id: uuid.UUID,
     payload: ContactUpdate,
-    organization_id: uuid.UUID = Depends(
-        get_current_organization_id
-    ),
-    db: AsyncSession = Depends(get_db),
+    organization_id:
+        uuid.UUID = Depends(
+            get_current_organization_id
+        ),
+    db:
+        AsyncSession = Depends(
+            get_db
+        ),
 ):
     return await update_contact(
         db,

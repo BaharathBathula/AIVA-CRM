@@ -5,20 +5,92 @@ import {
 import type {
   Contact,
   ContactCreatePayload,
+  ContactUpdatePayload,
 } from "@/types/contact";
 
 
+export interface ContactListOptions {
+  search?: string;
+  isActive?: boolean;
+  isPrimary?: boolean;
+  skip?: number;
+  limit?: number;
+}
+
+
 export function getContacts(
-  accountId?: string
+  accountId?: string,
+  options: ContactListOptions = {}
 ): Promise<Contact[]> {
-  const query = accountId
-    ? `?account_id=${encodeURIComponent(
-        accountId
-      )}`
-    : "";
+  const params =
+    new URLSearchParams();
+
+  if (accountId) {
+    params.set(
+      "account_id",
+      accountId
+    );
+  }
+
+  if (options.search) {
+    params.set(
+      "search",
+      options.search
+    );
+  }
+
+  if (
+    options.isActive
+    !== undefined
+  ) {
+    params.set(
+      "is_active",
+      String(
+        options.isActive
+      )
+    );
+  }
+
+  if (
+    options.isPrimary
+    !== undefined
+  ) {
+    params.set(
+      "is_primary",
+      String(
+        options.isPrimary
+      )
+    );
+  }
+
+  if (
+    options.skip
+    !== undefined
+  ) {
+    params.set(
+      "skip",
+      String(
+        options.skip
+      )
+    );
+  }
+
+  params.set(
+    "limit",
+    String(
+      options.limit ?? 100
+    )
+  );
+
+  const query =
+    params.toString();
 
   return aivaRequest<Contact[]>(
-    `/contacts${query}`
+    `/contacts${
+      query
+        ? `?${query}`
+        : ""
+    }`
   );
 }
 
@@ -39,7 +111,9 @@ export function createContact(
     "/contacts",
     {
       method: "POST",
-      body: JSON.stringify(payload),
+      body: JSON.stringify(
+        payload
+      ),
     }
   );
 }
@@ -47,13 +121,15 @@ export function createContact(
 
 export function updateContact(
   contactId: string,
-  payload: Partial<ContactCreatePayload>
+  payload: ContactUpdatePayload
 ): Promise<Contact> {
   return aivaRequest<Contact>(
     `/contacts/${contactId}`,
     {
       method: "PATCH",
-      body: JSON.stringify(payload),
+      body: JSON.stringify(
+        payload
+      ),
     }
   );
 }

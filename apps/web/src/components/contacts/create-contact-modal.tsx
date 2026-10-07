@@ -1,0 +1,658 @@
+"use client";
+
+import {
+  FormEvent,
+  useEffect,
+  useState,
+} from "react";
+
+import {
+  UserPlus,
+  X,
+} from "lucide-react";
+
+import {
+  getAccounts,
+} from "@/lib/accounts";
+
+import {
+  createContact,
+} from "@/lib/contacts";
+
+import type {
+  Account,
+} from "@/types/account";
+
+import type {
+  Contact,
+} from "@/types/contact";
+
+
+type Props = {
+  open: boolean;
+
+  onClose: () => void;
+
+  onCreated: (
+    contact: Contact
+  ) => void;
+};
+
+
+export function CreateContactModal({
+  open,
+  onClose,
+  onCreated,
+}: Props) {
+  const [
+    accounts,
+    setAccounts,
+  ] = useState<Account[]>([]);
+
+  const [
+    accountId,
+    setAccountId,
+  ] = useState("");
+
+  const [
+    firstName,
+    setFirstName,
+  ] = useState("");
+
+  const [
+    lastName,
+    setLastName,
+  ] = useState("");
+
+  const [
+    email,
+    setEmail,
+  ] = useState("");
+
+  const [
+    phone,
+    setPhone,
+  ] = useState("");
+
+  const [
+    mobile,
+    setMobile,
+  ] = useState("");
+
+  const [
+    jobTitle,
+    setJobTitle,
+  ] = useState("");
+
+  const [
+    department,
+    setDepartment,
+  ] = useState("");
+
+  const [
+    linkedinUrl,
+    setLinkedinUrl,
+  ] = useState("");
+
+  const [
+    isPrimary,
+    setIsPrimary,
+  ] = useState(false);
+
+  const [
+    loadingAccounts,
+    setLoadingAccounts,
+  ] = useState(false);
+
+  const [
+    saving,
+    setSaving,
+  ] = useState(false);
+
+  const [
+    error,
+    setError,
+  ] = useState<string | null>(
+    null
+  );
+
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    let cancelled =
+      false;
+
+    async function loadAccounts() {
+      try {
+        setLoadingAccounts(
+          true
+        );
+
+        const data =
+          await getAccounts();
+
+        if (!cancelled) {
+          setAccounts(
+            data
+          );
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setError(
+            err instanceof Error
+              ? err.message
+              : "Unable to load accounts."
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setLoadingAccounts(
+            false
+          );
+        }
+      }
+    }
+
+    void loadAccounts();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    open,
+  ]);
+
+
+  if (!open) {
+    return null;
+  }
+
+
+  function resetForm() {
+    setAccountId("");
+    setFirstName("");
+    setLastName("");
+    setEmail("");
+    setPhone("");
+    setMobile("");
+    setJobTitle("");
+    setDepartment("");
+    setLinkedinUrl("");
+    setIsPrimary(false);
+    setError(null);
+  }
+
+
+  function handleClose() {
+    if (saving) {
+      return;
+    }
+
+    resetForm();
+    onClose();
+  }
+
+
+  function handleAccountChange(
+    value: string
+  ) {
+    setAccountId(
+      value
+    );
+
+    if (!value) {
+      setIsPrimary(
+        false
+      );
+    }
+  }
+
+
+  async function submit(
+    event: FormEvent
+  ) {
+    event.preventDefault();
+
+    const normalizedFirstName =
+      firstName.trim();
+
+    const normalizedLastName =
+      lastName.trim();
+
+    if (
+      !normalizedFirstName
+      ||
+      !normalizedLastName
+    ) {
+      setError(
+        "First name and last name are required."
+      );
+
+      return;
+    }
+
+    if (
+      isPrimary
+      &&
+      !accountId
+    ) {
+      setError(
+        "A primary contact must belong to an account."
+      );
+
+      return;
+    }
+
+    try {
+      setSaving(true);
+      setError(null);
+
+      const contact =
+        await createContact({
+          account_id:
+            accountId
+            || null,
+
+          first_name:
+            normalizedFirstName,
+
+          last_name:
+            normalizedLastName,
+
+          email:
+            email.trim()
+            || null,
+
+          phone:
+            phone.trim()
+            || null,
+
+          mobile:
+            mobile.trim()
+            || null,
+
+          job_title:
+            jobTitle.trim()
+            || null,
+
+          department:
+            department.trim()
+            || null,
+
+          linkedin_url:
+            linkedinUrl.trim()
+            || null,
+
+          is_primary:
+            isPrimary,
+        });
+
+      onCreated(
+        contact
+      );
+
+      resetForm();
+
+      onClose();
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Unable to create contact."
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
+
+
+  return (
+    <div className="modalBackdrop">
+      <div
+        className="modalCard"
+        style={{
+          maxHeight:
+            "92vh",
+          overflowY:
+            "auto",
+        }}
+      >
+        <div className="modalHeader">
+          <div>
+            <div className="modalTitleIcon">
+              <UserPlus
+                size={18}
+              />
+            </div>
+
+            <div>
+              <h2>
+                New Contact
+              </h2>
+
+              <p>
+                Add a person and connect
+                them to a customer account.
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            className="modalClose"
+            onClick={
+              handleClose
+            }
+            disabled={
+              saving
+            }
+            aria-label="Close"
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+
+        <form
+          className="accountForm"
+          onSubmit={submit}
+        >
+          <label>
+            Account
+
+            <select
+              value={
+                accountId
+              }
+              disabled={
+                loadingAccounts
+                ||
+                saving
+              }
+              onChange={(
+                event
+              ) =>
+                handleAccountChange(
+                  event.target.value
+                )
+              }
+            >
+              <option value="">
+                {loadingAccounts
+                  ? "Loading accounts..."
+                  : "No account"}
+              </option>
+
+              {accounts.map(
+                (
+                  account
+                ) => (
+                  <option
+                    key={
+                      account.id
+                    }
+                    value={
+                      account.id
+                    }
+                  >
+                    {
+                      account.name
+                    }
+                  </option>
+                )
+              )}
+            </select>
+          </label>
+
+
+          <div className="formGrid">
+            <label>
+              First name
+
+              <input
+                required
+                value={
+                  firstName
+                }
+                onChange={(
+                  event
+                ) =>
+                  setFirstName(
+                    event.target.value
+                  )
+                }
+                placeholder="Alice"
+              />
+            </label>
+
+
+            <label>
+              Last name
+
+              <input
+                required
+                value={
+                  lastName
+                }
+                onChange={(
+                  event
+                ) =>
+                  setLastName(
+                    event.target.value
+                  )
+                }
+                placeholder="Morgan"
+              />
+            </label>
+          </div>
+
+
+          <label>
+            Email
+
+            <input
+              type="email"
+              value={
+                email
+              }
+              onChange={(
+                event
+              ) =>
+                setEmail(
+                  event.target.value
+                )
+              }
+              placeholder="alice@company.com"
+            />
+          </label>
+
+
+          <div className="formGrid">
+            <label>
+              Phone
+
+              <input
+                type="tel"
+                value={
+                  phone
+                }
+                onChange={(
+                  event
+                ) =>
+                  setPhone(
+                    event.target.value
+                  )
+                }
+                placeholder="+1 555 123 4567"
+              />
+            </label>
+
+
+            <label>
+              Mobile
+
+              <input
+                type="tel"
+                value={
+                  mobile
+                }
+                onChange={(
+                  event
+                ) =>
+                  setMobile(
+                    event.target.value
+                  )
+                }
+                placeholder="+1 555 987 6543"
+              />
+            </label>
+          </div>
+
+
+          <div className="formGrid">
+            <label>
+              Job title
+
+              <input
+                value={
+                  jobTitle
+                }
+                onChange={(
+                  event
+                ) =>
+                  setJobTitle(
+                    event.target.value
+                  )
+                }
+                placeholder="Chief Technology Officer"
+              />
+            </label>
+
+
+            <label>
+              Department
+
+              <input
+                value={
+                  department
+                }
+                onChange={(
+                  event
+                ) =>
+                  setDepartment(
+                    event.target.value
+                  )
+                }
+                placeholder="Technology"
+              />
+            </label>
+          </div>
+
+
+          <label>
+            LinkedIn
+
+            <input
+              type="url"
+              value={
+                linkedinUrl
+              }
+              onChange={(
+                event
+              ) =>
+                  setLinkedinUrl(
+                    event.target.value
+                  )
+              }
+              placeholder="https://linkedin.com/in/..."
+            />
+          </label>
+
+
+          <label className="checkboxLabel">
+            <input
+              type="checkbox"
+              checked={
+                isPrimary
+              }
+              disabled={
+                !accountId
+                ||
+                saving
+              }
+              onChange={(
+                event
+              ) =>
+                setIsPrimary(
+                  event.target.checked
+                )
+              }
+            />
+
+            Primary contact for this account
+          </label>
+
+
+          {!accountId && (
+            <div
+              style={{
+                color:
+                  "var(--muted)",
+                fontSize:
+                  "9px",
+                marginTop:
+                  "-8px",
+              }}
+            >
+              Select an account to make
+              this person its primary
+              contact.
+            </div>
+          )}
+
+
+          {error && (
+            <div className="formError">
+              {error}
+            </div>
+          )}
+
+
+          <div className="modalFooter">
+            <button
+              type="button"
+              className="secondaryButton"
+              onClick={
+                handleClose
+              }
+              disabled={
+                saving
+              }
+            >
+              Cancel
+            </button>
+
+            <button
+              type="submit"
+              className="createButton"
+              disabled={
+                saving
+                ||
+                !firstName.trim()
+                ||
+                !lastName.trim()
+              }
+            >
+              {saving
+                ? "Creating..."
+                : "Create Contact"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
