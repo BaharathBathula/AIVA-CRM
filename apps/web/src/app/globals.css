@@ -54,6 +54,12 @@ button {
   min-height: 100vh;
 }
 
+.appMain {
+  width: calc(100% - 242px);
+  min-width: 0;
+  margin-left: 242px;
+}
+
 .sidebar {
   width: 242px;
   position: fixed;
@@ -1959,5 +1965,2754 @@ button {
 
   .activityDetailGrid {
     grid-template-columns: 1fr;
+  }
+}
+
+/* =========================================================
+   Email workspace
+   ========================================================= */
+
+.emailStatsGrid {
+  display: grid;
+  grid-template-columns:
+    repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.emailWorkspace {
+  min-height: 620px;
+  display: grid;
+  grid-template-columns:
+    minmax(290px, 0.78fr)
+    minmax(0, 1.65fr);
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: white;
+}
+
+.emailThreadPanel {
+  min-width: 0;
+  border-right: 1px solid var(--border);
+  background: #fbfbfd;
+}
+
+.emailPanelHeader {
+  min-height: 61px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 15px 17px;
+  border-bottom: 1px solid var(--border);
+  background: white;
+}
+
+.emailPanelHeader strong {
+  display: block;
+  font-size: 13px;
+}
+
+.emailPanelHeader span {
+  display: block;
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 9px;
+}
+
+.emailThreadSearch {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 12px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: white;
+  color: var(--muted);
+}
+
+.emailThreadSearch input {
+  width: 100%;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 10px;
+}
+
+.emailThreadList {
+  max-height: 700px;
+  overflow-y: auto;
+}
+
+.emailThreadItem {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 34px 1fr;
+  gap: 10px;
+  padding: 14px;
+  border: 0;
+  border-top: 1px solid #eceef3;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.emailThreadItem:hover {
+  background: #f6f4ff;
+}
+
+.emailThreadItem.active {
+  background: #f0edff;
+  box-shadow:
+    inset 3px 0 0
+    var(--primary);
+}
+
+.emailThreadAvatar {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  background: white;
+  color: var(--primary);
+  box-shadow:
+    0 0 0 1px
+    #e4e0fa;
+}
+
+.emailThreadBody {
+  min-width: 0;
+}
+
+.emailThreadTop {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.emailThreadTop strong {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.emailThreadTop time {
+  flex: 0 0 auto;
+  color: var(--muted);
+  font-size: 7px;
+}
+
+.emailThreadSubject {
+  margin-top: 4px;
+  overflow: hidden;
+  font-size: 10px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.emailThreadBody p {
+  margin: 4px 0 0;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 9px;
+  line-height: 1.45;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.emailThreadMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 8px;
+}
+
+.emailThreadMeta span,
+.emailCrmBadges span {
+  padding: 3px 6px;
+  border-radius: 999px;
+  background: #f0edff;
+  color: var(--primary);
+  font-size: 7px;
+  font-weight: 750;
+  text-transform: capitalize;
+}
+
+.emailConversationPanel {
+  min-width: 0;
+  background: white;
+}
+
+.emailConversationHeader {
+  min-height: 76px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 17px 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.emailConversationHeader > div:first-child > span {
+  color: var(--muted);
+  font-size: 8px;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.emailConversationHeader h2 {
+  margin: 4px 0;
+  font-size: 16px;
+}
+
+.emailConversationHeader p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 9px;
+}
+
+.emailCrmBadges {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 5px;
+}
+
+.emailMessageList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 650px;
+  overflow-y: auto;
+  padding: 18px;
+  background: #f8f9fc;
+}
+
+.emailMessageCard {
+  padding: 16px;
+  border: 1px solid #e6e8ef;
+  border-radius: 12px;
+  background: white;
+}
+
+.emailMessageCard.outbound {
+  border-left:
+    3px solid
+    var(--primary);
+}
+
+.emailMessageCard.inbound {
+  border-left:
+    3px solid
+    #31836b;
+}
+
+.emailMessageHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  padding-bottom: 11px;
+  border-bottom: 1px solid #eef0f4;
+}
+
+.emailMessageHeader strong {
+  display: block;
+  font-size: 10px;
+}
+
+.emailMessageHeader span {
+  display: block;
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 8px;
+}
+
+.emailMessageHeaderRight {
+  flex: 0 0 auto;
+  text-align: right;
+}
+
+.emailMessageHeaderRight time {
+  display: block;
+  margin-top: 5px;
+  color: var(--muted);
+  font-size: 8px;
+}
+
+.emailDirectionBadge {
+  display: inline-flex !important;
+  padding: 3px 7px;
+  border-radius: 999px;
+  font-size: 7px !important;
+  font-weight: 800;
+  text-transform: capitalize;
+}
+
+.emailDirectionBadge.outbound {
+  background: #efecff;
+  color: var(--primary);
+}
+
+.emailDirectionBadge.inbound {
+  background: #e8f7f1;
+  color: #24755d;
+}
+
+.emailMessageSubject {
+  margin-top: 13px;
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.emailMessageContent {
+  margin-top: 11px;
+  color: #535a68;
+  font-size: 10px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+}
+
+.emailAttachmentNotice {
+  margin-top: 13px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: #f4f5f8;
+  color: var(--muted);
+  font-size: 8px;
+}
+
+.emailEmpty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 120px;
+  padding: 24px;
+  color: var(--muted);
+  font-size: 10px;
+  text-align: center;
+}
+
+.emailEmpty strong {
+  margin-top: 8px;
+  color: var(--text);
+}
+
+.emailEmpty span {
+  margin-top: 4px;
+}
+
+.emailConversationEmpty {
+  min-height: 600px;
+}
+
+@media (max-width: 1050px) {
+  .emailStatsGrid {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+  }
+
+  .emailWorkspace {
+    grid-template-columns:
+      minmax(260px, 0.9fr)
+      minmax(0, 1.4fr);
+  }
+}
+
+@media (max-width: 760px) {
+  .emailWorkspace {
+    grid-template-columns: 1fr;
+  }
+
+  .emailThreadPanel {
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .emailConversationHeader {
+    flex-direction: column;
+  }
+
+  .emailCrmBadges {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 560px) {
+  .emailStatsGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .emailMessageHeader {
+    flex-direction: column;
+  }
+
+  .emailMessageHeaderRight {
+    text-align: left;
+  }
+}
+
+/* =========================================================
+   Email reply composer
+   ========================================================= */
+
+.emailReplyComposer {
+  margin: 18px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: white;
+}
+
+.emailReplyComposerHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.emailReplyComposerHeader > div {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--text);
+}
+
+.emailReplyComposerHeader strong {
+  font-size: 11px;
+}
+
+.emailReplyLinkButton {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--primary);
+  font-size: 9px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.emailReplyRecipientGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.emailReplyRecipientGrid label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.emailReplyRecipientGrid input {
+  width: 100%;
+  padding: 9px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  outline: none;
+  background: white;
+  color: var(--text);
+  font: inherit;
+}
+
+.emailReplyComposer textarea {
+  width: 100%;
+  min-height: 120px;
+  resize: vertical;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  outline: none;
+  background: #fbfbfd;
+  color: var(--text);
+  font: inherit;
+  line-height: 1.55;
+}
+
+.emailReplyComposer textarea:focus,
+.emailReplyRecipientGrid input:focus {
+  border-color: var(--primary);
+  background: white;
+}
+
+.emailReplyActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.emailReplyActions .createButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+@media (max-width: 560px) {
+  .emailReplyRecipientGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .emailReplyActions {
+    align-items: stretch;
+    flex-direction: column-reverse;
+  }
+
+  .emailReplyActions button {
+    justify-content: center;
+    width: 100%;
+  }
+}
+
+/* =========================================================
+   AIVA branded sidebar
+   Added for the new official AIVA logo + Sidebar component.
+   Existing legacy sidebar selectors above are intentionally
+   preserved so current pages remain backward-compatible.
+   ========================================================= */
+
+.sidebarInner {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebarBrand {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  min-height: 72px;
+  padding: 0 8px 24px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.sidebarBrandImage {
+  display: block;
+  width: 172px;
+  max-width: 100%;
+  height: auto;
+  object-fit: contain;
+}
+
+.sidebarNav {
+  flex: 1;
+}
+
+.sidebarSection {
+  margin-bottom: 20px;
+}
+
+.sidebarSectionTitle {
+  padding: 0 11px 7px;
+  color: #6d7483;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.sidebarSectionItems {
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebarItem {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  margin: 2px 0;
+  padding: 10px 11px;
+  border-radius: 9px;
+  background: transparent;
+  color: #9da4b3;
+  text-decoration: none;
+  transition:
+    background 0.18s ease,
+    color 0.18s ease;
+}
+
+.sidebarItem:hover {
+  background: #181c25;
+  color: white;
+}
+
+.sidebarItem.active {
+  background: #242130;
+  color: #bfb5ff;
+}
+
+.sidebarItemIcon {
+  width: 20px;
+  flex: 0 0 20px;
+  display: grid;
+  place-items: center;
+}
+
+.sidebarItemLabel {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidebarFooter {
+  margin-top: auto;
+  padding: 12px 9px 0;
+}
+
+.sidebarFooterDivider {
+  height: 1px;
+  margin-bottom: 12px;
+  background: #242832;
+}
+
+.sidebarFooterBrand {
+  color: #6f7788;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+@media (max-width: 760px) {
+  .sidebarBrand {
+    padding-bottom: 18px;
+  }
+}
+
+/* =========================================================
+   AIVA CRM — OPPORTUNITIES
+   ========================================================= */
+
+.opportunityToolbarControls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.opportunitySelect {
+  min-height: 38px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+.opportunitySelect svg {
+  flex-shrink: 0;
+  opacity: 0.65;
+}
+
+.opportunitySelect select {
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.opportunityStageFilters {
+  padding: 12px 18px;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+
+.opportunityClearFilters {
+  margin-left: auto;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 600;
+  opacity: 0.72;
+}
+
+.opportunityClearFilters:hover {
+  opacity: 1;
+}
+
+.opportunityResultCount {
+  padding: 12px 18px 0;
+  font-size: 13px;
+  opacity: 0.72;
+}
+
+.opportunityTable {
+  min-width: 1320px;
+}
+
+.opportunityPriority {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 68px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  background: rgba(100, 116, 139, 0.12);
+}
+
+.opportunityPriority-low {
+  background: rgba(100, 116, 139, 0.12);
+}
+
+.opportunityPriority-medium {
+  background: rgba(59, 130, 246, 0.12);
+}
+
+.opportunityPriority-high {
+  background: rgba(245, 158, 11, 0.14);
+}
+
+.opportunityPriority-critical {
+  background: rgba(239, 68, 68, 0.14);
+}
+
+.opportunityProbability {
+  min-width: 95px;
+}
+
+.opportunityProbability > span {
+  display: block;
+  margin-bottom: 5px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.opportunityProbabilityTrack {
+  width: 100%;
+  height: 5px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(100, 116, 139, 0.16);
+}
+
+.opportunityProbabilityFill {
+  height: 100%;
+  border-radius: inherit;
+  background: currentColor;
+}
+
+.opportunityForecast {
+  display: inline-flex;
+  white-space: nowrap;
+  padding: 4px 8px;
+  border-radius: 7px;
+  background: rgba(100, 116, 139, 0.1);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.opportunityNextStep {
+  display: block;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 1100px) {
+  .opportunityToolbarControls {
+    width: 100%;
+  }
+
+  .opportunitySelect {
+    flex: 1 1 180px;
+  }
+
+  .opportunitySelect select {
+    width: 100%;
+  }
+}
+
+/* =========================================================
+   AIVA CRM — OPPORTUNITY KPI HEADER
+   ========================================================= */
+
+.opportunityKpiGrid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.opportunityKpiCard {
+  min-width: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+}
+
+.opportunityKpiIcon {
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  background: rgba(59, 130, 246, 0.1);
+}
+
+.opportunityKpiContent {
+  min-width: 0;
+}
+
+.opportunityKpiContent > span {
+  display: block;
+  margin-bottom: 5px;
+  font-size: 12px;
+  font-weight: 600;
+  opacity: 0.7;
+}
+
+.opportunityKpiContent > strong {
+  display: block;
+  overflow: hidden;
+  margin-bottom: 4px;
+  font-size: 20px;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.opportunityKpiContent > small {
+  display: block;
+  overflow: hidden;
+  font-size: 11px;
+  opacity: 0.58;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 1500px) {
+  .opportunityKpiGrid {
+    grid-template-columns:
+      repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 900px) {
+  .opportunityKpiGrid {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 600px) {
+  .opportunityKpiGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* =========================================================
+   AIVA CRM — OPPORTUNITY TABLE SELECTION
+   ========================================================= */
+
+.opportunityCheckboxCell {
+  width: 46px;
+  min-width: 46px;
+  text-align: center;
+}
+
+.opportunityCheckboxCell input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  cursor: pointer;
+  accent-color: currentColor;
+}
+
+.opportunityRowSelected td {
+  background: rgba(59, 130, 246, 0.055);
+}
+
+.opportunitySelectionBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 12px 18px 0;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: rgba(59, 130, 246, 0.06);
+  font-size: 13px;
+}
+
+.opportunitySelectionBar button {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  opacity: 0.72;
+}
+
+.opportunitySelectionBar button:hover {
+  opacity: 1;
+}
+
+/* =========================================================
+   AIVA CRM — OPPORTUNITY DEAL IDENTITY
+   ========================================================= */
+
+.opportunityIdentity {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-width: 220px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.opportunityIdentityAvatar {
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 10px;
+
+  background:
+    rgba(59, 130, 246, 0.1);
+
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.opportunityIdentityContent {
+  min-width: 0;
+}
+
+.opportunityIdentityContent > strong {
+  display: block;
+
+  overflow: hidden;
+
+  margin-bottom: 5px;
+
+  font-size: 13px;
+
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.opportunityIdentityMeta {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+
+  min-width: 0;
+
+  font-size: 11px;
+
+  opacity: 0.72;
+}
+
+.opportunityIdentityMeta > span {
+  overflow: hidden;
+
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.opportunityTypeBadge {
+  display: inline-flex;
+
+  padding: 3px 6px;
+
+  border-radius: 6px;
+
+  background:
+    rgba(100, 116, 139, 0.1);
+
+  font-weight: 600;
+}
+
+.opportunityAccountIdentity {
+  min-width: 150px;
+}
+
+.opportunityAccountIdentity strong {
+  display: block;
+
+  overflow: hidden;
+
+  margin-bottom: 4px;
+
+  font-size: 13px;
+
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.opportunityAccountIdentity span {
+  display: block;
+
+  overflow: hidden;
+
+  font-size: 11px;
+
+  opacity: 0.62;
+
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.opportunityStageIdentity {
+  min-width: 120px;
+}
+
+.opportunityStageIdentity small {
+  display: block;
+
+  margin-top: 5px;
+
+  overflow: hidden;
+
+  font-size: 10px;
+
+  opacity: 0.58;
+
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.opportunityTableWrapper {
+  position: relative;
+}
+
+/* =========================================================
+   AIVA CRM — OPPORTUNITY VISUAL STATES
+   ========================================================= */
+
+.opportunityStageBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+
+  max-width: 150px;
+
+  padding: 5px 8px;
+
+  border-radius: 999px;
+
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+
+  white-space: nowrap;
+}
+
+.opportunityStageBadge-open {
+  background:
+    rgba(59, 130, 246, 0.11);
+
+  color:
+    rgb(37, 99, 235);
+}
+
+.opportunityStageBadge-won {
+  background:
+    rgba(34, 197, 94, 0.12);
+
+  color:
+    rgb(22, 163, 74);
+}
+
+.opportunityStageBadge-lost {
+  background:
+    rgba(239, 68, 68, 0.11);
+
+  color:
+    rgb(220, 38, 38);
+}
+
+
+/* PRIORITY */
+
+.opportunityPriority {
+  gap: 5px;
+}
+
+.opportunityPriority-low {
+  background:
+    rgba(100, 116, 139, 0.1);
+
+  color:
+    rgb(100, 116, 139);
+}
+
+.opportunityPriority-medium {
+  background:
+    rgba(59, 130, 246, 0.11);
+
+  color:
+    rgb(37, 99, 235);
+}
+
+.opportunityPriority-high {
+  background:
+    rgba(245, 158, 11, 0.13);
+
+  color:
+    rgb(217, 119, 6);
+}
+
+.opportunityPriority-critical {
+  background:
+    rgba(239, 68, 68, 0.12);
+
+  color:
+    rgb(220, 38, 38);
+}
+
+
+/* FORECAST */
+
+.opportunityForecast {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+
+  padding: 5px 8px;
+
+  border-radius: 999px;
+
+  font-size: 11px;
+  font-weight: 700;
+
+  white-space: nowrap;
+}
+
+.opportunityForecast-pipeline {
+  background:
+    rgba(100, 116, 139, 0.1);
+
+  color:
+    rgb(71, 85, 105);
+}
+
+.opportunityForecast-best_case {
+  background:
+    rgba(59, 130, 246, 0.11);
+
+  color:
+    rgb(37, 99, 235);
+}
+
+.opportunityForecast-commit {
+  background:
+    rgba(139, 92, 246, 0.12);
+
+  color:
+    rgb(124, 58, 237);
+}
+
+.opportunityForecast-closed {
+  background:
+    rgba(34, 197, 94, 0.12);
+
+  color:
+    rgb(22, 163, 74);
+}
+
+.opportunityForecast-omitted {
+  background:
+    rgba(100, 116, 139, 0.08);
+
+  color:
+    rgb(100, 116, 139);
+
+  opacity: 0.8;
+}
+
+
+/* PROBABILITY */
+
+.opportunityProbability {
+  min-width: 105px;
+}
+
+.opportunityProbabilityHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  margin-bottom: 6px;
+
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.opportunityProbabilityTrack {
+  width: 100%;
+  height: 5px;
+
+  overflow: hidden;
+
+  border-radius: 999px;
+
+  background:
+    rgba(100, 116, 139, 0.14);
+}
+
+.opportunityProbabilityFill {
+  height: 100%;
+
+  border-radius: inherit;
+
+  background:
+    currentColor;
+
+  transition:
+    width 180ms ease;
+}
+
+.opportunityProbability-low {
+  color:
+    rgb(100, 116, 139);
+}
+
+.opportunityProbability-medium {
+  color:
+    rgb(217, 119, 6);
+}
+
+.opportunityProbability-high {
+  color:
+    rgb(22, 163, 74);
+}
+
+
+/* DEAL VALUE */
+
+.opportunityAmount {
+  white-space: nowrap;
+}
+
+.opportunityWeightedAmount {
+  white-space: nowrap;
+
+  font-size: 12px;
+
+  opacity: 0.75;
+}
+
+
+/* ROW STATE */
+
+.opportunityRow-won td {
+  background-image:
+    linear-gradient(
+      rgba(34, 197, 94, 0.018),
+      rgba(34, 197, 94, 0.018)
+    );
+}
+
+.opportunityRow-lost td {
+  background-image:
+    linear-gradient(
+      rgba(239, 68, 68, 0.015),
+      rgba(239, 68, 68, 0.015)
+    );
+}
+
+.opportunityRowSelected td {
+  background-color:
+    rgba(59, 130, 246, 0.055);
+}
+
+
+/* CLOSE DATE */
+
+.opportunityCloseDate {
+  white-space: nowrap;
+
+  font-size: 12px;
+}
+
+/* =========================================================
+   AIVA CRM — OPPORTUNITY CLOSE-DATE INTELLIGENCE
+   ========================================================= */
+
+.opportunityCloseDateIntelligence {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 5px;
+
+  min-width: 145px;
+}
+
+.opportunityCloseDateStatus {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+
+  padding: 4px 7px;
+
+  border-radius: 999px;
+
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1;
+
+  white-space: nowrap;
+}
+
+.opportunityCloseDateStatus-overdue {
+  background:
+    rgba(239, 68, 68, 0.12);
+
+  color:
+    rgb(220, 38, 38);
+}
+
+.opportunityCloseDateStatus-today {
+  background:
+    rgba(245, 158, 11, 0.14);
+
+  color:
+    rgb(217, 119, 6);
+}
+
+.opportunityCloseDateStatus-soon {
+  background:
+    rgba(245, 158, 11, 0.11);
+
+  color:
+    rgb(180, 83, 9);
+}
+
+.opportunityCloseDateStatus-on_track {
+  background:
+    rgba(34, 197, 94, 0.11);
+
+  color:
+    rgb(22, 163, 74);
+}
+
+.opportunityCloseDateStatus-missing {
+  background:
+    rgba(100, 116, 139, 0.1);
+
+  color:
+    rgb(100, 116, 139);
+}
+
+.opportunityCloseDateStatus-closed {
+  background:
+    rgba(100, 116, 139, 0.08);
+
+  color:
+    rgb(71, 85, 105);
+}
+
+
+.opportunityCloseDateValue {
+  font-size: 12px;
+  font-weight: 700;
+
+  white-space: nowrap;
+}
+
+
+.opportunityCloseDateDetail {
+  display: block;
+
+  font-size: 10px;
+  font-weight: 600;
+
+  white-space: nowrap;
+
+  opacity: 0.68;
+}
+
+
+.opportunityCloseDateDetail-overdue {
+  color:
+    rgb(220, 38, 38);
+
+  opacity: 0.9;
+}
+
+
+.opportunityCloseDateDetail-today {
+  color:
+    rgb(217, 119, 6);
+
+  opacity: 0.9;
+}
+
+
+.opportunityCloseDateDetail-soon {
+  color:
+    rgb(180, 83, 9);
+
+  opacity: 0.82;
+}
+
+
+/* Subtle warning treatment for overdue open deals */
+
+.opportunityRow-overdue:not(
+  .opportunityRowSelected
+) td:first-child {
+  box-shadow:
+    inset 3px 0 0
+    rgba(239, 68, 68, 0.7);
+}
+
+
+/* Closed deals should visually recede slightly */
+
+.opportunityRow-won
+  .opportunityCloseDateDetail,
+.opportunityRow-lost
+  .opportunityCloseDateDetail {
+  opacity: 0.55;
+}
+
+/* =========================================================
+   AIVA CRM — OPPORTUNITY ROW ACTIONS
+   ========================================================= */
+
+.opportunityActionsColumn {
+  width: 54px;
+  min-width: 54px;
+  text-align: center;
+}
+
+.opportunityRowActions {
+  position: relative;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.opportunityRowActionsTrigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 32px;
+  height: 32px;
+
+  padding: 0;
+
+  border: 1px solid transparent;
+  border-radius: 8px;
+
+  background: transparent;
+
+  color: inherit;
+
+  cursor: pointer;
+
+  opacity: 0.62;
+
+  transition:
+    opacity 150ms ease,
+    background 150ms ease,
+    border-color 150ms ease,
+    transform 150ms ease;
+}
+
+.opportunityRowActionsTrigger:hover,
+.opportunityRowActionsTrigger.active {
+  border-color:
+    var(--border);
+
+  background:
+    rgba(100, 116, 139, 0.08);
+
+  opacity: 1;
+}
+
+.opportunityRowActionsTrigger:active {
+  transform:
+    scale(0.96);
+}
+
+.opportunityRowActionsMenu {
+  position: absolute;
+
+  top: calc(100% + 7px);
+  right: 0;
+
+  z-index: 50;
+
+  width: 230px;
+
+  overflow: hidden;
+
+  padding: 6px;
+
+  border:
+    1px solid
+    var(--border);
+
+  border-radius: 12px;
+
+  background:
+    var(--background);
+
+  box-shadow:
+    0 16px 40px
+    rgba(15, 23, 42, 0.16);
+
+  text-align: left;
+}
+
+.opportunityRowActionsHeader {
+  padding:
+    8px 9px 7px;
+}
+
+.opportunityRowActionsHeader strong {
+  display: block;
+
+  overflow: hidden;
+
+  font-size: 12px;
+  font-weight: 800;
+
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.opportunityRowActionsHeader span {
+  display: block;
+
+  margin-top: 3px;
+
+  font-size: 10px;
+
+  opacity: 0.58;
+}
+
+.opportunityRowActionsDivider {
+  height: 1px;
+
+  margin:
+    3px 0 5px;
+
+  background:
+    var(--border);
+}
+
+.opportunityRowActionItem {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+
+  width: 100%;
+
+  padding:
+    8px 9px;
+
+  border: 0;
+  border-radius: 8px;
+
+  background:
+    transparent;
+
+  color: inherit;
+
+  font-size: 12px;
+  font-weight: 600;
+
+  text-decoration: none;
+
+  cursor: pointer;
+
+  transition:
+    background 140ms ease;
+}
+
+.opportunityRowActionItem:hover {
+  background:
+    rgba(100, 116, 139, 0.08);
+}
+
+.opportunityRowActionItem svg {
+  flex: 0 0 auto;
+
+  opacity: 0.7;
+}
+
+
+/*
+ * Allow the action menu to render outside
+ * the table row vertically.
+ */
+
+.opportunityTableWrapper {
+  overflow-x: auto;
+  overflow-y: visible;
+}
+
+.opportunityTable tbody tr {
+  position: relative;
+}
+
+/* =========================================================
+   AIVA CRM — O2.3.6
+   ENTERPRISE OPPORTUNITY TABLE LAYOUT
+   ========================================================= */
+
+
+/* ---------------------------------------------------------
+   TABLE SCROLL CONTAINER
+   --------------------------------------------------------- */
+
+.opportunityTableWrapper {
+  position: relative;
+
+  width: 100%;
+  max-width: 100%;
+
+  overflow-x: auto;
+  overflow-y: visible;
+
+  scrollbar-width: thin;
+
+  -webkit-overflow-scrolling: touch;
+}
+
+
+/* WebKit scrollbar */
+
+.opportunityTableWrapper::-webkit-scrollbar {
+  height: 10px;
+}
+
+.opportunityTableWrapper::-webkit-scrollbar-track {
+  background:
+    rgba(100, 116, 139, 0.05);
+}
+
+.opportunityTableWrapper::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 999px;
+
+  background:
+    rgba(100, 116, 139, 0.28);
+
+  background-clip:
+    padding-box;
+}
+
+.opportunityTableWrapper::-webkit-scrollbar-thumb:hover {
+  background:
+    rgba(100, 116, 139, 0.42);
+
+  background-clip:
+    padding-box;
+}
+
+
+/* ---------------------------------------------------------
+   TABLE FOUNDATION
+   --------------------------------------------------------- */
+
+.opportunityTable {
+  width: 100%;
+
+  min-width: 1540px;
+
+  border-collapse: separate;
+  border-spacing: 0;
+
+  table-layout: fixed;
+}
+
+
+/* ---------------------------------------------------------
+   STICKY HEADER
+   --------------------------------------------------------- */
+
+.opportunityTable thead {
+  position: relative;
+
+  z-index: 20;
+}
+
+.opportunityTable thead th {
+  position: sticky;
+
+  top: 0;
+
+  z-index: 20;
+
+  height: 44px;
+
+  padding-top: 10px;
+  padding-bottom: 10px;
+
+  border-bottom:
+    1px solid
+    var(--border);
+
+  background:
+    var(--background);
+
+  font-size: 10px;
+  font-weight: 800;
+
+  letter-spacing: 0.055em;
+
+  text-transform: uppercase;
+
+  white-space: nowrap;
+
+  box-shadow:
+    0 1px 0
+    rgba(100, 116, 139, 0.04);
+}
+
+
+/* ---------------------------------------------------------
+   TABLE CELLS
+   --------------------------------------------------------- */
+
+.opportunityTable tbody td {
+  height: 70px;
+
+  padding-top: 11px;
+  padding-bottom: 11px;
+
+  vertical-align: middle;
+
+  border-bottom:
+    1px solid
+    rgba(100, 116, 139, 0.1);
+
+  transition:
+    background-color 140ms ease,
+    box-shadow 140ms ease;
+}
+
+
+/* ---------------------------------------------------------
+   COLUMN WIDTHS
+   --------------------------------------------------------- */
+
+
+/* Checkbox */
+
+.opportunityTable th:nth-child(1),
+.opportunityTable td:nth-child(1) {
+  width: 48px;
+}
+
+
+/* Opportunity */
+
+.opportunityTable th:nth-child(2),
+.opportunityTable td:nth-child(2) {
+  width: 230px;
+}
+
+
+/* Account */
+
+.opportunityTable th:nth-child(3),
+.opportunityTable td:nth-child(3) {
+  width: 180px;
+}
+
+
+/* Stage */
+
+.opportunityTable th:nth-child(4),
+.opportunityTable td:nth-child(4) {
+  width: 150px;
+}
+
+
+/* Priority */
+
+.opportunityTable th:nth-child(5),
+.opportunityTable td:nth-child(5) {
+  width: 110px;
+}
+
+
+/* Amount */
+
+.opportunityTable th:nth-child(6),
+.opportunityTable td:nth-child(6) {
+  width: 130px;
+}
+
+
+/* Weighted */
+
+.opportunityTable th:nth-child(7),
+.opportunityTable td:nth-child(7) {
+  width: 125px;
+}
+
+
+/* Probability */
+
+.opportunityTable th:nth-child(8),
+.opportunityTable td:nth-child(8) {
+  width: 125px;
+}
+
+
+/* Forecast */
+
+.opportunityTable th:nth-child(9),
+.opportunityTable td:nth-child(9) {
+  width: 135px;
+}
+
+
+/* Close Date */
+
+.opportunityTable th:nth-child(10),
+.opportunityTable td:nth-child(10) {
+  width: 175px;
+}
+
+
+/* Next Step */
+
+.opportunityTable th:nth-child(11),
+.opportunityTable td:nth-child(11) {
+  width: 190px;
+}
+
+
+/* Actions */
+
+.opportunityTable th:nth-child(12),
+.opportunityTable td:nth-child(12) {
+  width: 58px;
+}
+
+
+/* ---------------------------------------------------------
+   STICKY CHECKBOX COLUMN
+   --------------------------------------------------------- */
+
+.opportunityTable
+  thead
+  th:first-child {
+  left: 0;
+
+  z-index: 32;
+
+  background:
+    var(--background);
+}
+
+.opportunityTable
+  tbody
+  td:first-child {
+  position: sticky;
+
+  left: 0;
+
+  z-index: 10;
+
+  background:
+    var(--background);
+}
+
+
+/* Divider between frozen checkbox and content */
+
+.opportunityTable
+  thead
+  th:first-child::after,
+.opportunityTable
+  tbody
+  td:first-child::after {
+  content: "";
+
+  position: absolute;
+
+  top: 0;
+  right: -1px;
+  bottom: 0;
+
+  width: 1px;
+
+  background:
+    rgba(100, 116, 139, 0.12);
+}
+
+
+/* ---------------------------------------------------------
+   STICKY ACTION COLUMN
+   --------------------------------------------------------- */
+
+.opportunityTable
+  .opportunityActionsColumn {
+  position: sticky;
+
+  right: 0;
+
+  z-index: 12;
+
+  background:
+    var(--background);
+}
+
+.opportunityTable
+  thead
+  .opportunityActionsColumn {
+  z-index: 32;
+}
+
+
+/* Divider before action column */
+
+.opportunityTable
+  .opportunityActionsColumn::before {
+  content: "";
+
+  position: absolute;
+
+  top: 0;
+  bottom: 0;
+  left: -1px;
+
+  width: 1px;
+
+  background:
+    rgba(100, 116, 139, 0.12);
+}
+
+
+/* ---------------------------------------------------------
+   ROW HOVER
+   --------------------------------------------------------- */
+
+.opportunityTable tbody tr:hover td {
+  background-color:
+    rgba(100, 116, 139, 0.035);
+}
+
+
+/*
+ * Preserve frozen column backgrounds while hovering.
+ */
+
+.opportunityTable
+  tbody
+  tr:hover
+  td:first-child,
+.opportunityTable
+  tbody
+  tr:hover
+  .opportunityActionsColumn {
+  background-color:
+    rgba(100, 116, 139, 0.055);
+}
+
+
+/* ---------------------------------------------------------
+   SELECTED ROW
+   --------------------------------------------------------- */
+
+.opportunityTable
+  tbody
+  tr.opportunityRowSelected
+  td {
+  background-color:
+    rgba(59, 130, 246, 0.055);
+}
+
+.opportunityTable
+  tbody
+  tr.opportunityRowSelected
+  td:first-child,
+.opportunityTable
+  tbody
+  tr.opportunityRowSelected
+  .opportunityActionsColumn {
+  background-color:
+    rgba(59, 130, 246, 0.09);
+}
+
+
+/* ---------------------------------------------------------
+   OVERDUE ROW
+   --------------------------------------------------------- */
+
+.opportunityTable
+  tbody
+  tr.opportunityRow-overdue
+  td:first-child {
+  box-shadow:
+    inset 3px 0 0
+    rgba(239, 68, 68, 0.72);
+}
+
+
+/* ---------------------------------------------------------
+   OPPORTUNITY IDENTITY
+   --------------------------------------------------------- */
+
+.opportunityIdentity {
+  max-width: 215px;
+}
+
+.opportunityIdentityContent {
+  min-width: 0;
+
+  flex: 1;
+}
+
+.opportunityIdentityContent > strong {
+  max-width: 165px;
+}
+
+
+/* ---------------------------------------------------------
+   ACCOUNT IDENTITY
+   --------------------------------------------------------- */
+
+.opportunityAccountIdentity {
+  max-width: 165px;
+}
+
+.opportunityAccountIdentity strong,
+.opportunityAccountIdentity span {
+  max-width: 165px;
+}
+
+
+/* ---------------------------------------------------------
+   STAGE
+   --------------------------------------------------------- */
+
+.opportunityStageIdentity {
+  max-width: 135px;
+}
+
+.opportunityStageBadge {
+  max-width: 130px;
+
+  overflow: hidden;
+
+  text-overflow: ellipsis;
+}
+
+
+/* ---------------------------------------------------------
+   NEXT STEP
+   --------------------------------------------------------- */
+
+.opportunityNextStep {
+  display: block;
+
+  max-width: 175px;
+
+  overflow: hidden;
+
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+
+/* ---------------------------------------------------------
+   AMOUNT COLUMNS
+   --------------------------------------------------------- */
+
+.opportunityAmount,
+.opportunityWeightedAmount {
+  font-variant-numeric:
+    tabular-nums;
+}
+
+
+/* ---------------------------------------------------------
+   PROBABILITY
+   --------------------------------------------------------- */
+
+.opportunityProbability {
+  width: 100%;
+  max-width: 105px;
+}
+
+
+/* ---------------------------------------------------------
+   ROW ACTION VISIBILITY
+   --------------------------------------------------------- */
+
+.opportunityRowActionsTrigger {
+  opacity: 0.42;
+}
+
+.opportunityTable
+  tbody
+  tr:hover
+  .opportunityRowActionsTrigger,
+.opportunityRowActionsTrigger.active,
+.opportunityRowActionsTrigger:focus-visible {
+  opacity: 1;
+}
+
+
+/* ---------------------------------------------------------
+   KEYBOARD ACCESSIBILITY
+   --------------------------------------------------------- */
+
+.opportunityTable a:focus-visible,
+.opportunityTable button:focus-visible,
+.opportunityTable input:focus-visible {
+  outline:
+    2px solid
+    currentColor;
+
+  outline-offset: 2px;
+}
+
+
+/* ---------------------------------------------------------
+   ACTION MENU
+   --------------------------------------------------------- */
+
+.opportunityRowActionsMenu {
+  z-index: 100;
+}
+
+
+/* ---------------------------------------------------------
+   LARGE DESKTOP
+   --------------------------------------------------------- */
+
+@media (
+  min-width: 1700px
+) {
+  .opportunityTable {
+    min-width: 100%;
+  }
+
+  .opportunityTable
+    th:nth-child(2),
+  .opportunityTable
+    td:nth-child(2) {
+    width: 250px;
+  }
+
+  .opportunityTable
+    th:nth-child(3),
+  .opportunityTable
+    td:nth-child(3) {
+    width: 195px;
+  }
+
+  .opportunityTable
+    th:nth-child(11),
+  .opportunityTable
+    td:nth-child(11) {
+    width: 220px;
+  }
+
+  .opportunityNextStep {
+    max-width: 205px;
+  }
+}
+
+
+/* ---------------------------------------------------------
+   TABLET / SMALLER DESKTOP
+   --------------------------------------------------------- */
+
+@media (
+  max-width: 1100px
+) {
+  .opportunityTable {
+    min-width: 1500px;
+  }
+
+  .opportunityTable thead th {
+    font-size: 9px;
+  }
+
+  .opportunityTable tbody td {
+    height: 66px;
+  }
+}
+
+
+/* ---------------------------------------------------------
+   MOBILE
+   --------------------------------------------------------- */
+
+@media (
+  max-width: 700px
+) {
+  .opportunityTableWrapper {
+    margin-left: 0;
+    margin-right: 0;
+  }
+
+  .opportunityTable {
+    min-width: 1450px;
+  }
+
+  .opportunityTable
+    tbody
+    td {
+    height: 64px;
+  }
+}
+
+/* =========================================================
+   AIVA CRM — O2.3.7
+   SELECTED OPPORTUNITY ACTION BAR
+   ========================================================= */
+
+.opportunityBulkActionBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+
+  margin:
+    12px 18px 0;
+
+  padding:
+    11px 12px;
+
+  border:
+    1px solid
+    rgba(99, 102, 241, 0.22);
+
+  border-radius: 12px;
+
+  background:
+    rgba(99, 102, 241, 0.055);
+}
+
+
+.opportunityBulkActionSummary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  min-width: 0;
+}
+
+
+.opportunityBulkActionIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 34px;
+  height: 34px;
+
+  flex:
+    0 0 34px;
+
+  border-radius: 9px;
+
+  background:
+    rgba(99, 102, 241, 0.12);
+
+  color:
+    rgb(79, 70, 229);
+}
+
+
+.opportunityBulkActionSummary > div:last-child {
+  min-width: 0;
+}
+
+
+.opportunityBulkActionSummary strong {
+  display: block;
+
+  font-size: 12px;
+  font-weight: 800;
+}
+
+
+.opportunityBulkActionSummary span {
+  display: block;
+
+  margin-top: 2px;
+
+  font-size: 10px;
+
+  opacity: 0.62;
+}
+
+
+.opportunityBulkActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+
+  flex-wrap: wrap;
+}
+
+
+.opportunityBulkSecondaryButton,
+.opportunityBulkClearButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+
+  min-height: 34px;
+
+  padding:
+    7px 10px;
+
+  border-radius: 8px;
+
+  font: inherit;
+
+  font-size: 11px;
+  font-weight: 700;
+
+  cursor: pointer;
+
+  transition:
+    background 140ms ease,
+    border-color 140ms ease,
+    opacity 140ms ease,
+    transform 140ms ease;
+}
+
+
+.opportunityBulkSecondaryButton {
+  border:
+    1px solid
+    rgba(99, 102, 241, 0.22);
+
+  background:
+    rgba(99, 102, 241, 0.07);
+
+  color: inherit;
+}
+
+
+.opportunityBulkSecondaryButton:hover {
+  background:
+    rgba(99, 102, 241, 0.12);
+
+  border-color:
+    rgba(99, 102, 241, 0.34);
+}
+
+
+.opportunityBulkClearButton {
+  border:
+    1px solid
+    var(--border);
+
+  background:
+    var(--background);
+
+  color: inherit;
+}
+
+
+.opportunityBulkClearButton:hover {
+  background:
+    rgba(100, 116, 139, 0.07);
+}
+
+
+.opportunityBulkSecondaryButton:active,
+.opportunityBulkClearButton:active {
+  transform:
+    scale(0.98);
+}
+
+
+.opportunityBulkSecondaryButton:focus-visible,
+.opportunityBulkClearButton:focus-visible {
+  outline:
+    2px solid
+    currentColor;
+
+  outline-offset:
+    2px;
+}
+
+
+@media (
+  max-width: 760px
+) {
+  .opportunityBulkActionBar {
+    align-items:
+      flex-start;
+
+    flex-direction:
+      column;
+  }
+
+  .opportunityBulkActions {
+    width: 100%;
+
+    justify-content:
+      flex-start;
+  }
+}
+
+/* =========================================================
+   AIVA CRM — OPPORTUNITIES PAGE HEADER
+   ========================================================= */
+
+.opportunityPageHeading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 24px;
+}
+
+.opportunityPageHeading > div {
+  min-width: 0;
+}
+
+.opportunityPageHeading h1 {
+  margin: 6px 0 8px;
+  font-size: 28px;
+  line-height: 1.2;
+  letter-spacing: -0.035em;
+}
+
+.opportunityPageHeading p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.opportunityPageHeading .createButton {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  width: auto;
+  margin: 0;
+  white-space: nowrap;
+}
+
+@media (max-width: 760px) {
+  .opportunityPageHeading {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .opportunityPageHeading .createButton {
+    align-self: flex-start;
+  }
+}
+
+/* =========================================================
+   AIVA CRM — O2.4.1 ENTERPRISE OPPORTUNITY TOOLBAR
+   ========================================================= */
+
+.opportunityToolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  width: 100%;
+  padding: 18px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.opportunityToolbarSearch {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: min(360px, 100%);
+  min-width: 240px;
+  height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--background);
+}
+
+.opportunityToolbarSearch svg {
+  flex: 0 0 auto;
+  opacity: 0.7;
+}
+
+.opportunityToolbarSearch input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: inherit;
+  font-size: 12px;
+}
+
+.opportunityToolbarSearch input::placeholder {
+  color: var(--muted);
+}
+
+.opportunityToolbarControls {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  min-width: 0;
+}
+
+.opportunityToolbarControl {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+
+.opportunityToolbarControl > svg {
+  flex: 0 0 auto;
+  opacity: 0.72;
+}
+
+.opportunityToolbarSelect {
+  height: 40px;
+  min-width: 130px;
+  padding: 0 34px 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  outline: 0;
+  background: var(--background);
+  color: inherit;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.opportunityToolbarSelect:hover {
+  border-color: rgba(99, 102, 241, 0.38);
+}
+
+.opportunityToolbarSelect:focus {
+  border-color: rgba(99, 102, 241, 0.7);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.08);
+}
+
+.opportunityToolbarSort {
+  min-width: 170px;
+}
+
+@media (max-width: 1100px) {
+  .opportunityToolbar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .opportunityToolbarSearch {
+    width: 100%;
+  }
+
+  .opportunityToolbarControls {
+    width: 100%;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 640px) {
+  .opportunityToolbarControl,
+  .opportunityToolbarSelect {
+    width: 100%;
+  }
+
+  .opportunityToolbarControl {
+    align-items: center;
+  }
+}
+
+/* =========================================================
+   AIVA CRM — O2.4.1 OPPORTUNITY STATUS FILTER
+   ========================================================= */
+
+.opportunityStageFilters {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.opportunityStageFilterGroup {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.opportunityStageFilterGroup > svg {
+  flex: 0 0 auto;
+  margin-right: 2px;
+  color: var(--muted);
+}
+
+.opportunityStageFilterGroup .accountFilterButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+  padding: 6px 12px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    background 140ms ease,
+    border-color 140ms ease,
+    color 140ms ease;
+}
+
+.opportunityStageFilterGroup .accountFilterButton:hover {
+  background: rgba(99, 102, 241, 0.06);
+  color: inherit;
+}
+
+.opportunityStageFilterGroup .accountFilterButton.active {
+  border-color: rgba(99, 102, 241, 0.22);
+  background: rgba(99, 102, 241, 0.1);
+  color: #5b4bd8;
+}
+
+@media (max-width: 640px) {
+  .opportunityStageFilters {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .opportunityStageFilterGroup {
+    width: 100%;
+    overflow-x: auto;
+  }
+}
+
+/* AIVA CRM — O2.5.1E SAVED VIEWS */
+
+.opportunitySavedViews {
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--border);
+}
+
+.opportunitySavedViewsHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.opportunitySavedViewsList {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.opportunitySavedViewButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 36px;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: transparent;
+  color: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background 150ms ease,
+    border-color 150ms ease,
+    color 150ms ease;
+}
+
+.opportunitySavedViewButton:hover {
+  border-color: rgba(99, 102, 241, 0.45);
+  background: rgba(99, 102, 241, 0.05);
+}
+
+.opportunitySavedViewButton.active {
+  border-color: #6366f1;
+  background: rgba(99, 102, 241, 0.1);
+  color: #6366f1;
+  font-weight: 700;
+}
+
+.opportunitySavedViewButton:focus-visible {
+  outline: 3px solid rgba(99, 102, 241, 0.35);
+  outline-offset: 2px;
+}
+
+@media (max-width: 640px) {
+  .opportunitySavedViews {
+    padding: 12px;
+  }
+
+  .opportunitySavedViewsList {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 6px;
+  }
+
+  .opportunitySavedViewButton {
+    flex: 0 0 auto;
+    white-space: nowrap;
   }
 }
