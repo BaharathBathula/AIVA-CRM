@@ -4958,3 +4958,167 @@ button {
     padding: 20px;
   }
 }
+
+
+/* O2.7.1 — Opportunities table enhancement */
+
+/* Improve readability without changing other CRM tables. */
+.aiva-opportunities-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  table-layout: auto;
+}
+
+.aiva-opportunities-table th,
+.aiva-opportunities-table td {
+  vertical-align: middle;
+  padding: 14px 12px;
+}
+
+.aiva-opportunities-table th {
+  white-space: nowrap;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.035em;
+}
+
+.aiva-opportunities-table td {
+  font-size: 13px;
+}
+
+.aiva-opportunities-table .aiva-opportunity-name {
+  min-width: 180px;
+  max-width: 320px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.45;
+}
+
+.aiva-opportunities-table tbody tr {
+  transition: background-color 150ms ease;
+}
+
+.aiva-opportunities-table tbody tr:hover {
+  background-color: rgba(99, 102, 241, 0.045);
+}
+
+@media (max-width: 1100px) {
+  .aiva-opportunities-table th,
+  .aiva-opportunities-table td {
+    padding: 11px 9px;
+  }
+
+  .aiva-opportunities-table .aiva-opportunity-name {
+    min-width: 150px;
+  }
+}
+
+@media (max-width: 768px) {
+  .aiva-opportunities-table {
+    min-width: 900px;
+  }
+
+  .aiva-opportunities-table th,
+  .aiva-opportunities-table td {
+    padding: 10px 8px;
+  }
+}
+
+/* O2.7.1 — Opportunity name readability */
+.aiva-opportunities-table .opportunityIdentity {
+  min-width: 0;
+  align-items: flex-start;
+}
+
+.aiva-opportunities-table .opportunityIdentityContent {
+  min-width: 0;
+  max-width: none;
+  flex: 1 1 auto;
+  white-space: normal;
+  overflow: visible;
+}
+
+.aiva-opportunities-table .opportunityIdentityContent strong {
+  display: block;
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  overflow-wrap: anywhere;
+  line-height: 1.45;
+}
+
+.aiva-opportunities-table th:nth-child(2),
+.aiva-opportunities-table td:nth-child(2) {
+  min-width: 230px;
+  width: 260px;
+}
+
+
+/* =========================================================
+   AIVA CRM — O2.7.1 FINAL OPPORTUNITY NAME FIX
+   ========================================================= */
+
+.aiva-opportunities-table .opportunityIdentity {
+  width: 100%;
+  max-width: none;
+  min-width: 0;
+  display: flex;
+  align-items: flex-start;
+}
+
+.aiva-opportunities-table .opportunityIdentityContent {
+  flex: 1 1 0%;
+  width: auto;
+  min-width: 0;
+  max-width: none;
+}
+
+.aiva-opportunities-table .opportunityIdentityContent > strong {
+  display: block;
+  width: 100%;
+  max-width: none;
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  overflow-wrap: anywhere;
+  line-height: 1.5;
+}
+
+.aiva-opportunities-table th:nth-child(2),
+.aiva-opportunities-table td:nth-child(2) {
+  width: 260px;
+  min-width: 260px;
+}
+
+
+/* O2.7.1 — Verified opportunity column layout fix */
+.aiva-opportunities-table {
+  table-layout: auto;
+}
+
+.aiva-opportunities-table th:nth-child(2),
+.aiva-opportunities-table td:nth-child(2) {
+  width: 360px;
+  min-width: 360px;
+}
+
+.aiva-opportunities-table .opportunityIdentity {
+  width: 100%;
+  max-width: none;
+}
+
+.aiva-opportunities-table .opportunityIdentityContent {
+  width: 100%;
+  min-width: 0;
+  max-width: none;
+}
+
+.aiva-opportunities-table .opportunityIdentityContent > strong {
+  width: 100%;
+  max-width: none;
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  overflow-wrap: anywhere;
+}

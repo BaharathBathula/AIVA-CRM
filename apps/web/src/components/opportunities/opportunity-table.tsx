@@ -813,8 +813,8 @@ export function OpportunityTable({
   onToggleOpportunitySelection,
 }: OpportunityTableProps) {
   return (
-    <div className="accountTableWrapper opportunityTableWrapper">
-      <table className="accountTable opportunityTable">
+    <div className="accountTableWrapper opportunityTableWrapper aiva-opportunities-table-wrapper">
+      <table className="accountTable opportunityTable aiva-opportunities-table">
         <thead>
           <tr>
             <th className="opportunityCheckboxCell">
@@ -977,12 +977,12 @@ export function OpportunityTable({
                     />
                   </td>
 
-                  <td>
+                  <td style={{ width: 360, minWidth: 360 }}>
                     <Link
                       href={
                         `/opportunities/${opportunity.id}`
                       }
-                      className="opportunityIdentity"
+                      className="opportunityIdentity" style={{ width: "100%", maxWidth: "none" }}
                     >
                       <div className="opportunityIdentityAvatar">
                         {
@@ -990,11 +990,18 @@ export function OpportunityTable({
                         }
                       </div>
 
-                      <div className="opportunityIdentityContent">
-                        <strong>
-                          {
-                            opportunity.name
-                          }
+                      <div className="opportunityIdentityContent aiva-opportunity-name" style={{ width: "100%", maxWidth: "none" }}>
+                        <strong
+                          style={{
+                            width: "100%",
+                            maxWidth: "none",
+                            whiteSpace: "normal",
+                            overflow: "visible",
+                            textOverflow: "clip",
+                            overflowWrap: "anywhere",
+                          }}
+                        >
+                          {opportunity.name}
                         </strong>
 
                         <div className="opportunityIdentityMeta">
