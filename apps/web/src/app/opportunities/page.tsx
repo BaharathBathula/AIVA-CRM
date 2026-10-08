@@ -1,5 +1,7 @@
 "use client";
 
+import { OpportunityBulkPriorityDialog } from "@/components/opportunities/opportunity-bulk-priority-dialog";
+import { bulkChangeOpportunityPriority } from "@/lib/opportunity-bulk-priority";
 import {
   useEffect,
   useMemo,
@@ -1260,11 +1262,53 @@ return true;
 
 
   // O2.6.1C: Enterprise bulk toolbar
+  const [bulkPriorityOpen, setBulkPriorityOpen] = useState(false);
+  const [bulkPriorityLoading, setBulkPriorityLoading] = useState(false);
+  const [bulkPriorityError, setBulkPriorityError] = useState<string | null>(null);
+
+  async function confirmBulkPriorityChange(
+    priority: OpportunityPriority,
+  ) {
+    if (selectedOpportunityIds.size === 0) {
+      setBulkPriorityError("Select at least one opportunity.");
+      return;
+    }
+
+    setBulkPriorityLoading(true);
+    setBulkPriorityError(null);
+
+    try {
+      await bulkChangeOpportunityPriority(
+        Array.from(selectedOpportunityIds),
+        priority,
+      );
+
+      const refreshed = await getOpportunities();
+      setOpportunities(refreshed);
+
+      setSelectedOpportunityIds(new Set<string>());
+      setBulkPriorityOpen(false);
+    } catch (error) {
+      setBulkPriorityError(
+        error instanceof Error
+          ? error.message
+          : "Unable to update opportunity priority.",
+      );
+    } finally {
+      setBulkPriorityLoading(false);
+    }
+  }
+
   function handleBulkAction(
     action: OpportunityBulkActionType
   ) {
     if (action === "change_owner") {
       void openBulkOwnerDialog();
+      return;
+    }
+    if (action === "change_priority") {
+      setBulkPriorityError(null);
+      setBulkPriorityOpen(true);
       return;
     }
     if (action === "change_stage") {
@@ -1993,7 +2037,20 @@ return true;
               />
 
 
-              <OpportunityBulkStageDialog
+              <OpportunityBulkPriorityDialog
+          open={bulkPriorityOpen}
+          selectedCount={selectedOpportunityIds.size}
+          loading={bulkPriorityLoading}
+          error={bulkPriorityError}
+          onClose={() => {
+            if (!bulkPriorityLoading) {
+              setBulkPriorityOpen(false);
+              setBulkPriorityError(null);
+            }
+          }}
+          onConfirm={confirmBulkPriorityChange}
+        />
+        <OpportunityBulkStageDialog
                 open={bulkStageOpen}
                 selectedCount={selectedOpportunityIds.size}
                 pipelines={bulkStagePipelines}

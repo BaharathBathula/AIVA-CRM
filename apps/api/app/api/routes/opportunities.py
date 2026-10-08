@@ -169,6 +169,34 @@ async def bulk_change_owner_endpoint(
     )
 
 
+
+from app.services.opportunity_bulk_priority import (
+    bulk_change_opportunity_priority,
+)
+from app.schemas.opportunity import (
+    OpportunityBulkPriorityRequest,
+    OpportunityBulkPriorityResponse,
+)
+
+@router.patch(
+    "/bulk/priority",
+    response_model=OpportunityBulkPriorityResponse,
+)
+async def bulk_change_priority_endpoint(
+    payload: OpportunityBulkPriorityRequest,
+    actor: AuthorizedOrganizationUser = Depends(
+        require_bulk_update_permission
+    ),
+    db: AsyncSession = Depends(get_db),
+):
+    return await bulk_change_opportunity_priority(
+        db=db,
+        organization_id=actor.organization_id,
+        opportunity_ids=payload.opportunity_ids,
+        priority=payload.priority,
+    )
+
+
 @router.get(
     "/{opportunity_id}",
     response_model=OpportunityResponse,

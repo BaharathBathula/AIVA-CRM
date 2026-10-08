@@ -263,3 +263,20 @@ class OpportunityBulkStageResponse(BaseModel):
     requested_count: int
     pipeline_id: uuid.UUID
     stage_id: uuid.UUID
+
+
+class OpportunityBulkPriorityRequest(BaseModel):
+    opportunity_ids: list[uuid.UUID] = Field(
+        min_length=1,
+        max_length=100,
+    )
+    priority: str = Field(
+        pattern="^(low|medium|high|critical)$",
+    )
+
+
+class OpportunityBulkPriorityResponse(BaseModel):
+    updated_count: int
+    updated_ids: list[uuid.UUID]
+    requested_count: int
+    priority: str
