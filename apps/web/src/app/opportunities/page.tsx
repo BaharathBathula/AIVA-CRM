@@ -1,5 +1,7 @@
 "use client";
 
+import { OpportunityBulkForecastDialog } from "@/components/opportunities/opportunity-bulk-forecast-dialog";
+import { bulkChangeOpportunityForecast } from "@/lib/opportunity-bulk-forecast";
 import { OpportunityBulkPriorityDialog } from "@/components/opportunities/opportunity-bulk-priority-dialog";
 import { bulkChangeOpportunityPriority } from "@/lib/opportunity-bulk-priority";
 import {
@@ -1299,11 +1301,53 @@ return true;
     }
   }
 
+  const [bulkForecastOpen, setBulkForecastOpen] = useState(false);
+  const [bulkForecastLoading, setBulkForecastLoading] = useState(false);
+  const [bulkForecastError, setBulkForecastError] = useState<string | null>(null);
+
+  async function confirmBulkForecastChange(
+    category: ForecastCategory,
+  ) {
+    if (selectedOpportunityIds.size === 0) {
+      setBulkForecastError("Select at least one opportunity.");
+      return;
+    }
+
+    setBulkForecastLoading(true);
+    setBulkForecastError(null);
+
+    try {
+      await bulkChangeOpportunityForecast(
+        Array.from(selectedOpportunityIds),
+        category,
+      );
+
+      const refreshed = await getOpportunities();
+      setOpportunities(refreshed);
+
+      setSelectedOpportunityIds(new Set<string>());
+      setBulkForecastOpen(false);
+    } catch (error) {
+      setBulkForecastError(
+        error instanceof Error
+          ? error.message
+          : "Unable to update opportunity forecast.",
+      );
+    } finally {
+      setBulkForecastLoading(false);
+    }
+  }
+
   function handleBulkAction(
     action: OpportunityBulkActionType
   ) {
     if (action === "change_owner") {
       void openBulkOwnerDialog();
+      return;
+    }
+    if (action === "change_forecast") {
+      setBulkForecastError(null);
+      setBulkForecastOpen(true);
       return;
     }
     if (action === "change_priority") {
@@ -1319,10 +1363,10 @@ return true;
 
     // Database mutations will be implemented in O2.6.2+
     const labels: Record<OpportunityBulkActionType, string> = {
+      change_forecast: "Update Forecast",
       change_owner: "Change Owner",
       change_stage: "Change Stage",
       change_priority: "Change Priority",
-      change_forecast: "Update Forecast",
       delete: "Delete",
     };
 
@@ -2037,7 +2081,20 @@ return true;
               />
 
 
-              <OpportunityBulkPriorityDialog
+              <OpportunityBulkForecastDialog
+          open={bulkForecastOpen}
+          selectedCount={selectedOpportunityIds.size}
+          loading={bulkForecastLoading}
+          error={bulkForecastError}
+          onClose={() => {
+            if (!bulkForecastLoading) {
+              setBulkForecastOpen(false);
+              setBulkForecastError(null);
+            }
+          }}
+          onConfirm={confirmBulkForecastChange}
+        />
+        <OpportunityBulkPriorityDialog
           open={bulkPriorityOpen}
           selectedCount={selectedOpportunityIds.size}
           loading={bulkPriorityLoading}

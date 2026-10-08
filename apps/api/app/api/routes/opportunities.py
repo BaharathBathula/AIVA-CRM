@@ -178,6 +178,34 @@ from app.schemas.opportunity import (
     OpportunityBulkPriorityResponse,
 )
 
+from app.services.opportunity_bulk_forecast import (
+    bulk_change_opportunity_forecast,
+)
+from app.schemas.opportunity import (
+    OpportunityBulkForecastRequest,
+    OpportunityBulkForecastResponse,
+)
+
+
+@router.patch(
+    "/bulk/forecast",
+    response_model=OpportunityBulkForecastResponse,
+)
+async def bulk_change_forecast_endpoint(
+    payload: OpportunityBulkForecastRequest,
+    actor: AuthorizedOrganizationUser = Depends(
+        require_bulk_update_permission
+    ),
+    db: AsyncSession = Depends(get_db),
+):
+    return await bulk_change_opportunity_forecast(
+        db=db,
+        organization_id=actor.organization_id,
+        opportunity_ids=payload.opportunity_ids,
+        forecast_category=payload.forecast_category,
+    )
+
+
 @router.patch(
     "/bulk/priority",
     response_model=OpportunityBulkPriorityResponse,

@@ -4822,3 +4822,139 @@ button {
   opacity: 0.55;
   cursor: not-allowed;
 }
+
+
+/* AIVA CRM — Bulk Forecast Dialog */
+
+.aiva-forecast-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(15, 23, 42, 0.6);
+}
+
+.aiva-forecast-modal {
+  width: 100%;
+  max-width: 480px;
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: 28px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  box-shadow: 0 24px 64px rgba(15, 23, 42, 0.24);
+}
+
+.aiva-forecast-modal h2 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.aiva-forecast-description {
+  margin: 10px 0 0;
+  color: #64748b;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.aiva-forecast-options {
+  margin: 22px 0 0;
+  padding: 0;
+  border: 0;
+}
+
+.aiva-forecast-options legend {
+  margin-bottom: 12px;
+  color: #334155;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.aiva-forecast-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 10px;
+  padding: 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.aiva-forecast-option.selected {
+  background: #eef2ff;
+  border-color: #4f46e5;
+}
+
+.aiva-forecast-option input {
+  margin-top: 3px;
+  accent-color: #4f46e5;
+}
+
+.aiva-forecast-option span {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.aiva-forecast-option strong {
+  color: #0f172a;
+  font-size: 14px;
+}
+
+.aiva-forecast-option small {
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.aiva-forecast-error {
+  margin-top: 14px;
+  color: #dc2626;
+  font-size: 13px;
+}
+
+.aiva-forecast-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.aiva-forecast-actions button {
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.aiva-forecast-cancel {
+  color: #334155;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+}
+
+.aiva-forecast-confirm {
+  color: #ffffff;
+  background: #4f46e5;
+  border: 1px solid #4f46e5;
+}
+
+.aiva-forecast-actions button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+@media (max-width: 480px) {
+  .aiva-forecast-modal {
+    padding: 20px;
+  }
+}

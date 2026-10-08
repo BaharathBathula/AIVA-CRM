@@ -280,3 +280,20 @@ class OpportunityBulkPriorityResponse(BaseModel):
     updated_ids: list[uuid.UUID]
     requested_count: int
     priority: str
+
+
+class OpportunityBulkForecastRequest(BaseModel):
+    opportunity_ids: list[uuid.UUID] = Field(
+        min_length=1,
+        max_length=100,
+    )
+    forecast_category: str = Field(
+        pattern="^(pipeline|best_case|commit|closed|omitted)$",
+    )
+
+
+class OpportunityBulkForecastResponse(BaseModel):
+    updated_count: int
+    updated_ids: list[uuid.UUID]
+    requested_count: int
+    forecast_category: str
