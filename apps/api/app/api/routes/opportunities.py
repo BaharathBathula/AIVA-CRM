@@ -25,6 +25,19 @@ from app.services.opportunities import (
 )
 
 
+from app.api.dependencies.authorization import (
+    AuthorizedOrganizationUser,
+    require_bulk_update_permission,
+)
+from app.schemas.opportunity import (
+    OpportunityBulkOwnerUpdate,
+    OpportunityBulkOwnerResult,
+)
+from app.services.opportunity_bulk import (
+    bulk_change_opportunity_owner,
+)
+
+
 router = APIRouter(
     prefix="/opportunities",
     tags=["Opportunities"],
@@ -105,6 +118,25 @@ async def list_opportunities_endpoint(
         search,
         skip,
         limit,
+    )
+
+
+@router.patch(
+    "/bulk/owner",
+    response_model=OpportunityBulkOwnerResult,
+)
+async def bulk_change_owner_endpoint(
+    payload: OpportunityBulkOwnerUpdate,
+    actor: AuthorizedOrganizationUser = Depends(
+        require_bulk_update_permission
+    ),
+    db: AsyncSession = Depends(get_db),
+):
+    return await bulk_change_opportunity_owner(
+        db=db,
+        organization_id=actor.organization_id,
+        opportunity_ids=payload.opportunity_ids,
+        owner_user_id=payload.owner_user_id,
     )
 
 

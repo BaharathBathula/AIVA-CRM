@@ -94,6 +94,20 @@ import type {
   OpportunityBulkActionType,
 } from "@/lib/opportunities/bulk-actions";
 
+import {
+  OpportunityBulkOwnerDialog,
+} from "@/components/opportunities/opportunity-bulk-owner-dialog";
+
+import type {
+  BulkOwnerOption,
+} from "@/components/opportunities/opportunity-bulk-owner-dialog";
+
+import {
+  bulkChangeOpportunityOwner,
+  getEligibleOpportunityOwners,
+} from "@/lib/opportunity-bulk-owner";
+
+
 type StageFilter =
   | "all"
   | PipelineStageCategory;
@@ -316,6 +330,55 @@ const [
     () => new Set()
   );
 
+
+
+  const [bulkOwnerOpen, setBulkOwnerOpen] = useState(false);
+  const [bulkOwnerOptions, setBulkOwnerOptions] = useState<BulkOwnerOption[]>([]);
+  const [bulkOwnerLoading, setBulkOwnerLoading] = useState(false);
+  const [bulkOwnerError, setBulkOwnerError] = useState("");
+
+  async function openBulkOwnerDialog() {
+    setBulkOwnerError("");
+    setBulkOwnerLoading(true);
+
+    try {
+      const owners = await getEligibleOpportunityOwners();
+      setBulkOwnerOptions(owners);
+      setBulkOwnerOpen(true);
+    } catch (error) {
+      setBulkOwnerError(
+        error instanceof Error ? error.message : "Unable to load owners."
+      );
+    } finally {
+      setBulkOwnerLoading(false);
+    }
+  }
+
+  async function confirmBulkOwnerChange(ownerUserId: string) {
+    setBulkOwnerLoading(true);
+    setBulkOwnerError("");
+
+    try {
+      await bulkChangeOpportunityOwner(
+        Array.from(selectedOpportunityIds),
+        ownerUserId
+      );
+
+      const updatedOpportunities = await getOpportunities();
+      setOpportunities(updatedOpportunities);
+      setSelectedOpportunityIds(new Set());
+      setBulkOwnerOpen(false);
+      setBulkOwnerOptions([]);
+    } catch (error) {
+      setBulkOwnerError(
+        error instanceof Error
+          ? error.message
+          : "Unable to update opportunity owners."
+      );
+    } finally {
+      setBulkOwnerLoading(false);
+    }
+  }
 
   useEffect(() => {
     async function load() {
@@ -1117,6 +1180,11 @@ return true;
   function handleBulkAction(
     action: OpportunityBulkActionType
   ) {
+    if (action === "change_owner") {
+      void openBulkOwnerDialog();
+      return;
+    }
+
     // Database mutations will be implemented in O2.6.2+
     const labels: Record<OpportunityBulkActionType, string> = {
       change_owner: "Change Owner",
@@ -1811,6 +1879,31 @@ return true;
 
 
             {/* Enterprise bulk action toolbar */}
+
+              {bulkOwnerError && (
+                <div role="alert" style={{
+                  marginBottom: 12,
+                  color: "#b91c1c",
+                  fontSize: 13,
+                }}>
+                  {bulkOwnerError}
+                </div>
+              )}
+
+              <OpportunityBulkOwnerDialog
+                open={bulkOwnerOpen}
+                selectedCount={selectedOpportunityIds.size}
+                owners={bulkOwnerOptions}
+                loading={bulkOwnerLoading}
+                onClose={() => {
+                  if (!bulkOwnerLoading) {
+                    setBulkOwnerOpen(false);
+                    setBulkOwnerError("");
+                  }
+                }}
+                onConfirm={confirmBulkOwnerChange}
+              />
+
               <OpportunityBulkToolbar
                 selectedCount={selectedCount}
                 visibleSelectedCount={visibleSelectedCount}

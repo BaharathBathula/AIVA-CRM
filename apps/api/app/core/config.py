@@ -6,6 +6,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     app_name: str = "AIVA CRM API"
     environment: str = "development"
+    jwt_secret_key: str = ""
+    jwt_access_token_expire_minutes: int = 30
     api_v1_prefix: str = "/api/v1"
 
     database_url: str = (

@@ -1,3 +1,4 @@
+from app.api.routes.auth import router as auth_router
 from fastapi import APIRouter
 
 from app.api.routes.accounts import (
@@ -74,3 +75,4 @@ api_router.include_router(
 api_router.include_router(
     emails_router
 )
+api_router.include_router(auth_router)

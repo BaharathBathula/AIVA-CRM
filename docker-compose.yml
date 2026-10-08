@@ -70,6 +70,7 @@ services:
     container_name: aiva-api
     network_mode: host
     environment:
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:?JWT_SECRET_KEY must be set}
       ENVIRONMENT: development
       DATABASE_URL: postgresql+asyncpg://aiva:aiva_local_dev@127.0.0.1:5432/aiva_crm
       REDIS_URL: redis://127.0.0.1:6379/0

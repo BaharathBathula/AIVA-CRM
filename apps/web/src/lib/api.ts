@@ -1,76 +1,70 @@
-const API_URL =
-  "/api/aiva";
+const API_URL = "/api/aiva";
 
-
-export class AivaApiError
-  extends Error {
+export class AivaApiError extends Error {
   status: number;
 
-  constructor(
-    message: string,
-    status: number
-  ) {
+  constructor(message: string, status: number) {
     super(message);
-
-    this.name =
-      "AivaApiError";
-
-    this.status =
-      status;
+    this.name = "AivaApiError";
+    this.status = status;
   }
 }
-
 
 export async function aivaRequest<T>(
   path: string,
   options: RequestInit = {}
 ): Promise<T> {
-  const headers =
-    new Headers(
-      options.headers
-    );
+  const headers = new Headers(options.headers);
 
-  if (options.body) {
-    headers.set(
-      "Content-Type",
-      "application/json"
-    );
+  if (options.body && !headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
   }
 
-  const response =
-    await fetch(
-      `${API_URL}${path}`,
-      {
-        ...options,
-        headers,
-        cache: "no-store",
-      }
-    );
+  // Attach an authenticated session when one exists.
+  // Dynamic import avoids a circular dependency:
+  // auth.ts imports aivaRequest() for the login endpoint.
+  if (path !== "/auth/login" && typeof window !== "undefined") {
+    const { getAivaAccessToken } = await import("@/lib/auth");
+    const token = getAivaAccessToken();
+
+    if (token) {
+      headers.set("Authorization", `Bearer ${token}`);
+    }
+  }
+
+  const response = await fetch(`${API_URL}${path}`, {
+    ...options,
+    headers,
+    cache: "no-store",
+  });
 
   if (!response.ok) {
-    let message =
-      "AIVA API request failed.";
+    let message = "AIVA API request failed.";
 
     try {
-      const body =
-        await response.json();
+      const body: unknown = await response.json();
 
       if (
-        typeof body?.detail
-        === "string"
+        typeof body === "object" &&
+        body !== null &&
+        "detail" in body
       ) {
-        message =
-          body.detail;
+        const detail = body.detail;
+
+        if (typeof detail === "string") {
+          message = detail;
+        }
       }
     } catch {
-      // Keep default message.
+      // Preserve the default error message.
     }
 
-    throw new AivaApiError(
-      message,
-      response.status
-    );
+    throw new AivaApiError(message, response.status);
   }
 
-  return response.json();
+  if (response.status === 204) {
+    return undefined as T;
+  }
+
+  return (await response.json()) as T;
 }
