@@ -246,3 +246,20 @@ class OpportunityBulkOwnerResult(BaseModel):
     updated_ids: list[uuid.UUID]
     requested_count: int
     owner_user_id: uuid.UUID
+
+
+class OpportunityBulkStageRequest(BaseModel):
+    opportunity_ids: list[uuid.UUID] = Field(
+        min_length=1,
+        max_length=100,
+    )
+    pipeline_id: uuid.UUID
+    stage_id: uuid.UUID
+
+
+class OpportunityBulkStageResponse(BaseModel):
+    updated_count: int
+    updated_ids: list[uuid.UUID]
+    requested_count: int
+    pipeline_id: uuid.UUID
+    stage_id: uuid.UUID

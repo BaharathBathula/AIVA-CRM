@@ -107,6 +107,19 @@ import {
   getEligibleOpportunityOwners,
 } from "@/lib/opportunity-bulk-owner";
 
+import {
+  OpportunityBulkStageDialog,
+} from "@/components/opportunities/opportunity-bulk-stage-dialog";
+
+import type {
+  BulkPipelineOption,
+} from "@/components/opportunities/opportunity-bulk-stage-dialog";
+
+import {
+  bulkChangeOpportunityStage,
+} from "@/lib/opportunity-bulk-stage";
+
+
 
 type StageFilter =
   | "all"
@@ -331,6 +344,76 @@ const [
   );
 
 
+
+
+  // O2.6.4: Bulk Change Stage
+  const [bulkStageOpen, setBulkStageOpen] = useState(false);
+  const [bulkStageLoading, setBulkStageLoading] = useState(false);
+  const [bulkStageError, setBulkStageError] = useState("");
+
+  const bulkStagePipelines: BulkPipelineOption[] =
+    pipelines.map((pipeline) => ({
+      id: pipeline.id,
+      name: pipeline.name,
+      is_active: pipeline.is_active,
+      stages: stages
+        .filter((stage) => stage.pipeline_id === pipeline.id)
+        .map((stage) => ({
+          id: stage.id,
+          name: stage.name,
+          pipeline_id: stage.pipeline_id,
+          is_active: stage.is_active,
+        })),
+    }));
+
+  function openBulkStageDialog() {
+    setBulkStageError("");
+    setBulkStageOpen(true);
+  }
+
+  async function confirmBulkStageChange(
+    pipelineId: string,
+    stageId: string
+  ) {
+    setBulkStageLoading(true);
+    setBulkStageError("");
+
+    try {
+      await bulkChangeOpportunityStage(
+        Array.from(selectedOpportunityIds),
+        pipelineId,
+        stageId
+      );
+
+      const [
+        updatedOpportunities,
+        updatedPipelines,
+      ] = await Promise.all([
+        getOpportunities(),
+        getPipelines(),
+      ]);
+
+      const updatedStageSets = await Promise.all(
+        updatedPipelines.map((pipeline) =>
+          getPipelineStages(pipeline.id)
+        )
+      );
+
+      setOpportunities(updatedOpportunities);
+      setPipelines(updatedPipelines);
+      setStages(updatedStageSets.flat());
+      setSelectedOpportunityIds(new Set<string>());
+      setBulkStageOpen(false);
+    } catch (error) {
+      setBulkStageError(
+        error instanceof Error
+          ? error.message
+          : "Unable to change opportunity stages."
+      );
+    } finally {
+      setBulkStageLoading(false);
+    }
+  }
 
   const [bulkOwnerOpen, setBulkOwnerOpen] = useState(false);
   const [bulkOwnerOptions, setBulkOwnerOptions] = useState<BulkOwnerOption[]>([]);
@@ -1184,6 +1267,11 @@ return true;
       void openBulkOwnerDialog();
       return;
     }
+    if (action === "change_stage") {
+      openBulkStageDialog();
+      return;
+    }
+
 
     // Database mutations will be implemented in O2.6.2+
     const labels: Record<OpportunityBulkActionType, string> = {
@@ -1902,6 +1990,22 @@ return true;
                   }
                 }}
                 onConfirm={confirmBulkOwnerChange}
+              />
+
+
+              <OpportunityBulkStageDialog
+                open={bulkStageOpen}
+                selectedCount={selectedOpportunityIds.size}
+                pipelines={bulkStagePipelines}
+                loading={bulkStageLoading}
+                error={bulkStageError}
+                onClose={() => {
+                  if (!bulkStageLoading) {
+                    setBulkStageOpen(false);
+                    setBulkStageError("");
+                  }
+                }}
+                onConfirm={confirmBulkStageChange}
               />
 
               <OpportunityBulkToolbar

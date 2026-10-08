@@ -121,6 +121,35 @@ async def list_opportunities_endpoint(
     )
 
 
+
+from app.services.opportunity_bulk_stage import (
+    bulk_change_opportunity_stage,
+)
+from app.schemas.opportunity import (
+    OpportunityBulkStageRequest,
+    OpportunityBulkStageResponse,
+)
+
+
+@router.patch(
+    "/bulk/stage",
+    response_model=OpportunityBulkStageResponse,
+)
+async def bulk_change_stage_endpoint(
+    payload: OpportunityBulkStageRequest,
+    db: AsyncSession = Depends(get_db),
+    organization_id: uuid.UUID = Depends(get_current_organization_id),
+    _authorized=Depends(require_bulk_update_permission),
+):
+    return await bulk_change_opportunity_stage(
+        db=db,
+        organization_id=organization_id,
+        opportunity_ids=payload.opportunity_ids,
+        pipeline_id=payload.pipeline_id,
+        stage_id=payload.stage_id,
+    )
+
+
 @router.patch(
     "/bulk/owner",
     response_model=OpportunityBulkOwnerResult,
