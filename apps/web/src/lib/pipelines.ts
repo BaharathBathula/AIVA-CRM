@@ -63,3 +63,18 @@ export function createPipeline(
     }
   );
 }
+
+
+/* AIVA_P44_RENAME_PIPELINE */
+export function renamePipeline(
+  pipelineId: string,
+  name: string
+): Promise<Pipeline> {
+  return aivaRequest<Pipeline>(
+    `/pipelines/${pipelineId}`,
+    {
+      method: "PATCH",
+      body: JSON.stringify({ name }),
+    }
+  );
+}

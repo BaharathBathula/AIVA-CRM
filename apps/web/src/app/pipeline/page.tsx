@@ -44,6 +44,7 @@ import {
   createPipeline,
   getPipelines,
   getPipelineStages,
+  renamePipeline,
 } from "@/lib/pipelines";
 
 import type {
@@ -164,6 +165,72 @@ export default function PipelinePage() {
     useState(false);
   const [createPipelineError, setCreatePipelineError] =
     useState<string | null>(null);
+
+  // AIVA_P44_RENAME_PIPELINE
+  const [showRenamePipeline, setShowRenamePipeline] =
+    useState(false);
+  const [renamePipelineName, setRenamePipelineName] =
+    useState("");
+  const [renamingPipeline, setRenamingPipeline] =
+    useState(false);
+  const [renamePipelineError, setRenamePipelineError] =
+    useState<string | null>(null);
+
+  function openRenamePipeline() {
+    const selected = pipelines.find(
+      (pipeline) => pipeline.id === selectedPipelineId
+    );
+
+    if (!selected) return;
+
+    setRenamePipelineName(selected.name);
+    setRenamePipelineError(null);
+    setShowRenamePipeline(true);
+  }
+
+  async function handleRenamePipeline(
+    event: React.FormEvent<HTMLFormElement>
+  ) {
+    event.preventDefault();
+
+    if (renamingPipeline || !selectedPipelineId) return;
+
+    const name = renamePipelineName.trim();
+
+    if (!name || name.length > 150) {
+      setRenamePipelineError(
+        "Enter a pipeline name between 1 and 150 characters."
+      );
+      return;
+    }
+
+    try {
+      setRenamingPipeline(true);
+      setRenamePipelineError(null);
+
+      const updated = await renamePipeline(
+        selectedPipelineId,
+        name
+      );
+
+      setPipelines((current) =>
+        current.map((pipeline) =>
+          pipeline.id === updated.id ? updated : pipeline
+        )
+      );
+
+      setShowRenamePipeline(false);
+      await loadPipeline(updated.id);
+    } catch (err) {
+      setRenamePipelineError(
+        err instanceof Error
+          ? err.message
+          : "Unable to rename pipeline."
+      );
+    } finally {
+      setRenamingPipeline(false);
+    }
+  }
 
   async function handleCreatePipeline(
     event: React.FormEvent<HTMLFormElement>
@@ -605,6 +672,15 @@ export default function PipelinePage() {
 
               <button
                 type="button"
+                className="pipelineCreateButton"
+                onClick={openRenamePipeline}
+                disabled={!selectedPipelineId || renamingPipeline}
+              >
+                Rename
+              </button>
+
+              <button
+                type="button"
                 className="pipelineRefresh"
                 onClick={() =>
                   loadPipeline(
@@ -619,6 +695,84 @@ export default function PipelinePage() {
 
             </div>
           </div>
+
+          {/* AIVA_P44_RENAME_PIPELINE_DIALOG */}
+          {showRenamePipeline && (
+            <div
+              className="pipelineCreateOverlay"
+              role="presentation"
+              onMouseDown={(event) => {
+                if (
+                  event.target === event.currentTarget &&
+                  !renamingPipeline
+                ) {
+                  setShowRenamePipeline(false);
+                }
+              }}
+            >
+              <div
+                className="pipelineCreateDialog"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="rename-pipeline-title"
+              >
+                <h2 id="rename-pipeline-title">
+                  Rename Pipeline
+                </h2>
+                <p>
+                  Update the selected pipeline name.
+                  Existing stages and opportunities will remain unchanged.
+                </p>
+
+                <form onSubmit={handleRenamePipeline}>
+                  <label htmlFor="rename-pipeline-name">
+                    Pipeline name
+                  </label>
+                  <input
+                    id="rename-pipeline-name"
+                    type="text"
+                    autoFocus
+                    maxLength={150}
+                    required
+                    value={renamePipelineName}
+                    onChange={(event) =>
+                      setRenamePipelineName(event.target.value)
+                    }
+                    disabled={renamingPipeline}
+                  />
+
+                  {renamePipelineError && (
+                    <p
+                      className="pipelineCreateError"
+                      role="alert"
+                    >
+                      {renamePipelineError}
+                    </p>
+                  )}
+
+                  <div className="pipelineCreateActions">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setShowRenamePipeline(false)
+                      }
+                      disabled={renamingPipeline}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={renamingPipeline}
+                    >
+                      {renamingPipeline
+                        ? "Saving..."
+                        : "Save Changes"}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
 
           {showCreatePipeline && (
             <div
