@@ -1179,6 +1179,170 @@ export default function PipelinePage() {
             grid-template-columns: 1fr;
           }
         }
+
+        /* AIVA_PIPELINE_P22_VISUAL_ENHANCEMENTS */
+
+        .pipelinePageHeader h1 {
+          font-size: 29px;
+          font-weight: 800;
+          line-height: 1.2;
+        }
+
+        .pipelinePageHeader p {
+          font-size: 13px;
+          line-height: 1.6;
+        }
+
+        .pipelineMetrics > div {
+          min-height: 76px;
+          padding: 18px;
+          border-radius: 14px;
+        }
+
+        .pipelineMetrics span {
+          font-size: 12px;
+          font-weight: 500;
+        }
+
+        .pipelineMetrics strong {
+          font-size: 19px;
+          font-weight: 800;
+        }
+
+        .kanbanBoard {
+          gap: 14px;
+        }
+
+        .kanbanColumn {
+          padding: 12px;
+          border-radius: 14px;
+          background: #f7f8fc;
+        }
+
+        .kanbanColumnHeader {
+          padding: 8px 5px 16px;
+          align-items: flex-start;
+        }
+
+        .kanbanStageTitle strong {
+          font-size: 14px;
+          font-weight: 750;
+          line-height: 1.4;
+        }
+
+        .kanbanColumnHeader p {
+          font-size: 11px;
+          margin-top: 7px;
+        }
+
+        .kanbanStageValue {
+          font-size: 12px;
+          font-weight: 750;
+        }
+
+        .kanbanCount {
+          min-width: 23px;
+          height: 23px;
+          padding: 0 5px;
+          font-size: 11px;
+        }
+
+        .kanbanCards {
+          gap: 12px;
+        }
+
+        .kanbanCard {
+          padding: 16px;
+          border-radius: 12px;
+          border-color: #e0e5ef;
+          box-shadow: 0 2px 6px rgba(20, 30, 60, 0.025);
+        }
+
+        .kanbanCard:hover {
+          transform: translateY(-2px);
+          border-color: #b8b0f5;
+          box-shadow: 0 10px 26px rgba(40, 35, 100, 0.09);
+        }
+
+        .kanbanDealName {
+          margin: 8px 0;
+          font-size: 14px;
+          font-weight: 750;
+          line-height: 1.45;
+          text-decoration: none;
+          overflow-wrap: anywhere;
+        }
+
+        .kanbanDealName:hover {
+          text-decoration: underline;
+          text-underline-offset: 3px;
+        }
+
+        .kanbanAccount {
+          gap: 7px;
+          font-size: 11px;
+          line-height: 1.5;
+        }
+
+        .kanbanCardValue {
+          margin: 15px 0 10px;
+          font-size: 21px;
+          font-weight: 800;
+        }
+
+        .kanbanCardMeta {
+          margin-bottom: 13px;
+          font-size: 11px;
+          line-height: 1.4;
+        }
+
+        .kanbanCard select {
+          height: 38px;
+          padding: 0 10px;
+          font-size: 12px;
+          border-radius: 8px;
+        }
+
+        .kanbanEmpty {
+          padding: 28px 12px;
+          font-size: 12px;
+          line-height: 1.5;
+        }
+
+        .kanbanColumn.dragOver {
+          border-color: var(--primary);
+          background: #f0edff;
+          box-shadow: inset 0 0 0 1px var(--primary);
+        }
+
+        .pipelineRefresh:hover {
+          border-color: var(--primary);
+        }
+
+        .pipelineNewDeal:hover {
+          filter: brightness(0.96);
+        }
+
+        .kanbanCard select:focus-visible,
+        .pipelineHeaderActions select:focus-visible,
+        .pipelineRefresh:focus-visible,
+        .pipelineNewDeal:focus-visible,
+        .kanbanDealName:focus-visible {
+          outline: 2px solid var(--primary);
+          outline-offset: 2px;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .kanbanCard,
+          .kanbanColumn {
+            transition: none;
+          }
+
+          .kanbanCard:hover {
+            transform: none;
+          }
+        }
+
       `}</style>
     </div>
   );
