@@ -78,3 +78,23 @@ export function renamePipeline(
     }
   );
 }
+
+/* AIVA_P52_CREATE_STAGE */
+export type CreatePipelineStageInput = {
+  name: string;
+  probability: number;
+  category: "open" | "won" | "lost";
+};
+
+export function createPipelineStage(
+  pipelineId: string,
+  input: CreatePipelineStageInput
+): Promise<PipelineStage> {
+  return aivaRequest<PipelineStage>(
+    `/pipelines/${pipelineId}/stages`,
+    {
+      method: "POST",
+      body: JSON.stringify(input),
+    }
+  );
+}

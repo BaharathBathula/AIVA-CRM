@@ -13,6 +13,10 @@ import type {
 import Link from "next/link";
 
 import {
+  CreateStageDialog,
+} from "@/components/pipeline/create-stage-dialog";
+
+import {
   Building2,
   CircleDollarSign,
   GripVertical,
@@ -175,6 +179,10 @@ export default function PipelinePage() {
     useState(false);
   const [renamePipelineError, setRenamePipelineError] =
     useState<string | null>(null);
+
+  // AIVA_P52_ADD_STAGE_INTEGRATION
+  const [showCreateStage, setShowCreateStage] =
+    useState(false);
 
   function openRenamePipeline() {
     const selected = pipelines.find(
@@ -681,6 +689,16 @@ export default function PipelinePage() {
 
               <button
                 type="button"
+                className="pipelineCreateButton"
+                disabled={!selectedPipelineId || loading}
+                onClick={() => setShowCreateStage(true)}
+              >
+                <Plus size={15} />
+                Add Stage
+              </button>
+
+              <button
+                type="button"
                 className="pipelineRefresh"
                 onClick={() =>
                   loadPipeline(
@@ -695,6 +713,22 @@ export default function PipelinePage() {
 
             </div>
           </div>
+
+          {showCreateStage && selectedPipelineId && (
+            <CreateStageDialog
+              pipelineId={selectedPipelineId}
+              onClose={() => setShowCreateStage(false)}
+              onCreated={(stage) => {
+                setStages((current) =>
+                  [...current, stage].sort(
+                    (a, b) => a.position - b.position
+                  )
+                );
+                setShowCreateStage(false);
+                void loadPipeline(selectedPipelineId);
+              }}
+            />
+          )}
 
           {/* AIVA_P44_RENAME_PIPELINE_DIALOG */}
           {showRenamePipeline && (
@@ -915,7 +949,14 @@ export default function PipelinePage() {
             </div>
           ) : (
             <div className="kanbanScroller">
-              <div className="kanbanBoard">
+              <div
+                  className="kanbanBoard"
+                  style={{
+                    gridTemplateColumns:
+                      `repeat(${Math.max(stages.length, 1)}, minmax(250px, 1fr))`,
+                    minWidth: `${Math.max(stages.length, 1) * 264}px`,
+                  }}
+                >
                 {stages.map(
                   (stage) => {
                     const stageDeals =
