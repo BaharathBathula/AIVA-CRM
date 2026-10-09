@@ -45,3 +45,21 @@ export function getPipelineStage(
     `/pipelines/${pipelineId}/stages/${stageId}`
   );
 }
+
+
+/**
+ * Create a sales pipeline with seven default stages.
+ */
+export function createPipeline(
+  name: string
+): Promise<Pipeline> {
+  return aivaRequest<Pipeline>(
+    "/pipelines",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        name,
+      }),
+    }
+  );
+}

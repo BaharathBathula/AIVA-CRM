@@ -41,6 +41,7 @@ import {
 } from "@/lib/opportunities";
 
 import {
+  createPipeline,
   getPipelines,
   getPipelineStages,
 } from "@/lib/pipelines";
@@ -153,6 +154,53 @@ export default function PipelinePage() {
 
   const [error, setError] =
     useState<string | null>(null);
+
+  // AIVA_P42_CREATE_PIPELINE
+  const [showCreatePipeline, setShowCreatePipeline] =
+    useState(false);
+  const [newPipelineName, setNewPipelineName] =
+    useState("");
+  const [creatingPipeline, setCreatingPipeline] =
+    useState(false);
+  const [createPipelineError, setCreatePipelineError] =
+    useState<string | null>(null);
+
+  async function handleCreatePipeline(
+    event: React.FormEvent<HTMLFormElement>
+  ) {
+    event.preventDefault();
+
+    if (creatingPipeline) return;
+
+    const name = newPipelineName.trim();
+
+    if (!name || name.length > 150) {
+      setCreatePipelineError(
+        "Enter a pipeline name between 1 and 150 characters."
+      );
+      return;
+    }
+
+    try {
+      setCreatingPipeline(true);
+      setCreatePipelineError(null);
+
+      const created = await createPipeline(name);
+
+      setShowCreatePipeline(false);
+      setNewPipelineName("");
+
+      await loadPipeline(created.id);
+    } catch (err) {
+      setCreatePipelineError(
+        err instanceof Error
+          ? err.message
+          : "Unable to create pipeline."
+      );
+    } finally {
+      setCreatingPipeline(false);
+    }
+  }
 
 
   async function loadPipeline(
@@ -521,6 +569,18 @@ export default function PipelinePage() {
             </div>
 
             <div className="pipelineHeaderActions">
+              <button
+                type="button"
+                className="pipelineCreateButton"
+                onClick={() => {
+                  setCreatePipelineError(null);
+                  setShowCreatePipeline(true);
+                }}
+              >
+                <Plus size={15} />
+                New Pipeline
+              </button>
+
               <select
                 value={
                   selectedPipelineId
@@ -556,15 +616,86 @@ export default function PipelinePage() {
                 Refresh
               </button>
 
-              <Link
-                href="/opportunities"
-                className="pipelineNewDeal"
-              >
-                <Plus size={15} />
-                New Opportunity
-              </Link>
+
             </div>
           </div>
+
+          {showCreatePipeline && (
+            <div
+              className="pipelineCreateOverlay"
+              role="presentation"
+              onMouseDown={(event) => {
+                if (
+                  event.target === event.currentTarget &&
+                  !creatingPipeline
+                ) {
+                  setShowCreatePipeline(false);
+                }
+              }}
+            >
+              <div
+                className="pipelineCreateDialog"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="create-pipeline-title"
+              >
+                <h2 id="create-pipeline-title">
+                  Create New Pipeline
+                </h2>
+                <p>
+                  Create a sales pipeline with seven default stages.
+                </p>
+
+                <form onSubmit={handleCreatePipeline}>
+                  <label htmlFor="new-pipeline-name">
+                    Pipeline name
+                  </label>
+                  <input
+                    id="new-pipeline-name"
+                    type="text"
+                    autoFocus
+                    maxLength={150}
+                    required
+                    value={newPipelineName}
+                    onChange={(event) =>
+                      setNewPipelineName(event.target.value)
+                    }
+                    placeholder="e.g. Enterprise Sales"
+                    disabled={creatingPipeline}
+                  />
+
+                  {createPipelineError && (
+                    <p
+                      className="pipelineCreateError"
+                      role="alert"
+                    >
+                      {createPipelineError}
+                    </p>
+                  )}
+
+                  <div className="pipelineCreateActions">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setShowCreatePipeline(false)
+                      }
+                      disabled={creatingPipeline}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={creatingPipeline}
+                    >
+                      {creatingPipeline
+                        ? "Creating..."
+                        : "Create Pipeline"}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
 
           <div className="pipelineMetrics">
             <div>
@@ -940,6 +1071,107 @@ export default function PipelinePage() {
         .pipelineNewDeal {
           background: var(--primary);
           color: white;
+        }
+
+        /* AIVA_P42_CREATE_PIPELINE_STYLES */
+        .pipelineCreateButton {
+          height: 38px;
+          display: inline-flex;
+          align-items: center;
+          gap: 7px;
+          padding: 0 12px;
+          border: 1px solid var(--border);
+          border-radius: 8px;
+          background: white;
+          color: var(--text);
+          font-size: 12px;
+          font-weight: 700;
+          cursor: pointer;
+        }
+
+        .pipelineCreateOverlay {
+          position: fixed;
+          inset: 0;
+          z-index: 1000;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 20px;
+          background: rgba(15, 23, 42, 0.55);
+        }
+
+        .pipelineCreateDialog {
+          width: 100%;
+          max-width: 440px;
+          padding: 26px;
+          border-radius: 14px;
+          background: white;
+          color: #172033;
+          box-shadow: 0 20px 70px rgba(0, 0, 0, 0.2);
+        }
+
+        .pipelineCreateDialog h2 {
+          margin: 0 0 8px;
+          font-size: 21px;
+        }
+
+        .pipelineCreateDialog p {
+          margin: 0 0 20px;
+          color: #64748b;
+          font-size: 13px;
+        }
+
+        .pipelineCreateDialog form {
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+        }
+
+        .pipelineCreateDialog label {
+          font-size: 13px;
+          font-weight: 700;
+        }
+
+        .pipelineCreateDialog input {
+          width: 100%;
+          height: 42px;
+          padding: 0 12px;
+          border: 1px solid #cbd5e1;
+          border-radius: 8px;
+          font-size: 14px;
+        }
+
+        .pipelineCreateDialog .pipelineCreateError {
+          margin: 0;
+          color: #b91c1c;
+        }
+
+        .pipelineCreateActions {
+          display: flex;
+          justify-content: flex-end;
+          gap: 10px;
+          margin-top: 12px;
+        }
+
+        .pipelineCreateActions button {
+          padding: 10px 15px;
+          border: 1px solid #cbd5e1;
+          border-radius: 8px;
+          background: white;
+          color: #172033;
+          font-weight: 700;
+          cursor: pointer;
+        }
+
+        .pipelineCreateActions button[type="submit"] {
+          border-color: var(--primary);
+          background: var(--primary);
+          color: white;
+        }
+
+        .pipelineCreateActions button:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
         }
 
         .pipelineMetrics {
