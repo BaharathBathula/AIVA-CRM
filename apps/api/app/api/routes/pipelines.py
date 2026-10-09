@@ -119,3 +119,27 @@ async def get_pipeline_stage_endpoint(
         pipeline_id,
         stage_id,
     )
+
+
+# AIVA_P32_CREATE_PIPELINE
+from app.schemas.pipeline import PipelineCreate
+from app.services.pipelines import create_pipeline
+
+
+@router.post(
+    "",
+    response_model=PipelineResponse,
+    status_code=201,
+)
+async def create_pipeline_endpoint(
+    payload: PipelineCreate,
+    organization_id: uuid.UUID = Depends(
+        get_current_organization_id
+    ),
+    db: AsyncSession = Depends(get_db),
+):
+    return await create_pipeline(
+        db=db,
+        organization_id=organization_id,
+        name=payload.name,
+    )

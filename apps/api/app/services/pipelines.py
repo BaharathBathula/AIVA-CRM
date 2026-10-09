@@ -133,3 +133,84 @@ async def get_pipeline_stage(
         )
 
     return stage
+
+
+# AIVA_P32_CREATE_PIPELINE
+from sqlalchemy.exc import IntegrityError
+
+PIPELINE_DEFAULT_STAGES = (
+    ("Qualification", 1, 10, "open"),
+    ("Discovery", 2, 25, "open"),
+    ("Demo", 3, 40, "open"),
+    ("Proposal", 4, 60, "open"),
+    ("Negotiation", 5, 80, "open"),
+    ("Closed Won", 6, 100, "won"),
+    ("Closed Lost", 7, 0, "lost"),
+)
+
+
+async def create_pipeline(
+    db: AsyncSession,
+    organization_id: uuid.UUID,
+    name: str,
+) -> Pipeline:
+    normalized_name = name.strip()
+
+    if not normalized_name or len(normalized_name) > 150:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Pipeline name must contain 1 to 150 characters.",
+        )
+
+    existing = await db.execute(
+        select(Pipeline.id).where(
+            Pipeline.organization_id == organization_id,
+            Pipeline.name == normalized_name,
+        )
+    )
+
+    if existing.scalar_one_or_none() is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="A pipeline with this name already exists.",
+        )
+
+    pipeline = Pipeline(
+        organization_id=organization_id,
+        name=normalized_name,
+        is_default=False,
+        is_active=True,
+    )
+
+    try:
+        db.add(pipeline)
+        await db.flush()
+
+        for stage_name, position, probability, category in PIPELINE_DEFAULT_STAGES:
+            db.add(
+                PipelineStage(
+                    organization_id=organization_id,
+                    pipeline_id=pipeline.id,
+                    name=stage_name,
+                    position=position,
+                    probability=probability,
+                    category=category,
+                    is_active=True,
+                )
+            )
+
+        await db.commit()
+        await db.refresh(pipeline)
+
+    except IntegrityError as exc:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="A pipeline with this name already exists.",
+        ) from exc
+
+    except Exception:
+        await db.rollback()
+        raise
+
+    return pipeline
