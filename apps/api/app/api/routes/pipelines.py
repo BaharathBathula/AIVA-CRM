@@ -143,3 +143,28 @@ async def create_pipeline_endpoint(
         organization_id=organization_id,
         name=payload.name,
     )
+
+
+# AIVA_P43_RENAME_PIPELINE
+from app.schemas.pipeline import PipelineRename
+from app.services.pipelines import rename_pipeline
+
+
+@router.patch(
+    "/{pipeline_id}",
+    response_model=PipelineResponse,
+)
+async def rename_pipeline_endpoint(
+    pipeline_id: uuid.UUID,
+    payload: PipelineRename,
+    organization_id: uuid.UUID = Depends(
+        get_current_organization_id
+    ),
+    db: AsyncSession = Depends(get_db),
+):
+    return await rename_pipeline(
+        db=db,
+        organization_id=organization_id,
+        pipeline_id=pipeline_id,
+        name=payload.name,
+    )

@@ -68,3 +68,16 @@ class PipelineCreate(BaseModel):
         if not name:
             raise ValueError("Pipeline name cannot be blank.")
         return name
+
+
+# AIVA_P43_RENAME_PIPELINE
+class PipelineRename(BaseModel):
+    name: str = Field(min_length=1, max_length=150)
+
+    @field_validator("name")
+    @classmethod
+    def normalize_name(cls, value: str) -> str:
+        name = value.strip()
+        if not name:
+            raise ValueError("Pipeline name cannot be blank.")
+        return name

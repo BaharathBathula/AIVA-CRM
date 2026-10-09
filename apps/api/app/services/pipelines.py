@@ -214,3 +214,59 @@ async def create_pipeline(
         raise
 
     return pipeline
+
+
+# AIVA_P43_RENAME_PIPELINE
+async def rename_pipeline(
+    db: AsyncSession,
+    organization_id: uuid.UUID,
+    pipeline_id: uuid.UUID,
+    name: str,
+) -> Pipeline:
+    normalized_name = name.strip()
+
+    if not normalized_name or len(normalized_name) > 150:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Pipeline name must contain 1 to 150 characters.",
+        )
+
+    pipeline = await get_pipeline(
+        db=db,
+        organization_id=organization_id,
+        pipeline_id=pipeline_id,
+    )
+
+    if pipeline.name == normalized_name:
+        return pipeline
+
+    existing = await db.execute(
+        select(Pipeline.id).where(
+            Pipeline.organization_id == organization_id,
+            Pipeline.name == normalized_name,
+            Pipeline.id != pipeline_id,
+        )
+    )
+
+    if existing.scalar_one_or_none() is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="A pipeline with this name already exists.",
+        )
+
+    pipeline.name = normalized_name
+
+    try:
+        await db.commit()
+        await db.refresh(pipeline)
+    except IntegrityError as exc:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="A pipeline with this name already exists.",
+        ) from exc
+    except Exception:
+        await db.rollback()
+        raise
+
+    return pipeline
