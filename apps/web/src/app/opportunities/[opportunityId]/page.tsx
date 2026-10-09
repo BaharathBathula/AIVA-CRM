@@ -54,6 +54,7 @@ import {
 import {
   getOpportunity,
   moveOpportunity,
+  updateOpportunity,
 } from "@/lib/opportunities";
 
 import {
@@ -160,6 +161,23 @@ export default function OpportunityDetailPage() {
 
   const [loading, setLoading] =
     useState(true);
+
+  // AIVA_O28_EDIT_FORM
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveMessage, setSaveMessage] = useState<string | null>(null);
+
+  const [editForm, setEditForm] = useState({
+    name: "",
+    description: "",
+    amount: "",
+    currency: "USD",
+    probability: "0",
+    expected_close_date: "",
+    priority: "medium" as Opportunity["priority"],
+    forecast_category: "pipeline" as Opportunity["forecast_category"],
+    next_step: "",
+  });
 
   const [moving, setMoving] =
     useState(false);
@@ -283,6 +301,94 @@ export default function OpportunityDetailPage() {
       stages,
     ]);
 
+
+  function startEditing() {
+    if (!opportunity) return;
+
+    setEditForm({
+      name: opportunity.name,
+      description: opportunity.description ?? "",
+      amount: opportunity.amount ?? "",
+      currency: opportunity.currency,
+      probability: String(opportunity.probability),
+      expected_close_date: opportunity.expected_close_date?.slice(0, 10) ?? "",
+      priority: opportunity.priority,
+      forecast_category: opportunity.forecast_category,
+      next_step: opportunity.next_step ?? "",
+    });
+
+    setError(null);
+    setSaveMessage(null);
+    setEditing(true);
+  }
+
+  function cancelEditing() {
+    if (saving) return;
+    setEditing(false);
+    setError(null);
+  }
+
+  async function saveOpportunityChanges(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!opportunity || saving) return;
+
+    const name = editForm.name.trim();
+    const amount = editForm.amount.trim() === ""
+      ? null
+      : Number(editForm.amount);
+    const probability = Number(editForm.probability);
+
+    if (!name) {
+      setError("Opportunity name is required.");
+      return;
+    }
+
+    if (
+      (amount !== null && (!Number.isFinite(amount) || amount < 0)) ||
+      !Number.isFinite(probability) ||
+      probability < 0 ||
+      probability > 100
+    ) {
+      setError("Enter a valid amount and probability between 0 and 100.");
+      return;
+    }
+
+    if (!/^[A-Za-z]{3}$/.test(editForm.currency.trim())) {
+      setError("Enter a valid three-letter currency code.");
+      return;
+    }
+
+    try {
+      setSaving(true);
+      setError(null);
+      setSaveMessage(null);
+
+      const updated = await updateOpportunity(opportunity.id, {
+        name,
+        description: editForm.description.trim() || null,
+        amount,
+        currency: editForm.currency.trim().toUpperCase(),
+        probability,
+        expected_close_date: editForm.expected_close_date || null,
+        priority: editForm.priority,
+        forecast_category: editForm.forecast_category,
+        next_step: editForm.next_step.trim() || null,
+      });
+
+      setOpportunity(updated);
+      setEditing(false);
+      setSaveMessage("Opportunity updated successfully.");
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Unable to update opportunity."
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
 
   async function changeStage(
     stageId: string
@@ -474,6 +580,183 @@ export default function OpportunityDetailPage() {
               </select>
             </div>
           </section>
+
+          {saveMessage && (
+            <div role="status" style={{
+              padding: 12,
+              marginBottom: 16,
+              borderRadius: 8,
+              background: "#ecfdf3",
+              color: "#166534",
+            }}>
+              {saveMessage}
+            </div>
+          )}
+
+          <div style={{ marginBottom: 16 }}>
+            {!editing && (
+              <button
+                type="button"
+                className="primaryButton"
+                onClick={startEditing}
+                disabled={moving}
+              >
+                Edit Opportunity
+              </button>
+            )}
+          </div>
+
+          {editing && (
+            <form
+              className="aivaOpportunityEditForm"
+              onSubmit={saveOpportunityChanges}
+              style={{
+                marginBottom: 24,
+                padding: 24,
+                border: "1px solid #e2e8f0",
+                borderRadius: 12,
+                background: "white",
+              }}
+            >
+              <h2 style={{ marginBottom: 18 }}>Edit Opportunity</h2>
+
+              <div className="aivaOpportunityEditGrid">
+                <label>
+                  Opportunity Name *
+                  <input
+                    required
+                    value={editForm.name}
+                    onChange={event => setEditForm(current => ({
+                      ...current, name: event.target.value
+                    }))}
+                  />
+                </label>
+
+                <label>
+                  Amount
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={editForm.amount}
+                    onChange={event => setEditForm(current => ({
+                      ...current, amount: event.target.value
+                    }))}
+                  />
+                </label>
+
+                <label>
+                  Currency
+                  <input
+                    maxLength={3}
+                    required
+                    value={editForm.currency}
+                    onChange={event => setEditForm(current => ({
+                      ...current, currency: event.target.value
+                    }))}
+                  />
+                </label>
+
+                <label>
+                  Probability (%)
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    required
+                    value={editForm.probability}
+                    onChange={event => setEditForm(current => ({
+                      ...current, probability: event.target.value
+                    }))}
+                  />
+                </label>
+
+                <label>
+                  Expected Close Date
+                  <input
+                    type="date"
+                    value={editForm.expected_close_date}
+                    onChange={event => setEditForm(current => ({
+                      ...current, expected_close_date: event.target.value
+                    }))}
+                  />
+                </label>
+
+                <label>
+                  Priority
+                  <select
+                    value={editForm.priority}
+                    onChange={event => setEditForm(current => ({
+                      ...current,
+                      priority: event.target.value as Opportunity["priority"]
+                    }))}
+                  >
+                    {["low", "medium", "high", "critical"].map(value => (
+                      <option key={value} value={value}>{value}</option>
+                    ))}
+                  </select>
+                </label>
+
+                <label>
+                  Forecast Category
+                  <select
+                    value={editForm.forecast_category}
+                    onChange={event => setEditForm(current => ({
+                      ...current,
+                      forecast_category:
+                        event.target.value as Opportunity["forecast_category"]
+                    }))}
+                  >
+                    {["pipeline", "best_case", "commit", "closed", "omitted"].map(value => (
+                      <option key={value} value={value}>
+                        {value.replaceAll("_", " ")}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label>
+                  Next Step
+                  <input
+                    value={editForm.next_step}
+                    onChange={event => setEditForm(current => ({
+                      ...current, next_step: event.target.value
+                    }))}
+                  />
+                </label>
+              </div>
+
+              <label className="aivaOpportunityEditDescription">
+                Description
+                <textarea
+                  rows={4}
+                  value={editForm.description}
+                  onChange={event => setEditForm(current => ({
+                    ...current, description: event.target.value
+                  }))}
+                  style={{ width: "100%" }}
+                />
+              </label>
+
+              <div className="aivaOpportunityEditActions">
+                <button
+                  type="button"
+                  onClick={cancelEditing}
+                  disabled={saving}
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="submit"
+                  className="primaryButton"
+                  disabled={saving}
+                >
+                  {saving ? "Saving..." : "Save Changes"}
+                </button>
+              </div>
+            </form>
+          )}
 
           {error && (
             <div className="formError">

@@ -5122,3 +5122,110 @@ button {
   text-overflow: clip;
   overflow-wrap: anywhere;
 }
+
+
+/* AIVA_O281_FORM_STYLES */
+
+.aivaOpportunityEditForm {
+  margin-bottom: 24px;
+  padding: 28px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+}
+
+.aivaOpportunityEditForm h2 {
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 24px;
+}
+
+.aivaOpportunityEditGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 22px;
+}
+
+.aivaOpportunityEditForm label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: #334155;
+}
+
+.aivaOpportunityEditForm input,
+.aivaOpportunityEditForm select,
+.aivaOpportunityEditForm textarea {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  padding: 11px 13px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #0f172a;
+  font-size: 14px;
+  font-weight: 400;
+  box-sizing: border-box;
+}
+
+.aivaOpportunityEditForm input:focus,
+.aivaOpportunityEditForm select:focus,
+.aivaOpportunityEditForm textarea:focus {
+  outline: 2px solid #a5b4fc;
+  border-color: #6366f1;
+}
+
+.aivaOpportunityEditDescription {
+  margin-top: 22px;
+}
+
+.aivaOpportunityEditForm textarea {
+  resize: vertical;
+  min-height: 110px;
+}
+
+.aivaOpportunityEditActions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.aivaOpportunityEditActions button {
+  width: auto;
+  min-width: 110px;
+  padding: 11px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.aivaOpportunityEditActions .primaryButton {
+  background: #6554e8;
+  color: white;
+  border: 1px solid #6554e8;
+}
+
+@media (max-width: 900px) {
+  .aivaOpportunityEditGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 600px) {
+  .aivaOpportunityEditGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .aivaOpportunityEditForm {
+    padding: 18px;
+  }
+
+  .aivaOpportunityEditActions {
+    flex-wrap: wrap;
+  }
+}
