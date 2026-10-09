@@ -81,3 +81,20 @@ class PipelineRename(BaseModel):
         if not name:
             raise ValueError("Pipeline name cannot be blank.")
         return name
+
+
+# AIVA_P51_ADD_STAGE
+class PipelineStageCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+    probability: int = Field(default=0, ge=0, le=100)
+    category: PipelineStageCategory = "open"
+
+    @field_validator("name")
+    @classmethod
+    def normalize_stage_name(cls, value: str) -> str:
+        name = value.strip()
+        if not name:
+            raise ValueError("Stage name cannot be blank.")
+        if len(name) > 120:
+            raise ValueError("Stage name exceeds 120 characters.")
+        return name

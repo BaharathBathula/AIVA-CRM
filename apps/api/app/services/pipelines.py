@@ -270,3 +270,115 @@ async def rename_pipeline(
         raise
 
     return pipeline
+
+
+# AIVA_P51_ADD_STAGE
+from sqlalchemy import func
+from sqlalchemy.exc import IntegrityError
+
+
+async def create_pipeline_stage(
+    db: AsyncSession,
+    organization_id: uuid.UUID,
+    pipeline_id: uuid.UUID,
+    name: str,
+    probability: int = 0,
+    category: str = "open",
+) -> PipelineStage:
+    normalized_name = name.strip()
+
+    if not normalized_name or len(normalized_name) > 120:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Stage name must contain 1 to 120 characters.",
+        )
+
+    if type(probability) is not int or not 0 <= probability <= 100:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Probability must be an integer between 0 and 100.",
+        )
+
+    if category not in ("open", "won", "lost"):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Invalid stage category.",
+        )
+
+    try:
+        # Serialize stage creation within this pipeline to
+        # prevent concurrent requests assigning the same position.
+        result = await db.execute(
+            select(Pipeline).where(
+                Pipeline.id == pipeline_id,
+                Pipeline.organization_id == organization_id,
+                Pipeline.is_active.is_(True),
+            ).with_for_update()
+        )
+
+        pipeline = result.scalar_one_or_none()
+
+        if pipeline is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Active pipeline not found.",
+            )
+
+        duplicate = await db.execute(
+            select(PipelineStage.id).where(
+                PipelineStage.pipeline_id == pipeline_id,
+                PipelineStage.organization_id == organization_id,
+                PipelineStage.name == normalized_name,
+            )
+        )
+
+        if duplicate.scalar_one_or_none() is not None:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="A stage with this name already exists.",
+            )
+
+        position_result = await db.execute(
+            select(func.max(PipelineStage.position)).where(
+                PipelineStage.pipeline_id == pipeline_id,
+                PipelineStage.organization_id == organization_id,
+            )
+        )
+
+        last_position = position_result.scalar_one_or_none()
+        next_position = (
+            int(last_position) + 1
+            if last_position is not None
+            else 1
+        )
+
+        stage = PipelineStage(
+            organization_id=organization_id,
+            pipeline_id=pipeline_id,
+            name=normalized_name,
+            position=next_position,
+            probability=probability,
+            category=category,
+            is_active=True,
+        )
+
+        db.add(stage)
+        await db.commit()
+        await db.refresh(stage)
+
+        return stage
+
+    except HTTPException:
+        await db.rollback()
+        raise
+
+    except IntegrityError as exc:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Stage name or position already exists.",
+        ) from exc
+
+    except Exception:
+        await db.rollback()
+        raise

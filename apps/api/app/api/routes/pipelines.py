@@ -168,3 +168,31 @@ async def rename_pipeline_endpoint(
         pipeline_id=pipeline_id,
         name=payload.name,
     )
+
+
+# AIVA_P51_ADD_STAGE
+from app.schemas.pipeline import PipelineStageCreate
+from app.services.pipelines import create_pipeline_stage
+
+
+@router.post(
+    "/{pipeline_id}/stages",
+    response_model=PipelineStageResponse,
+    status_code=201,
+)
+async def create_pipeline_stage_endpoint(
+    pipeline_id: uuid.UUID,
+    payload: PipelineStageCreate,
+    organization_id: uuid.UUID = Depends(
+        get_current_organization_id
+    ),
+    db: AsyncSession = Depends(get_db),
+):
+    return await create_pipeline_stage(
+        db=db,
+        organization_id=organization_id,
+        pipeline_id=pipeline_id,
+        name=payload.name,
+        probability=payload.probability,
+        category=payload.category,
+    )
