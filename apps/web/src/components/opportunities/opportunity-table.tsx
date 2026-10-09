@@ -2,6 +2,7 @@
 
 import {
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
@@ -801,6 +802,43 @@ function OpportunityRowActions({
 }
 
 
+
+type OpportunitySortKey =
+  | "name"
+  | "account"
+  | "stage"
+  | "priority"
+  | "amount"
+  | "weighted"
+  | "probability"
+  | "forecast"
+  | "closeDate"
+  | "nextStep";
+
+const priorityRank: Record<string, number> = {
+  low: 1,
+  medium: 2,
+  high: 3,
+  critical: 4,
+};
+
+function compareSortValues(
+  a: string | number | null | undefined,
+  b: string | number | null | undefined
+): number {
+  if (a == null || a === "") return b == null || b === "" ? 0 : 1;
+  if (b == null || b === "") return -1;
+
+  if (typeof a === "number" && typeof b === "number") {
+    return a - b;
+  }
+
+  return String(a).localeCompare(String(b), undefined, {
+    numeric: true,
+    sensitivity: "base",
+  });
+}
+
 export function OpportunityTable({
   opportunities,
   accountMap,
@@ -812,6 +850,94 @@ export function OpportunityTable({
   onToggleAllVisible,
   onToggleOpportunitySelection,
 }: OpportunityTableProps) {
+  const [sortKey, setSortKey] = useState<OpportunitySortKey | null>(null);
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
+
+  const sortedOpportunities = useMemo(() => {
+    if (!sortKey) return opportunities;
+
+    function valueFor(opportunity: Opportunity): string | number | null {
+      switch (sortKey) {
+        case "name":
+          return opportunity.name;
+        case "account":
+          return accountMap.get(opportunity.account_id)?.name ?? null;
+        case "stage":
+          return stageMap.get(opportunity.stage_id)?.name ?? null;
+        case "priority":
+          return priorityRank[opportunity.priority] ?? 0;
+        case "amount":
+          return opportunity.amount == null ? null : Number(opportunity.amount);
+        case "weighted":
+          return opportunity.weighted_amount == null
+            ? null
+            : Number(opportunity.weighted_amount);
+        case "probability":
+          return opportunity.probability;
+        case "forecast":
+          return opportunity.forecast_category;
+        case "closeDate":
+          return opportunity.expected_close_date;
+        case "nextStep":
+          return opportunity.next_step;
+        default:
+          return null;
+      }
+    }
+
+    return [...opportunities].sort((a, b) => {
+      const comparison = compareSortValues(valueFor(a), valueFor(b));
+      return sortDirection === "asc" ? comparison : -comparison;
+    });
+  }, [opportunities, sortKey, sortDirection, accountMap, stageMap]);
+
+  function toggleSort(key: OpportunitySortKey) {
+    if (sortKey === key) {
+      setSortDirection(current => current === "asc" ? "desc" : "asc");
+    } else {
+      setSortKey(key);
+      setSortDirection("asc");
+    }
+  }
+
+  function sortHeader(label: string, key: OpportunitySortKey) {
+    const active = sortKey === key;
+
+    return (
+      <th
+        aria-sort={
+          active
+            ? sortDirection === "asc"
+              ? "ascending"
+              : "descending"
+            : "none"
+        }
+      >
+        <button
+          type="button"
+          onClick={() => toggleSort(key)}
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 6,
+            padding: 0,
+            border: 0,
+            background: "transparent",
+            color: "inherit",
+            font: "inherit",
+            fontWeight: "inherit",
+            cursor: "pointer",
+          }}
+        >
+          {label}
+          <span aria-hidden="true">
+            {active ? (sortDirection === "asc" ? "↑" : "↓") : "↕"}
+          </span>
+        </button>
+      </th>
+    );
+  }
+
   return (
     <div className="accountTableWrapper opportunityTableWrapper aiva-opportunities-table-wrapper">
       <table className="accountTable opportunityTable aiva-opportunities-table">
@@ -841,45 +967,25 @@ export function OpportunityTable({
               />
             </th>
 
-            <th>
-              Opportunity
-            </th>
+            {sortHeader("Opportunity", "name")}
 
-            <th>
-              Account
-            </th>
+            {sortHeader("Account", "account")}
 
-            <th>
-              Stage
-            </th>
+            {sortHeader("Stage", "stage")}
 
-            <th>
-              Priority
-            </th>
+            {sortHeader("Priority", "priority")}
 
-            <th>
-              Amount
-            </th>
+            {sortHeader("Amount", "amount")}
 
-            <th>
-              Weighted
-            </th>
+            {sortHeader("Weighted", "weighted")}
 
-            <th>
-              Probability
-            </th>
+            {sortHeader("Probability", "probability")}
 
-            <th>
-              Forecast
-            </th>
+            {sortHeader("Forecast", "forecast")}
 
-            <th>
-              Close Date
-            </th>
+            {sortHeader("Close Date", "closeDate")}
 
-            <th>
-              Next Step
-            </th>
+            {sortHeader("Next Step", "nextStep")}
 
             <th
               className="opportunityActionsColumn"
@@ -889,7 +995,7 @@ export function OpportunityTable({
         </thead>
 
         <tbody>
-          {opportunities.map(
+          {sortedOpportunities.map(
             (
               opportunity
             ) => {
