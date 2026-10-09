@@ -919,6 +919,10 @@ export function OpportunityTable({
     });
   }
 
+  // AIVA_O274_PAGINATION
+  const [pageSize, setPageSize] = useState(10);
+  const [currentPage, setCurrentPage] = useState(1);
+
   const [sortKey, setSortKey] = useState<OpportunitySortKey | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
 
@@ -959,6 +963,50 @@ export function OpportunityTable({
       return sortDirection === "asc" ? comparison : -comparison;
     });
   }, [opportunities, sortKey, sortDirection, accountMap, stageMap]);
+
+  const totalRecords = sortedOpportunities.length;
+  const totalPages = Math.max(1, Math.ceil(totalRecords / pageSize));
+  const activePage = Math.min(currentPage, totalPages);
+
+  const paginatedOpportunities = useMemo(() => {
+    const start = (activePage - 1) * pageSize;
+    return sortedOpportunities.slice(start, start + pageSize);
+  }, [sortedOpportunities, activePage, pageSize]);
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
+  // AIVA_O274_PAGE_SELECTION
+  const pageOpportunityIds = useMemo(
+    () => paginatedOpportunities.map(opportunity => opportunity.id),
+    [paginatedOpportunities]
+  );
+
+  const pageSelectedCount = pageOpportunityIds.filter(
+    id => selectedOpportunityIds.has(id)
+  ).length;
+
+  const allPageSelected =
+    pageOpportunityIds.length > 0 &&
+    pageSelectedCount === pageOpportunityIds.length;
+
+  const somePageSelected =
+    pageSelectedCount > 0 && !allPageSelected;
+
+  function toggleAllOnPage() {
+    const nextShouldSelect = !allPageSelected;
+
+    for (const id of pageOpportunityIds) {
+      const isSelected = selectedOpportunityIds.has(id);
+
+      if (isSelected !== nextShouldSelect) {
+        onToggleOpportunitySelection(id);
+      }
+    }
+  }
 
   function toggleSort(key: OpportunitySortKey) {
     if (sortKey === key) {
@@ -1078,7 +1126,7 @@ export function OpportunityTable({
               <input
                 type="checkbox"
                 checked={
-                  allVisibleSelected
+                  allPageSelected
                 }
                 ref={(
                   element
@@ -1087,12 +1135,12 @@ export function OpportunityTable({
                     element
                   ) {
                     element.indeterminate =
-                      someVisibleSelected &&
-                      !allVisibleSelected;
+                      somePageSelected &&
+                      !allPageSelected;
                   }
                 }}
                 onChange={
-                  onToggleAllVisible
+                  toggleAllOnPage
                 }
                 aria-label="Select all visible opportunities"
               />
@@ -1126,7 +1174,7 @@ export function OpportunityTable({
         </thead>
 
         <tbody>
-          {sortedOpportunities.map(
+          {paginatedOpportunities.map(
             (
               opportunity
             ) => {
@@ -1475,6 +1523,69 @@ export function OpportunityTable({
           )}
         </tbody>
       </table>
+    </div>
+
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        gap: 16,
+        flexWrap: "wrap",
+        padding: "16px 4px",
+        fontSize: 13,
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <span>Rows per page</span>
+        <select
+          aria-label="Rows per page"
+          value={pageSize}
+          onChange={event => {
+            setPageSize(Number(event.target.value));
+            setCurrentPage(1);
+          }}
+          style={{
+            padding: "7px 10px",
+            border: "1px solid #d9deea",
+            borderRadius: 8,
+            background: "white",
+          }}
+        >
+          {[10, 25, 50, 100].map(size => (
+            <option key={size} value={size}>{size}</option>
+          ))}
+        </select>
+      </div>
+
+      <span>
+        {totalRecords === 0
+          ? "0 opportunities"
+          : `${(activePage - 1) * pageSize + 1}–${Math.min(
+              activePage * pageSize,
+              totalRecords
+            )} of ${totalRecords} opportunities`}
+      </span>
+
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <button
+          type="button"
+          disabled={activePage === 1}
+          onClick={() => setCurrentPage(page => Math.max(1, page - 1))}
+        >
+          Previous
+        </button>
+
+        <span>Page {activePage} of {totalPages}</span>
+
+        <button
+          type="button"
+          disabled={activePage >= totalPages}
+          onClick={() => setCurrentPage(page => Math.min(totalPages, page + 1))}
+        >
+          Next
+        </button>
+      </div>
     </div>
 </>
   );
