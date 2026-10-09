@@ -839,6 +839,23 @@ function compareSortValues(
   });
 }
 
+
+// AIVA_O273_COLUMN_VISIBILITY
+const OPPORTUNITY_COLUMNS: { key: OpportunitySortKey; label: string }[] = [
+  { key: "name", label: "Opportunity" },
+  { key: "account", label: "Account" },
+  { key: "stage", label: "Stage" },
+  { key: "priority", label: "Priority" },
+  { key: "amount", label: "Amount" },
+  { key: "weighted", label: "Weighted" },
+  { key: "probability", label: "Probability" },
+  { key: "forecast", label: "Forecast" },
+  { key: "closeDate", label: "Close Date" },
+  { key: "nextStep", label: "Next Step" },
+];
+
+const COLUMN_STORAGE_KEY = "aiva-opportunities-visible-columns";
+
 export function OpportunityTable({
   opportunities,
   accountMap,
@@ -850,6 +867,58 @@ export function OpportunityTable({
   onToggleAllVisible,
   onToggleOpportunitySelection,
 }: OpportunityTableProps) {
+  const [visibleColumns, setVisibleColumns] = useState<Set<OpportunitySortKey>>(
+    () => new Set(OPPORTUNITY_COLUMNS.map(column => column.key))
+  );
+
+  const [columnMenuOpen, setColumnMenuOpen] = useState(false);
+
+  useEffect(() => {
+    try {
+      const stored = window.localStorage.getItem(COLUMN_STORAGE_KEY);
+      if (!stored) return;
+
+      const parsed: unknown = JSON.parse(stored);
+      if (!Array.isArray(parsed)) return;
+
+      const allowed = new Set(OPPORTUNITY_COLUMNS.map(column => column.key));
+      const selected = parsed.filter(
+        (key): key is OpportunitySortKey =>
+          typeof key === "string" && allowed.has(key as OpportunitySortKey)
+      );
+
+      selected.push("name");
+      setVisibleColumns(new Set(selected));
+    } catch {
+      // Keep defaults when browser storage is unavailable.
+    }
+  }, []);
+
+  function toggleColumn(key: OpportunitySortKey) {
+    if (key === "name") return;
+
+    setVisibleColumns(current => {
+      const next = new Set(current);
+
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+
+      try {
+        window.localStorage.setItem(
+          COLUMN_STORAGE_KEY,
+          JSON.stringify([...next])
+        );
+      } catch {
+        // Continue without persistence.
+      }
+
+      return next;
+    });
+  }
+
   const [sortKey, setSortKey] = useState<OpportunitySortKey | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
 
@@ -939,7 +1008,69 @@ export function OpportunityTable({
   }
 
   return (
-    <div className="accountTableWrapper opportunityTableWrapper aiva-opportunities-table-wrapper">
+
+<>
+  {/* AIVA_O273_COLUMN_CONTROLS */}
+  <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
+    <div style={{ position: "relative" }}>
+      <button
+        type="button"
+        onClick={() => setColumnMenuOpen(current => !current)}
+        aria-expanded={columnMenuOpen}
+        aria-haspopup="true"
+        style={{
+          padding: "9px 14px",
+          border: "1px solid #d9deea",
+          borderRadius: 8,
+          background: "white",
+          cursor: "pointer",
+          fontWeight: 600,
+        }}
+      >
+        Columns
+      </button>
+
+      {columnMenuOpen && (
+        <div
+          style={{
+            position: "absolute",
+            right: 0,
+            top: "calc(100% + 6px)",
+            zIndex: 30,
+            minWidth: 190,
+            padding: 12,
+            background: "white",
+            border: "1px solid #d9deea",
+            borderRadius: 10,
+            boxShadow: "0 12px 30px rgba(0,0,0,0.1)",
+          }}
+        >
+          {OPPORTUNITY_COLUMNS.map(column => (
+            <label
+              key={column.key}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 9,
+                padding: "7px 4px",
+                fontSize: 13,
+                cursor: column.key === "name" ? "default" : "pointer",
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={visibleColumns.has(column.key)}
+                disabled={column.key === "name"}
+                onChange={() => toggleColumn(column.key)}
+              />
+              {column.label}
+            </label>
+          ))}
+        </div>
+      )}
+    </div>
+  </div>
+  <div className="accountTableWrapper opportunityTableWrapper aiva-opportunities-table-wrapper">
       <table className="accountTable opportunityTable aiva-opportunities-table">
         <thead>
           <tr>
@@ -967,25 +1098,25 @@ export function OpportunityTable({
               />
             </th>
 
-            {sortHeader("Opportunity", "name")}
+            {visibleColumns.has("name") && sortHeader("Opportunity", "name")}
 
-            {sortHeader("Account", "account")}
+            {visibleColumns.has("account") && sortHeader("Account", "account")}
 
-            {sortHeader("Stage", "stage")}
+            {visibleColumns.has("stage") && sortHeader("Stage", "stage")}
 
-            {sortHeader("Priority", "priority")}
+            {visibleColumns.has("priority") && sortHeader("Priority", "priority")}
 
-            {sortHeader("Amount", "amount")}
+            {visibleColumns.has("amount") && sortHeader("Amount", "amount")}
 
-            {sortHeader("Weighted", "weighted")}
+            {visibleColumns.has("weighted") && sortHeader("Weighted", "weighted")}
 
-            {sortHeader("Probability", "probability")}
+            {visibleColumns.has("probability") && sortHeader("Probability", "probability")}
 
-            {sortHeader("Forecast", "forecast")}
+            {visibleColumns.has("forecast") && sortHeader("Forecast", "forecast")}
 
-            {sortHeader("Close Date", "closeDate")}
+            {visibleColumns.has("closeDate") && sortHeader("Close Date", "closeDate")}
 
-            {sortHeader("Next Step", "nextStep")}
+            {visibleColumns.has("nextStep") && sortHeader("Next Step", "nextStep")}
 
             <th
               className="opportunityActionsColumn"
@@ -1083,7 +1214,8 @@ export function OpportunityTable({
                     />
                   </td>
 
-                  <td style={{ width: 360, minWidth: 360 }}>
+                  {visibleColumns.has("name") && (
+<td style={{ width: 360, minWidth: 360 }}>
                     <Link
                       href={
                         `/opportunities/${opportunity.id}`
@@ -1128,8 +1260,10 @@ export function OpportunityTable({
                       </div>
                     </Link>
                   </td>
+)}
 
-                  <td>
+                  {visibleColumns.has("account") && (
+<td>
                     <div className="opportunityAccountIdentity">
                       <strong>
                         {account?.name ??
@@ -1142,8 +1276,10 @@ export function OpportunityTable({
                       </span>
                     </div>
                   </td>
+)}
 
-                  <td>
+                  {visibleColumns.has("stage") && (
+<td>
                     <div className="opportunityStageIdentity">
                       <span
                         className={
@@ -1168,8 +1304,10 @@ export function OpportunityTable({
                       </small>
                     </div>
                   </td>
+)}
 
-                  <td>
+                  {visibleColumns.has("priority") && (
+<td>
                     <span
                       className={
                         getPriorityClass(
@@ -1188,8 +1326,10 @@ export function OpportunityTable({
                       )}
                     </span>
                   </td>
+)}
 
-                  <td>
+                  {visibleColumns.has("amount") && (
+<td>
                     <strong className="opportunityAmount">
                       {formatMoney(
                         opportunity.amount,
@@ -1197,8 +1337,10 @@ export function OpportunityTable({
                       )}
                     </strong>
                   </td>
+)}
 
-                  <td>
+                  {visibleColumns.has("weighted") && (
+<td>
                     <span className="opportunityWeightedAmount">
                       {formatMoney(
                         opportunity.weighted_amount,
@@ -1206,8 +1348,10 @@ export function OpportunityTable({
                       )}
                     </span>
                   </td>
+)}
 
-                  <td>
+                  {visibleColumns.has("probability") && (
+<td>
                     <div
                       className={
                         `opportunityProbability ${probabilityClass}`
@@ -1239,8 +1383,10 @@ export function OpportunityTable({
                       </div>
                     </div>
                   </td>
+)}
 
-                  <td>
+                  {visibleColumns.has("forecast") && (
+<td>
                     <span
                       className={
                         getForecastClass(
@@ -1259,8 +1405,10 @@ export function OpportunityTable({
                       )}
                     </span>
                   </td>
+)}
 
-                  <td>
+                  {visibleColumns.has("closeDate") && (
+<td>
                     <div className="opportunityCloseDateIntelligence">
                       <span
                         className={
@@ -1297,8 +1445,10 @@ export function OpportunityTable({
                       </small>
                     </div>
                   </td>
+)}
 
-                  <td>
+                  {visibleColumns.has("nextStep") && (
+<td>
                     <span
                       className="opportunityNextStep"
                       title={
@@ -1310,6 +1460,7 @@ export function OpportunityTable({
                         "—"}
                     </span>
                   </td>
+)}
 
                   <td className="opportunityActionsColumn">
                     <OpportunityRowActions
@@ -1325,5 +1476,6 @@ export function OpportunityTable({
         </tbody>
       </table>
     </div>
+</>
   );
 }
