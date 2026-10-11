@@ -501,3 +501,120 @@ async def update_pipeline_stage(
     except Exception:
         await db.rollback()
         raise
+
+
+# AIVA_P54_REORDER_STAGE_SERVICE
+async def reorder_pipeline_stages(
+    db: AsyncSession,
+    organization_id: uuid.UUID,
+    pipeline_id: uuid.UUID,
+    stage_ids: list[uuid.UUID],
+) -> list[PipelineStage]:
+    """Atomically reorder every active stage in a pipeline."""
+
+    if not stage_ids or len(stage_ids) != len(set(stage_ids)):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Provide unique stage IDs in the desired order.",
+        )
+
+    try:
+        # Lock the parent pipeline to serialize stage changes.
+        pipeline_result = await db.execute(
+            select(Pipeline)
+            .where(
+                Pipeline.id == pipeline_id,
+                Pipeline.organization_id == organization_id,
+                Pipeline.is_active.is_(True),
+            )
+            .with_for_update()
+        )
+
+        pipeline = pipeline_result.scalar_one_or_none()
+
+        if pipeline is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Pipeline not found.",
+            )
+
+        # Include inactive stages when calculating temporary
+        # positions so existing unique positions cannot collide.
+        stage_result = await db.execute(
+            select(PipelineStage)
+            .where(
+                PipelineStage.pipeline_id == pipeline_id,
+                PipelineStage.organization_id == organization_id,
+            )
+            .order_by(PipelineStage.position.asc())
+            .with_for_update()
+        )
+
+        all_stages = list(stage_result.scalars().all())
+        active_stages = [
+            stage for stage in all_stages if stage.is_active
+        ]
+
+        active_ids = {stage.id for stage in active_stages}
+
+        if set(stage_ids) != active_ids:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=(
+                    "Stage IDs must include every active stage "
+                    "in this pipeline exactly once."
+                ),
+            )
+
+        # Preserve inactive-stage positions. Allocate final
+        # positions from the available positive integers.
+        occupied = {
+            stage.position
+            for stage in all_stages
+            if not stage.is_active
+        }
+
+        final_positions = []
+        candidate = 1
+
+        for _ in stage_ids:
+            while candidate in occupied:
+                candidate += 1
+
+            final_positions.append(candidate)
+            candidate += 1
+
+        # Move active stages to distinct temporary positions.
+        # A flush ensures the unique constraint is satisfied
+        # before applying final positions.
+        highest = max(
+            (stage.position for stage in all_stages),
+            default=0,
+        )
+
+        stage_by_id = {
+            stage.id: stage for stage in active_stages
+        }
+
+        for offset, stage_id in enumerate(stage_ids, start=1):
+            stage_by_id[stage_id].position = highest + offset
+
+        await db.flush()
+
+        for stage_id, position in zip(
+            stage_ids,
+            final_positions,
+        ):
+            stage_by_id[stage_id].position = position
+
+        await db.flush()
+        await db.commit()
+
+        return [
+            stage_by_id[stage_id]
+            for stage_id in stage_ids
+        ]
+
+    except Exception:
+        await db.rollback()
+        raise

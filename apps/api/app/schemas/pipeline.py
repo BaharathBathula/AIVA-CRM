@@ -144,3 +144,26 @@ class PipelineStageUpdate(BaseModel):
                 f"{info.field_name} cannot be null."
             )
         return value
+
+
+# AIVA_P54_REORDER_STAGE_SCHEMA
+from uuid import UUID as _StageReorderUUID
+from pydantic import field_validator as _stage_reorder_validator
+
+
+class PipelineStageReorder(BaseModel):
+    stage_ids: list[_StageReorderUUID] = Field(
+        min_length=1,
+    )
+
+    @_stage_reorder_validator("stage_ids")
+    @classmethod
+    def validate_unique_stage_ids(
+        cls,
+        value: list[_StageReorderUUID],
+    ) -> list[_StageReorderUUID]:
+        if len(value) != len(set(value)):
+            raise ValueError(
+                "Stage IDs must be unique."
+            )
+        return value

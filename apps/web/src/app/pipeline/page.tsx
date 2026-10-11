@@ -13,6 +13,10 @@ import type {
 import Link from "next/link";
 
 import {
+  reorderPipelineStages,
+} from "@/lib/pipelines";
+
+import {
   CreateStageDialog,
 } from "@/components/pipeline/create-stage-dialog";
 
@@ -160,6 +164,13 @@ export default function PipelinePage() {
     dragOverStageId,
     setDragOverStageId,
   ] = useState<string | null>(null);
+
+  // AIVA_P54_STAGE_REORDER_LOGIC
+  const [draggingColumnId, setDraggingColumnId] =
+    useState<string | null>(null);
+
+  const [reorderingStages, setReorderingStages] =
+    useState(false);
 
   const [error, setError] =
     useState<string | null>(null);
@@ -626,6 +637,119 @@ export default function PipelinePage() {
   }
 
 
+
+  // AIVA_P54_STAGE_REORDER_LOGIC_HANDLERS
+  async function saveStageOrder(
+    sourceId: string,
+    targetId: string
+  ) {
+    if (
+      reorderingStages ||
+      !selectedPipelineId ||
+      sourceId === targetId
+    ) {
+      return;
+    }
+
+    const previous = [...stages];
+    const sourceIndex = previous.findIndex(
+      (stage) => stage.id === sourceId
+    );
+    const targetIndex = previous.findIndex(
+      (stage) => stage.id === targetId
+    );
+
+    if (sourceIndex < 0 || targetIndex < 0) {
+      return;
+    }
+
+    const reordered = [...previous];
+    const [moved] = reordered.splice(sourceIndex, 1);
+    reordered.splice(targetIndex, 0, moved);
+
+    setReorderingStages(true);
+    setError(null);
+    setStages(reordered);
+
+    try {
+      const saved = await reorderPipelineStages(
+        selectedPipelineId,
+        reordered.map((stage) => stage.id)
+      );
+
+      setStages(
+        [...saved].sort(
+          (a, b) => a.position - b.position
+        )
+      );
+    } catch (err) {
+      setStages(previous);
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Unable to reorder pipeline stages."
+      );
+    } finally {
+      setReorderingStages(false);
+      setDraggingColumnId(null);
+    }
+  }
+
+  function handleColumnDragStart(
+    event: DragEvent<HTMLButtonElement>,
+    stageId: string
+  ) {
+    if (reorderingStages) {
+      event.preventDefault();
+      return;
+    }
+
+    event.stopPropagation();
+    setDraggingColumnId(stageId);
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData(
+      "application/x-aiva-stage",
+      stageId
+    );
+  }
+
+  function handleColumnDragEnd() {
+    setDraggingColumnId(null);
+  }
+
+  function handleColumnDragOver(
+    event: DragEvent<HTMLDivElement>
+  ) {
+    if (!draggingColumnId) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+    event.dataTransfer.dropEffect = "move";
+  }
+
+  function handleColumnDrop(
+    event: DragEvent<HTMLDivElement>,
+    targetId: string
+  ) {
+    if (!draggingColumnId) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    const sourceId =
+      event.dataTransfer.getData(
+        "application/x-aiva-stage"
+      ) || draggingColumnId;
+
+    setDraggingColumnId(null);
+    void saveStageOrder(sourceId, targetId);
+  }
+
+
   return (
     <div className="appShell">
       <Sidebar active="Pipeline" />
@@ -1034,7 +1158,14 @@ export default function PipelinePage() {
                           )
                         }
                       >
-                        <div className="kanbanColumnHeader">
+                        {/* AIVA_P54_STAGE_DRAG_UI */}
+                        <div
+                          onDragOver={handleColumnDragOver}
+                          onDrop={(event) =>
+                            handleColumnDrop(event, stage.id)
+                          }
+                        >
+                          <div className="kanbanColumnHeader">
                           <div>
                             <div className="kanbanStageTitle">
                               <span
@@ -1064,6 +1195,20 @@ export default function PipelinePage() {
 
                           <div className="flex items-center gap-2">
                             <button
+                               type="button"
+                               draggable={!reorderingStages}
+                               disabled={reorderingStages}
+                               onDragStart={(event) =>
+                                 handleColumnDragStart(event, stage.id)
+                               }
+                               onDragEnd={handleColumnDragEnd}
+                               className="cursor-grab rounded-md border border-gray-300 p-1 text-gray-600 hover:bg-gray-100 active:cursor-grabbing"
+                               title={`Drag to reorder ${stage.name}`}
+                               aria-label={`Drag to reorder ${stage.name}`}
+                             >
+                               <GripVertical size={16} />
+                             </button>
+                             <button
                               type="button"
                               onClick={() => setEditingStage(stage)}
                               className="rounded-md border border-gray-300 px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-100"
@@ -1080,6 +1225,7 @@ export default function PipelinePage() {
                           </div>
                         </div>
 
+                        </div>
                         <div className="kanbanCards">
                           {stageDeals.length
                             === 0 && (

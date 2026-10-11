@@ -119,3 +119,20 @@ export function updatePipelineStage(
     }
   );
 }
+
+
+/* AIVA_P54_REORDER_STAGE_CLIENT */
+export function reorderPipelineStages(
+  pipelineId: string,
+  stageIds: string[]
+): Promise<PipelineStage[]> {
+  return aivaRequest<PipelineStage[]>(
+    `/pipelines/${pipelineId}/stages/reorder`,
+    {
+      method: "PUT",
+      body: JSON.stringify({
+        stage_ids: stageIds,
+      }),
+    }
+  );
+}

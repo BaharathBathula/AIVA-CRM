@@ -222,3 +222,28 @@ async def update_pipeline_stage_endpoint(
         stage_id=stage_id,
         changes=payload.model_dump(exclude_unset=True),
     )
+
+
+# AIVA_P54_REORDER_STAGE_ENDPOINT
+from app.schemas.pipeline import PipelineStageReorder
+from app.services.pipelines import reorder_pipeline_stages
+
+
+@router.put(
+    "/{pipeline_id}/stages/reorder",
+    response_model=list[PipelineStageResponse],
+)
+async def reorder_pipeline_stages_endpoint(
+    pipeline_id: uuid.UUID,
+    payload: PipelineStageReorder,
+    organization_id: uuid.UUID = Depends(
+        get_current_organization_id
+    ),
+    db: AsyncSession = Depends(get_db),
+):
+    return await reorder_pipeline_stages(
+        db=db,
+        organization_id=organization_id,
+        pipeline_id=pipeline_id,
+        stage_ids=payload.stage_ids,
+    )
