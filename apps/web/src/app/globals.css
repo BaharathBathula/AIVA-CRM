@@ -5429,3 +5429,156 @@ button {
   margin-top: 4px;
   font-weight: 700;
 }
+
+
+/* AIVA_P56_INACTIVE_STAGES_PANEL */
+
+.aiva-inactive-stages-panel {
+  margin: 0 0 24px;
+  padding: 20px;
+  border: 1px solid #e1e5ef;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 1px 3px rgb(15 23 42 / 3%);
+}
+
+.aiva-inactive-stages-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.aiva-inactive-stages-header h2 {
+  margin: 0;
+  color: #101828;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.aiva-inactive-stages-header p {
+  margin: 5px 0 0;
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.aiva-inactive-stages-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  padding: 5px 10px;
+  border: 1px solid #e1e5ef;
+  border-radius: 999px;
+  background: #f5f6fa;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.aiva-inactive-stages-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.aiva-inactive-stage-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 14px;
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid #e1e5ef;
+  border-radius: 10px;
+  background: #fafbfe;
+  transition: border-color 150ms ease, background 150ms ease;
+}
+
+.aiva-inactive-stage-item:hover {
+  border-color: #c8cfff;
+  background: #fff;
+}
+
+.aiva-inactive-stage-details {
+  flex: 1 1 180px;
+  min-width: 0;
+}
+
+.aiva-inactive-stage-name {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: #111827;
+  font-size: 13px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.aiva-inactive-stage-indicator {
+  flex: 0 0 8px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #94a3b8;
+}
+
+.aiva-inactive-stage-meta {
+  margin: 8px 0 0 17px;
+  color: #64748b;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.aiva-inactive-stage-actions {
+  flex: 0 0 auto;
+}
+
+.aiva-pipeline-stage-controls .aiva-pipeline-stage-reactivate {
+  min-height: 32px;
+  padding: 7px 11px;
+  border-color: #b7e4cc;
+  background: #f0fdf4;
+  color: #167647;
+  font-size: 12px;
+}
+
+.aiva-pipeline-stage-controls
+.aiva-pipeline-stage-reactivate:hover:not(:disabled) {
+  border-color: #86d5ab;
+  background: #dcfce7;
+}
+
+.aiva-pipeline-stage-controls
+.aiva-pipeline-stage-reactivate:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+@media (max-width: 600px) {
+  .aiva-inactive-stages-panel {
+    padding: 14px;
+  }
+
+  .aiva-inactive-stage-item {
+    align-items: flex-start;
+    padding: 12px;
+  }
+
+  .aiva-inactive-stage-actions {
+    width: 100%;
+  }
+
+  .aiva-inactive-stage-actions button {
+    width: 100%;
+  }
+}
