@@ -20,6 +20,8 @@ import {
   CreateStageDialog,
 } from "@/components/pipeline/create-stage-dialog";
 
+import { DeactivateStageDialog } from "@/components/pipeline/deactivate-stage-dialog";
+
 import {
   EditStageDialog,
 } from "@/components/pipeline/edit-stage-dialog";
@@ -201,6 +203,10 @@ export default function PipelinePage() {
 
   // AIVA_P53_EDIT_STAGE_INTEGRATION
   const [editingStage, setEditingStage] =
+    useState<PipelineStage | null>(null);
+
+  // AIVA_P55_DEACTIVATE_STAGE_INTEGRATION
+  const [deactivatingStage, setDeactivatingStage] =
     useState<PipelineStage | null>(null);
 
   function openRenamePipeline() {
@@ -846,6 +852,22 @@ export default function PipelinePage() {
             </div>
           </div>
 
+          {deactivatingStage && selectedPipelineId && (
+            <DeactivateStageDialog
+              key={deactivatingStage.id}
+              pipelineId={selectedPipelineId}
+              stage={deactivatingStage}
+              onClose={() => setDeactivatingStage(null)}
+              onDeactivated={(stageId) => {
+                setStages((current) =>
+                  current.filter((stage) => stage.id !== stageId)
+                );
+                setDeactivatingStage(null);
+                void loadPipeline(selectedPipelineId);
+              }}
+            />
+          )}
+
           {editingStage && selectedPipelineId && (
         <EditStageDialog
           key={editingStage.id}
@@ -1193,7 +1215,7 @@ export default function PipelinePage() {
                             </p>
                           </div>
 
-                          <div className="flex items-center gap-2">
+                          <div className="aiva-pipeline-stage-controls">
                             <button
                                type="button"
                                draggable={!reorderingStages}
@@ -1202,7 +1224,7 @@ export default function PipelinePage() {
                                  handleColumnDragStart(event, stage.id)
                                }
                                onDragEnd={handleColumnDragEnd}
-                               className="cursor-grab rounded-md border border-gray-300 p-1 text-gray-600 hover:bg-gray-100 active:cursor-grabbing"
+                               className="aiva-pipeline-stage-grip"
                                title={`Drag to reorder ${stage.name}`}
                                aria-label={`Drag to reorder ${stage.name}`}
                              >
@@ -1211,11 +1233,28 @@ export default function PipelinePage() {
                              <button
                               type="button"
                               onClick={() => setEditingStage(stage)}
-                              className="rounded-md border border-gray-300 px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-100"
+                              className="aiva-pipeline-stage-edit"
                               aria-label={`Edit ${stage.name} stage`}
                             >
                               Edit
                             </button>
+                             <button
+                               type="button"
+                               onClick={() => setDeactivatingStage(stage)}
+                               disabled={
+                                 reorderingStages ||
+                                 stages.filter((item) => item.is_active).length <= 1
+                               }
+                               className="aiva-pipeline-stage-deactivate"
+                               aria-label={`Deactivate ${stage.name} stage`}
+                               title={
+                                 stages.filter((item) => item.is_active).length <= 1
+                                   ? "The last active stage cannot be deactivated"
+                                   : `Deactivate ${stage.name}`
+                               }
+                             >
+                               Deactivate
+                             </button>
 
                           <span className="kanbanStageValue">
                             {formatMoney(

@@ -177,6 +177,85 @@ async def get_valid_stage(
     return stage
 
 
+
+# AIVA_P55_STAGE_ASSIGNMENT_LOCK
+async def lock_active_stage_for_assignment(
+    db: AsyncSession,
+    organization_id: uuid.UUID,
+    stage_id: uuid.UUID,
+) -> tuple[Pipeline, PipelineStage]:
+    """
+    Serialize opportunity stage assignment with stage deactivation.
+
+    Lock order: pipeline, then stage.
+    Locks remain held until transaction completion.
+    """
+
+    stage_lookup = await db.execute(
+        select(PipelineStage.pipeline_id).where(
+            PipelineStage.id == stage_id,
+            PipelineStage.organization_id == organization_id,
+        )
+    )
+
+    pipeline_id = stage_lookup.scalar_one_or_none()
+
+    if pipeline_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Pipeline stage does not belong to this organization.",
+        )
+
+    pipeline_result = await db.execute(
+        select(Pipeline)
+        .where(
+            Pipeline.id == pipeline_id,
+            Pipeline.organization_id == organization_id,
+        )
+        .with_for_update()
+    )
+
+    pipeline = pipeline_result.scalar_one_or_none()
+
+    if pipeline is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Pipeline does not belong to this organization.",
+        )
+
+    if not pipeline.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Pipeline is inactive.",
+        )
+
+    stage_result = await db.execute(
+        select(PipelineStage)
+        .where(
+            PipelineStage.id == stage_id,
+            PipelineStage.pipeline_id == pipeline.id,
+            PipelineStage.organization_id == organization_id,
+        )
+        .with_for_update()
+        .execution_options(populate_existing=True)
+    )
+
+    stage = stage_result.scalar_one_or_none()
+
+    if stage is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Pipeline stage does not belong to this organization.",
+        )
+
+    if not stage.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Pipeline stage is inactive.",
+        )
+
+    return pipeline, stage
+
 async def get_default_pipeline(
     db: AsyncSession,
     organization_id: uuid.UUID,
@@ -399,6 +478,14 @@ async def create_opportunity(
             payload.pipeline_id,
             payload.stage_id,
         )
+    )
+
+    # AIVA_P55_CREATE_STAGE_LOCK
+    # Revalidate under row locks before inserting the opportunity.
+    pipeline, stage = await lock_active_stage_for_assignment(
+        db,
+        organization_id,
+        stage.id,
     )
 
     if payload.primary_contact_id is not None:
@@ -755,6 +842,15 @@ async def update_opportunity(
                     requested_stage_id,
                 )
             )
+
+    # AIVA_P55_UPDATE_STAGE_LOCK
+    # Lock the destination stage before applying an assignment.
+    if selected_stage is not None:
+        _, selected_stage = await lock_active_stage_for_assignment(
+            db,
+            organization_id,
+            selected_stage.id,
+        )
 
     contact_id = (
         updates.get(

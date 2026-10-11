@@ -68,13 +68,13 @@ export function CreateStageDialog({
   return (
     <div
       role="presentation"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+      className="aiva-stage-overlay fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
     >
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby="create-stage-title"
-        className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl"
+        className="aiva-stage-dialog w-full max-w-md rounded-xl bg-white p-6 shadow-xl"
       >
         <h2
           id="create-stage-title"
@@ -156,7 +156,7 @@ export function CreateStageDialog({
             </p>
           )}
 
-          <div className="flex justify-end gap-3 pt-2">
+          <div className="aiva-stage-actions flex justify-end gap-3 pt-2">
             <button
               type="button"
               disabled={saving}

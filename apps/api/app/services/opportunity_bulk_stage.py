@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.opportunity import Opportunity
 from app.services.opportunities import (
     apply_stage_state,
+    lock_active_stage_for_assignment,
     resolve_pipeline_and_stage,
 )
 
@@ -41,6 +42,14 @@ async def bulk_change_opportunity_stage(
         organization_id=organization_id,
         pipeline_id=pipeline_id,
         stage_id=stage_id,
+    )
+
+    # AIVA_P55_BULK_STAGE_LOCK
+    # Lock the destination pipeline and stage before opportunity rows.
+    pipeline, stage = await lock_active_stage_for_assignment(
+        db,
+        organization_id,
+        stage.id,
     )
 
     result = await db.execute(

@@ -386,6 +386,18 @@ async def convert_lead(
                 ),
             )
 
+        # AIVA_P55_LEAD_CONVERSION_STAGE_LOCK
+        # Keep the destination stage active through conversion commit.
+        from app.services.opportunities import (
+            lock_active_stage_for_assignment,
+        )
+
+        pipeline, stage = await lock_active_stage_for_assignment(
+            db,
+            organization_id,
+            stage.id,
+        )
+
         account_name = (
             lead.company_name.strip()
         )

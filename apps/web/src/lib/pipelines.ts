@@ -136,3 +136,17 @@ export function reorderPipelineStages(
     }
   );
 }
+
+
+/* AIVA_P55_DEACTIVATE_STAGE_CLIENT */
+export function deactivatePipelineStage(
+  pipelineId: string,
+  stageId: string
+): Promise<PipelineStage> {
+  return aivaRequest<PipelineStage>(
+    `/pipelines/${pipelineId}/stages/${stageId}/deactivate`,
+    {
+      method: "PATCH",
+    }
+  );
+}

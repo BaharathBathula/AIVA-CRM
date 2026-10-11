@@ -247,3 +247,27 @@ async def reorder_pipeline_stages_endpoint(
         pipeline_id=pipeline_id,
         stage_ids=payload.stage_ids,
     )
+
+
+# AIVA_P55_DEACTIVATE_STAGE_ENDPOINT
+from app.services.pipelines import deactivate_pipeline_stage
+
+
+@router.patch(
+    "/{pipeline_id}/stages/{stage_id}/deactivate",
+    response_model=PipelineStageResponse,
+)
+async def deactivate_pipeline_stage_endpoint(
+    pipeline_id: uuid.UUID,
+    stage_id: uuid.UUID,
+    organization_id: uuid.UUID = Depends(
+        get_current_organization_id
+    ),
+    db: AsyncSession = Depends(get_db),
+):
+    return await deactivate_pipeline_stage(
+        db=db,
+        organization_id=organization_id,
+        pipeline_id=pipeline_id,
+        stage_id=stage_id,
+    )

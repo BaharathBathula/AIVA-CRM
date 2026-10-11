@@ -618,3 +618,97 @@ async def reorder_pipeline_stages(
     except Exception:
         await db.rollback()
         raise
+
+
+# AIVA_P55_DEACTIVATE_STAGE_SERVICE
+async def deactivate_pipeline_stage(
+    db: AsyncSession,
+    organization_id: uuid.UUID,
+    pipeline_id: uuid.UUID,
+    stage_id: uuid.UUID,
+) -> PipelineStage:
+    """Safely deactivate an unused pipeline stage."""
+    from sqlalchemy import func
+    from app.models.opportunity import Opportunity
+
+    try:
+        pipeline_result = await db.execute(
+            select(Pipeline).where(
+                Pipeline.id == pipeline_id,
+                Pipeline.organization_id == organization_id,
+                Pipeline.is_active.is_(True),
+            ).with_for_update()
+        )
+
+        pipeline = pipeline_result.scalar_one_or_none()
+
+        if pipeline is None:
+            raise HTTPException(
+                status_code=404,
+                detail="Active pipeline not found.",
+            )
+
+        stages_result = await db.execute(
+            select(PipelineStage).where(
+                PipelineStage.pipeline_id == pipeline_id,
+                PipelineStage.organization_id == organization_id,
+                PipelineStage.is_active.is_(True),
+            )
+            # AIVA_P55_DETERMINISTIC_STAGE_LOCK_ORDER
+            .order_by(PipelineStage.id.asc())
+            .with_for_update()
+        )
+
+        active_stages = list(stages_result.scalars().all())
+
+        stage = next(
+            (item for item in active_stages if item.id == stage_id),
+            None,
+        )
+
+        if stage is None:
+            raise HTTPException(
+                status_code=404,
+                detail="Active pipeline stage not found.",
+            )
+
+        if len(active_stages) <= 1:
+            raise HTTPException(
+                status_code=409,
+                detail="Cannot deactivate the last active pipeline stage.",
+            )
+
+        usage_result = await db.execute(
+            select(func.count(Opportunity.id)).where(
+                Opportunity.organization_id == organization_id,
+                Opportunity.pipeline_id == pipeline_id,
+                Opportunity.stage_id == stage_id,
+            )
+        )
+
+        opportunity_count = usage_result.scalar_one()
+
+        if opportunity_count > 0:
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    f"Cannot deactivate this stage because "
+                    f"{opportunity_count} opportunities reference it. "
+                    "Move or resolve those opportunities first."
+                ),
+            )
+
+        stage.is_active = False
+
+        await db.commit()
+        await db.refresh(stage)
+
+        return stage
+
+    except HTTPException:
+        await db.rollback()
+        raise
+
+    except Exception:
+        await db.rollback()
+        raise

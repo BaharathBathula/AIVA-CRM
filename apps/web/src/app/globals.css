@@ -5229,3 +5229,203 @@ button {
     flex-wrap: wrap;
   }
 }
+
+
+/* AIVA_P55_PIPELINE_DIALOG_STYLES */
+
+.aiva-stage-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(15, 23, 42, 0.58);
+}
+
+.aiva-stage-dialog {
+  width: 100%;
+  max-width: 460px;
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+  padding: 26px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.24);
+}
+
+.aiva-stage-dialog h2 {
+  margin: 0 0 8px;
+  font-size: 21px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.aiva-stage-dialog p {
+  margin: 8px 0 16px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+
+.aiva-stage-dialog form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 20px;
+}
+
+.aiva-stage-dialog label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.aiva-stage-dialog input,
+.aiva-stage-dialog select {
+  width: 100%;
+  min-height: 42px;
+  padding: 9px 12px;
+  border: 1px solid #d8dce6;
+  border-radius: 9px;
+  background: #fff;
+  color: var(--text);
+  font: inherit;
+}
+
+.aiva-stage-dialog input:focus,
+.aiva-stage-dialog select:focus {
+  outline: 2px solid var(--primary);
+  outline-offset: 1px;
+}
+
+.aiva-stage-dialog .aiva-stage-actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.aiva-stage-dialog .aiva-stage-actions button {
+  min-height: 40px;
+  padding: 9px 16px;
+  border: 1px solid #d8dce6;
+  border-radius: 9px;
+  background: #fff;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.aiva-stage-dialog .aiva-stage-actions button[type="submit"],
+.aiva-stage-dialog .aiva-stage-actions button.aiva-stage-primary {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: #fff;
+}
+
+.aiva-stage-dialog .aiva-stage-actions button.aiva-stage-danger {
+  border-color: #b91c1c;
+  background: #b91c1c;
+  color: #fff;
+}
+
+.aiva-stage-dialog button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.aiva-stage-dialog .aiva-stage-error {
+  padding: 10px 12px;
+  border: 1px solid #fecaca;
+  border-radius: 9px;
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+.aiva-stage-dialog .aiva-stage-warning {
+  padding: 12px;
+  border: 1px solid #fde68a;
+  border-radius: 9px;
+  background: #fffbeb;
+  color: #92400e;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+
+/* AIVA_P56_PIPELINE_STAGE_CONTROLS */
+
+.aiva-pipeline-stage-controls {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 5px;
+  min-width: 0;
+}
+
+.aiva-pipeline-stage-controls button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  padding: 5px 8px;
+  border: 1px solid #dfe3ed;
+  border-radius: 7px;
+  background: #fff;
+  color: #475569;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 150ms ease, border-color 150ms ease;
+}
+
+.aiva-pipeline-stage-controls button:hover:not(:disabled) {
+  background: #f3f1ff;
+  border-color: #c8bfff;
+}
+
+.aiva-pipeline-stage-controls .aiva-pipeline-stage-grip {
+  padding: 5px;
+  cursor: grab;
+  color: #64748b;
+}
+
+.aiva-pipeline-stage-controls .aiva-pipeline-stage-grip:active {
+  cursor: grabbing;
+}
+
+.aiva-pipeline-stage-controls .aiva-pipeline-stage-edit {
+  color: #5745c8;
+}
+
+.aiva-pipeline-stage-controls .aiva-pipeline-stage-deactivate {
+  color: #b42336;
+}
+
+.aiva-pipeline-stage-controls
+.aiva-pipeline-stage-deactivate:hover:not(:disabled) {
+  background: #fff1f2;
+  border-color: #fecdd3;
+}
+
+.aiva-pipeline-stage-controls button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.aiva-pipeline-stage-controls .kanbanStageValue {
+  flex-basis: 100%;
+  text-align: right;
+  margin-top: 4px;
+  font-weight: 700;
+}
