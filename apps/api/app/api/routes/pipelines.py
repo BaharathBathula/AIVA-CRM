@@ -271,3 +271,28 @@ async def deactivate_pipeline_stage_endpoint(
         pipeline_id=pipeline_id,
         stage_id=stage_id,
     )
+
+
+# AIVA_P56_REACTIVATE_STAGE_ENDPOINT
+from app.services.pipelines import reactivate_pipeline_stage
+
+
+@router.patch(
+    "/{pipeline_id}/stages/{stage_id}/reactivate",
+    response_model=PipelineStageResponse,
+)
+async def reactivate_pipeline_stage_endpoint(
+    pipeline_id: uuid.UUID,
+    stage_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    organization_id: uuid.UUID = Depends(
+        get_current_organization_id
+    ),
+):
+    """Reactivate an inactive stage in an active pipeline."""
+    return await reactivate_pipeline_stage(
+        db=db,
+        organization_id=organization_id,
+        pipeline_id=pipeline_id,
+        stage_id=stage_id,
+    )

@@ -27,12 +27,15 @@ export function getPipeline(
 
 
 export function getPipelineStages(
-  pipelineId: string
+  pipelineId: string,
+  includeInactive = false
 ): Promise<PipelineStage[]> {
-  return aivaRequest<
-    PipelineStage[]
-  >(
-    `/pipelines/${pipelineId}/stages`
+  const query = includeInactive
+    ? "?include_inactive=true"
+    : "";
+
+  return aivaRequest<PipelineStage[]>(
+    `/pipelines/${pipelineId}/stages${query}`
   );
 }
 
@@ -145,6 +148,20 @@ export function deactivatePipelineStage(
 ): Promise<PipelineStage> {
   return aivaRequest<PipelineStage>(
     `/pipelines/${pipelineId}/stages/${stageId}/deactivate`,
+    {
+      method: "PATCH",
+    }
+  );
+}
+
+
+/* AIVA_P56_REACTIVATE_STAGE_CLIENT */
+export function reactivatePipelineStage(
+  pipelineId: string,
+  stageId: string
+): Promise<PipelineStage> {
+  return aivaRequest<PipelineStage>(
+    `/pipelines/${pipelineId}/stages/${stageId}/reactivate`,
     {
       method: "PATCH",
     }

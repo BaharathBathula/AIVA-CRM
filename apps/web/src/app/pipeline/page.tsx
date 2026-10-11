@@ -21,6 +21,7 @@ import {
 } from "@/components/pipeline/create-stage-dialog";
 
 import { DeactivateStageDialog } from "@/components/pipeline/deactivate-stage-dialog";
+import { ReactivateStageDialog } from "@/components/pipeline/reactivate-stage-dialog";
 
 import {
   EditStageDialog,
@@ -209,6 +210,12 @@ export default function PipelinePage() {
   const [deactivatingStage, setDeactivatingStage] =
     useState<PipelineStage | null>(null);
 
+  // AIVA_P56_REACTIVATE_STAGE_INTEGRATION
+  const [inactiveStages, setInactiveStages] =
+    useState<PipelineStage[]>([]);
+  const [reactivatingStage, setReactivatingStage] =
+    useState<PipelineStage | null>(null);
+
   function openRenamePipeline() {
     const selected = pipelines.find(
       (pipeline) => pipeline.id === selectedPipelineId
@@ -341,6 +348,7 @@ export default function PipelinePage() {
 
       if (!selected) {
         setStages([]);
+        setInactiveStages([]);
         setOpportunities([]);
         return;
       }
@@ -350,7 +358,8 @@ export default function PipelinePage() {
         opportunityData,
       ] = await Promise.all([
         getPipelineStages(
-          selected
+          selected,
+          true
         ),
         getOpportunities({
           pipelineId: selected,
@@ -358,10 +367,15 @@ export default function PipelinePage() {
       ]);
 
       setStages(
-        [...stageData].sort(
-          (a, b) =>
-            a.position - b.position
-        )
+        stageData
+          .filter((stage) => stage.is_active)
+          .sort((a, b) => a.position - b.position)
+      );
+
+      setInactiveStages(
+        stageData
+          .filter((stage) => !stage.is_active)
+          .sort((a, b) => a.position - b.position)
       );
 
       setOpportunities(
@@ -852,6 +866,56 @@ export default function PipelinePage() {
             </div>
           </div>
 
+          {/* AIVA_P56_INACTIVE_STAGES_PANEL */}
+          {inactiveStages.length > 0 && selectedPipelineId && (
+            <section
+              className="mt-4 rounded-xl border border-slate-200 bg-white p-4"
+              aria-labelledby="inactive-stages-heading"
+            >
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <h2
+                  id="inactive-stages-heading"
+                  className="text-base font-semibold text-slate-900"
+                >
+                  Inactive Stages
+                </h2>
+                <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
+                  {inactiveStages.length}
+                </span>
+              </div>
+
+              <ul className="space-y-2">
+                {inactiveStages.map((stage) => (
+                  <li
+                    key={stage.id}
+                    className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 p-3"
+                  >
+                    <div>
+                      <p className="font-medium text-slate-900">
+                        {stage.name}
+                      </p>
+                      <p className="text-sm text-slate-500">
+                        Position {stage.position}
+                        {" · "}
+                        {stage.probability}% probability
+                      </p>
+                    </div>
+
+                    <button
+                      type="button"
+                      disabled={loading || reorderingStages}
+                      onClick={() => setReactivatingStage(stage)}
+                      className="inline-flex items-center gap-2 rounded-lg border border-emerald-200 px-3 py-2 text-sm font-medium text-emerald-700 hover:bg-emerald-50 disabled:opacity-50"
+                      aria-label={`Reactivate ${stage.name} stage`}
+                    >
+                      Reactivate
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
           {deactivatingStage && selectedPipelineId && (
             <DeactivateStageDialog
               key={deactivatingStage.id}
@@ -863,6 +927,20 @@ export default function PipelinePage() {
                   current.filter((stage) => stage.id !== stageId)
                 );
                 setDeactivatingStage(null);
+                void loadPipeline(selectedPipelineId);
+              }}
+            />
+          )}
+
+          {/* AIVA_P56_REACTIVATE_STAGE_DIALOG */}
+          {reactivatingStage && selectedPipelineId && (
+            <ReactivateStageDialog
+              key={reactivatingStage.id}
+              pipelineId={selectedPipelineId}
+              stage={reactivatingStage}
+              onClose={() => setReactivatingStage(null)}
+              onReactivated={() => {
+                setReactivatingStage(null);
                 void loadPipeline(selectedPipelineId);
               }}
             />

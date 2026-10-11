@@ -712,3 +712,79 @@ async def deactivate_pipeline_stage(
     except Exception:
         await db.rollback()
         raise
+
+
+# AIVA_P56_REACTIVATE_STAGE_SERVICE
+async def reactivate_pipeline_stage(
+    db: AsyncSession,
+    organization_id: uuid.UUID,
+    pipeline_id: uuid.UUID,
+    stage_id: uuid.UUID,
+) -> PipelineStage:
+    """Reactivate an inactive pipeline stage safely."""
+
+    try:
+        pipeline_result = await db.execute(
+            select(Pipeline).where(
+                Pipeline.id == pipeline_id,
+                Pipeline.organization_id == organization_id,
+                Pipeline.is_active.is_(True),
+            ).with_for_update()
+        )
+
+        pipeline = pipeline_result.scalar_one_or_none()
+
+        if pipeline is None:
+            raise HTTPException(
+                status_code=404,
+                detail="Active pipeline not found.",
+            )
+
+        stages_result = await db.execute(
+            select(PipelineStage).where(
+                PipelineStage.pipeline_id == pipeline_id,
+                PipelineStage.organization_id == organization_id,
+            )
+            .order_by(PipelineStage.id.asc())
+            .with_for_update()
+        )
+
+        all_stages = list(stages_result.scalars().all())
+
+        stage = next(
+            (item for item in all_stages if item.id == stage_id),
+            None,
+        )
+
+        if stage is None:
+            raise HTTPException(
+                status_code=404,
+                detail="Pipeline stage not found.",
+            )
+
+        if stage.is_active:
+            raise HTTPException(
+                status_code=409,
+                detail="Pipeline stage is already active.",
+            )
+
+        stage.is_active = True
+
+        await db.commit()
+        await db.refresh(stage)
+
+        return stage
+
+    except IntegrityError as exc:
+        await db.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "Unable to reactivate this stage because "
+                "a database constraint was violated."
+            ),
+        ) from exc
+
+    except Exception:
+        await db.rollback()
+        raise
