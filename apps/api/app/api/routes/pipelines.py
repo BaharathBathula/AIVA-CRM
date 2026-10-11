@@ -196,3 +196,29 @@ async def create_pipeline_stage_endpoint(
         probability=payload.probability,
         category=payload.category,
     )
+
+# AIVA_P53_UPDATE_STAGE_ENDPOINT
+from app.schemas.pipeline import PipelineStageUpdate
+from app.services.pipelines import update_pipeline_stage
+
+
+@router.patch(
+    "/{pipeline_id}/stages/{stage_id}",
+    response_model=PipelineStageResponse,
+)
+async def update_pipeline_stage_endpoint(
+    pipeline_id: uuid.UUID,
+    stage_id: uuid.UUID,
+    payload: PipelineStageUpdate,
+    organization_id: uuid.UUID = Depends(
+        get_current_organization_id
+    ),
+    db: AsyncSession = Depends(get_db),
+):
+    return await update_pipeline_stage(
+        db=db,
+        organization_id=organization_id,
+        pipeline_id=pipeline_id,
+        stage_id=stage_id,
+        changes=payload.model_dump(exclude_unset=True),
+    )

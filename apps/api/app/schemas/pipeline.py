@@ -98,3 +98,49 @@ class PipelineStageCreate(BaseModel):
         if len(name) > 120:
             raise ValueError("Stage name exceeds 120 characters.")
         return name
+
+# AIVA_P53_UPDATE_STAGE
+class PipelineStageUpdate(BaseModel):
+    name: str | None = Field(
+        default=None,
+        min_length=1,
+        max_length=120,
+    )
+    probability: int | None = Field(
+        default=None,
+        ge=0,
+        le=100,
+        strict=True,
+    )
+    category: PipelineStageCategory | None = None
+
+    @field_validator("name")
+    @classmethod
+    def normalize_update_stage_name(
+        cls, value: str | None
+    ) -> str | None:
+        if value is None:
+            return value
+
+        name = value.strip()
+
+        if not name:
+            raise ValueError("Stage name cannot be blank.")
+
+        if len(name) > 120:
+            raise ValueError("Stage name exceeds 120 characters.")
+
+        return name
+
+    @field_validator(
+        "name",
+        "probability",
+        "category",
+    )
+    @classmethod
+    def reject_explicit_null(cls, value, info):
+        if value is None:
+            raise ValueError(
+                f"{info.field_name} cannot be null."
+            )
+        return value

@@ -382,3 +382,122 @@ async def create_pipeline_stage(
     except Exception:
         await db.rollback()
         raise
+
+# AIVA_P53_UPDATE_STAGE_SERVICE
+async def update_pipeline_stage(
+    db: AsyncSession,
+    organization_id: uuid.UUID,
+    pipeline_id: uuid.UUID,
+    stage_id: uuid.UUID,
+    changes: dict,
+) -> PipelineStage:
+    allowed_fields = {"name", "probability", "category"}
+
+    if not changes or set(changes) - allowed_fields:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Provide at least one valid stage field.",
+        )
+
+    if "name" in changes:
+        value = changes["name"]
+        if not isinstance(value, str):
+            raise HTTPException(
+                status_code=422,
+                detail="Invalid stage name.",
+            )
+        value = value.strip()
+        if not value or len(value) > 120:
+            raise HTTPException(
+                status_code=422,
+                detail="Stage name must contain 1 to 120 characters.",
+            )
+        changes = {**changes, "name": value}
+
+    if "probability" in changes:
+        value = changes["probability"]
+        if type(value) is not int or not 0 <= value <= 100:
+            raise HTTPException(
+                status_code=422,
+                detail="Probability must be between 0 and 100.",
+            )
+
+    if "category" in changes:
+        if changes["category"] not in ("open", "won", "lost"):
+            raise HTTPException(
+                status_code=422,
+                detail="Invalid stage category.",
+            )
+
+    try:
+        pipeline_result = await db.execute(
+            select(Pipeline).where(
+                Pipeline.id == pipeline_id,
+                Pipeline.organization_id == organization_id,
+                Pipeline.is_active.is_(True),
+            ).with_for_update()
+        )
+
+        pipeline = pipeline_result.scalar_one_or_none()
+
+        if pipeline is None:
+            raise HTTPException(
+                status_code=404,
+                detail="Active pipeline not found.",
+            )
+
+        stage_result = await db.execute(
+            select(PipelineStage).where(
+                PipelineStage.id == stage_id,
+                PipelineStage.pipeline_id == pipeline_id,
+                PipelineStage.organization_id == organization_id,
+                PipelineStage.is_active.is_(True),
+            ).with_for_update()
+        )
+
+        stage = stage_result.scalar_one_or_none()
+
+        if stage is None:
+            raise HTTPException(
+                status_code=404,
+                detail="Active pipeline stage not found.",
+            )
+
+        if "name" in changes and changes["name"] != stage.name:
+            duplicate_result = await db.execute(
+                select(PipelineStage.id).where(
+                    PipelineStage.pipeline_id == pipeline_id,
+                    PipelineStage.organization_id == organization_id,
+                    PipelineStage.name == changes["name"],
+                    PipelineStage.id != stage_id,
+                )
+            )
+
+            if duplicate_result.scalar_one_or_none() is not None:
+                raise HTTPException(
+                    status_code=409,
+                    detail="A stage with this name already exists.",
+                )
+
+        for field, value in changes.items():
+            setattr(stage, field, value)
+
+        await db.commit()
+        await db.refresh(stage)
+
+        return stage
+
+    except HTTPException:
+        await db.rollback()
+        raise
+
+    except IntegrityError as exc:
+        await db.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail="A stage with this name already exists.",
+        ) from exc
+
+    except Exception:
+        await db.rollback()
+        raise

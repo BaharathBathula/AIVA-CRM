@@ -17,6 +17,10 @@ import {
 } from "@/components/pipeline/create-stage-dialog";
 
 import {
+  EditStageDialog,
+} from "@/components/pipeline/edit-stage-dialog";
+
+import {
   Building2,
   CircleDollarSign,
   GripVertical,
@@ -183,6 +187,10 @@ export default function PipelinePage() {
   // AIVA_P52_ADD_STAGE_INTEGRATION
   const [showCreateStage, setShowCreateStage] =
     useState(false);
+
+  // AIVA_P53_EDIT_STAGE_INTEGRATION
+  const [editingStage, setEditingStage] =
+    useState<PipelineStage | null>(null);
 
   function openRenamePipeline() {
     const selected = pipelines.find(
@@ -714,7 +722,24 @@ export default function PipelinePage() {
             </div>
           </div>
 
-          {showCreateStage && selectedPipelineId && (
+          {editingStage && selectedPipelineId && (
+        <EditStageDialog
+          key={editingStage.id}
+          pipelineId={selectedPipelineId}
+          stage={editingStage}
+          onClose={() => setEditingStage(null)}
+          onUpdated={(updated) => {
+            setStages((current) =>
+              current.map((stage) =>
+                stage.id === updated.id ? updated : stage
+              )
+            );
+            setEditingStage(null);
+          }}
+        />
+      )}
+
+      {showCreateStage && selectedPipelineId && (
             <CreateStageDialog
               pipelineId={selectedPipelineId}
               onClose={() => setShowCreateStage(false)}
@@ -1037,11 +1062,22 @@ export default function PipelinePage() {
                             </p>
                           </div>
 
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setEditingStage(stage)}
+                              className="rounded-md border border-gray-300 px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-100"
+                              aria-label={`Edit ${stage.name} stage`}
+                            >
+                              Edit
+                            </button>
+
                           <span className="kanbanStageValue">
                             {formatMoney(
                               stageValue
                             )}
                           </span>
+                          </div>
                         </div>
 
                         <div className="kanbanCards">

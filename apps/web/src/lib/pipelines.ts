@@ -98,3 +98,24 @@ export function createPipelineStage(
     }
   );
 }
+
+/* AIVA_P53_UPDATE_STAGE_CLIENT */
+export type UpdatePipelineStageInput = {
+  name?: string;
+  probability?: number;
+  category?: "open" | "won" | "lost";
+};
+
+export function updatePipelineStage(
+  pipelineId: string,
+  stageId: string,
+  input: UpdatePipelineStageInput
+): Promise<PipelineStage> {
+  return aivaRequest<PipelineStage>(
+    `/pipelines/${pipelineId}/stages/${stageId}`,
+    {
+      method: "PATCH",
+      body: JSON.stringify(input),
+    }
+  );
+}
