@@ -542,6 +542,7 @@ async def convert_lead(
             ),
             pipeline_id=pipeline.id,
             stage_id=stage.id,
+            stage_entered_at=datetime.now(timezone.utc),
             owner_user_id=(
                 lead.owner_user_id
             ),
@@ -655,6 +656,11 @@ async def convert_lead(
 
     except Exception as exc:
         await db.rollback()
+
+        import logging
+        logging.getLogger(__name__).exception(
+            "Lead conversion failed; transaction rolled back"
+        )
 
         raise HTTPException(
             status_code=(
