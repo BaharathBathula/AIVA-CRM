@@ -10,8 +10,15 @@ interface OpportunitySaveViewDialogProps {
   existingNames?: string[];
 }
 
-export function OpportunitySaveViewDialog({
-  open,
+export function OpportunitySaveViewDialog(
+  props: OpportunitySaveViewDialogProps
+) {
+  if (!props.open) return null;
+
+  return <OpportunitySaveViewDialogContent {...props} />;
+}
+
+function OpportunitySaveViewDialogContent({
   onClose,
   onSave,
   existingNames = [],
@@ -21,16 +28,10 @@ export function OpportunitySaveViewDialog({
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (open) {
-      setName("");
-      setError("");
-      inputRef.current?.focus();
-    }
-  }, [open]);
+    inputRef.current?.focus();
+  }, []);
 
   useEffect(() => {
-    if (!open) return;
-
     function handleEscape(event: KeyboardEvent) {
       if (event.key === "Escape") {
         onClose();
@@ -42,9 +43,7 @@ export function OpportunitySaveViewDialog({
     return () => {
       window.removeEventListener("keydown", handleEscape);
     };
-  }, [open, onClose]);
-
-  if (!open) return null;
+  }, [onClose]);
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();

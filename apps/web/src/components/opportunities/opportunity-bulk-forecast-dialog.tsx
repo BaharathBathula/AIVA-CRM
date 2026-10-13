@@ -56,11 +56,6 @@ export function OpportunityBulkForecastDialog({
   const [category, setCategory] =
     useState<ForecastCategory>("pipeline");
 
-  useEffect(() => {
-    if (open) {
-      setCategory("pipeline");
-    }
-  }, [open]);
 
   useEffect(() => {
     if (!open) return;

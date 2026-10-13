@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { UserRound, X } from "lucide-react";
 
 export interface BulkOwnerOption {
@@ -29,12 +29,6 @@ export function OpportunityBulkOwnerDialog({
   const [ownerUserId, setOwnerUserId] = useState("");
   const [error, setError] = useState("");
 
-  useEffect(() => {
-    if (open) {
-      setOwnerUserId("");
-      setError("");
-    }
-  }, [open]);
 
   if (!open) return null;
 

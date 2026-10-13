@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 export interface BulkStageOption {
   id: string;
@@ -57,12 +57,6 @@ export function OpportunityBulkStageDialog({
     (stage) => stage.is_active !== false
   );
 
-  useEffect(() => {
-    if (!open) {
-      setPipelineId("");
-      setStageId("");
-    }
-  }, [open]);
 
   if (!open) {
     return null;

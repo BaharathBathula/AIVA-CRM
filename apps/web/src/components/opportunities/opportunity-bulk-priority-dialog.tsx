@@ -51,11 +51,6 @@ export function OpportunityBulkPriorityDialog({
   const [priority, setPriority] =
     useState<OpportunityPriority>("medium");
 
-  useEffect(() => {
-    if (open) {
-      setPriority("medium");
-    }
-  }, [open]);
 
   useEffect(() => {
     if (!open) return;
