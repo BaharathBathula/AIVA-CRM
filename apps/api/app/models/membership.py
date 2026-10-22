@@ -56,10 +56,36 @@ class OrganizationMembership(
         server_default="member",
     )
 
+    # active | invited | deactivated
+    status: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+        default="active",
+        server_default="active",
+    )
+
+    team_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey(
+            "teams.id",
+            ondelete="SET NULL",
+        ),
+        nullable=True,
+        index=True,
+    )
+
+    invited_by_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey(
+            "users.id",
+            ondelete="SET NULL",
+        ),
+        nullable=True,
+    )
+
     organization: Mapped["Organization"] = relationship(
         back_populates="memberships",
     )
 
     user: Mapped["User"] = relationship(
         back_populates="memberships",
+        foreign_keys=[user_id],
     )

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from sqlalchemy import Boolean, String
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -34,6 +35,14 @@ class Organization(
         nullable=False,
         default=True,
         server_default="true",
+    )
+
+    # Workspace preferences: currency, timezone, fiscal year start, etc.
+    settings: Mapped[dict] = mapped_column(
+        JSONB,
+        nullable=False,
+        default=dict,
+        server_default="{}",
     )
 
     memberships: Mapped[list["OrganizationMembership"]] = relationship(

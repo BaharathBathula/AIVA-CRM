@@ -66,6 +66,10 @@ async def test_valid_bulk_stage_update():
         "app.services.opportunity_bulk_stage.resolve_pipeline_and_stage",
         new_callable=AsyncMock,
         return_value=(pipeline, stage),
+    ), patch(
+        "app.services.opportunity_bulk_stage.lock_active_stage_for_assignment",
+        new_callable=AsyncMock,
+        return_value=(pipeline, stage),
     ):
         result = await bulk_change_opportunity_stage(
             db=db,
@@ -163,16 +167,22 @@ async def test_missing_or_cross_tenant_opportunity_rejected():
     pipeline_id = uid()
     stage_id = uid()
 
+    target = (
+        SimpleNamespace(id=pipeline_id),
+        SimpleNamespace(
+            id=stage_id,
+            pipeline_id=pipeline_id,
+        ),
+    )
+
     with patch(
         "app.services.opportunity_bulk_stage.resolve_pipeline_and_stage",
         new_callable=AsyncMock,
-        return_value=(
-            SimpleNamespace(id=pipeline_id),
-            SimpleNamespace(
-                id=stage_id,
-                pipeline_id=pipeline_id,
-            ),
-        ),
+        return_value=target,
+    ), patch(
+        "app.services.opportunity_bulk_stage.lock_active_stage_for_assignment",
+        new_callable=AsyncMock,
+        return_value=target,
     ):
         with pytest.raises(HTTPException) as exc:
             await bulk_change_opportunity_stage(
@@ -198,16 +208,22 @@ async def test_noop_when_already_in_stage():
     )
     db = make_db([opportunity])
 
+    target = (
+        SimpleNamespace(id=pipeline_id),
+        SimpleNamespace(
+            id=stage_id,
+            pipeline_id=pipeline_id,
+        ),
+    )
+
     with patch(
         "app.services.opportunity_bulk_stage.resolve_pipeline_and_stage",
         new_callable=AsyncMock,
-        return_value=(
-            SimpleNamespace(id=pipeline_id),
-            SimpleNamespace(
-                id=stage_id,
-                pipeline_id=pipeline_id,
-            ),
-        ),
+        return_value=target,
+    ), patch(
+        "app.services.opportunity_bulk_stage.lock_active_stage_for_assignment",
+        new_callable=AsyncMock,
+        return_value=target,
     ):
         result = await bulk_change_opportunity_stage(
             db,

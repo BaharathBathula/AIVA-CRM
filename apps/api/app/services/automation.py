@@ -1,0 +1,583 @@
+"""Audit trail, workflow automation and lead scoring.
+
+A single SQLAlchemy ``before_flush`` hook sees every insert, update and
+delete made through the ORM. For each change it:
+
+1. writes an :class:`AuditLog` row (who changed what, before and after),
+2. re-scores leads against the organization's lead scoring rules, and
+3. evaluates active :class:`WorkflowRule` rows and runs their actions
+   (create a task, update a field, notify someone, assign an owner).
+
+Because it hooks the session rather than individual services, every module
+(existing and new) is audited and automatable without extra code. Rules are
+loaded per organization by the auth dependency before the request runs,
+since flush events cannot issue queries.
+"""
+
+from __future__ import annotations
+
+import logging
+import re
+import time
+import uuid
+from datetime import date, datetime, timedelta, timezone
+from decimal import Decimal, InvalidOperation
+from typing import Any
+
+from sqlalchemy import event, inspect, select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session
+
+from app.models.platform import (
+    AuditLog,
+    Dashboard,
+    KnowledgeArticle,
+    LeadScoringRule,
+    Notification,
+    Report,
+    Role,
+    SlaPolicy,
+    Team,
+    WorkflowRule,
+    WorkflowRun,
+)
+from app.models.task import Task
+from app.services.catalog import OBJECTS, ObjectDef, object_for_instance
+
+logger = logging.getLogger("aiva.automation")
+
+CACHE_TTL_SECONDS = 15.0
+_CACHE: dict[uuid.UUID, tuple[float, dict[str, Any]]] = {}
+
+AUDIT_ONLY: dict[type, tuple[str, Any]] = {
+    KnowledgeArticle: ("kb_article", lambda o: o.title),
+    WorkflowRule: ("workflow", lambda o: o.name),
+    Role: ("role", lambda o: o.name),
+    Team: ("team", lambda o: o.name),
+    SlaPolicy: ("sla_policy", lambda o: o.name),
+    LeadScoringRule: ("scoring_rule", lambda o: o.name),
+    Report: ("report", lambda o: o.name),
+    Dashboard: ("dashboard", lambda o: o.name),
+}
+
+IGNORED_FIELDS = {"updated_at", "created_at"}
+
+# Records created by a signed-in user are owned by that user unless an owner
+# was chosen. Cases are excluded so new cases stay in the queue.
+AUTO_OWNER_TYPES = {"lead", "account", "contact", "opportunity", "task", "activity", "quote"}
+
+OPERATORS = (
+    "equals", "not_equals", "contains", "not_contains", "starts_with",
+    "greater_than", "less_than", "is_empty", "is_not_empty", "in",
+)
+
+ACTION_TYPES = ("create_task", "update_field", "notify", "assign_owner")
+TRIGGERS = ("created", "updated", "created_or_updated", "field_changed")
+
+
+# ---------------------------------------------------------------------------
+# Rule cache
+# ---------------------------------------------------------------------------
+
+
+def invalidate_automation_cache(organization_id: uuid.UUID | None = None) -> None:
+    if organization_id is None:
+        _CACHE.clear()
+    else:
+        _CACHE.pop(organization_id, None)
+
+
+async def load_automation_context(db: AsyncSession, organization_id: uuid.UUID) -> dict[str, Any]:
+    entry = _CACHE.get(organization_id)
+    if entry and time.monotonic() - entry[0] < CACHE_TTL_SECONDS:
+        context = entry[1]
+    else:
+        rules = (
+            await db.execute(
+                select(WorkflowRule).where(
+                    WorkflowRule.organization_id == organization_id,
+                    WorkflowRule.is_active.is_(True),
+                )
+            )
+        ).scalars().all()
+        scoring = (
+            await db.execute(
+                select(LeadScoringRule).where(
+                    LeadScoringRule.organization_id == organization_id,
+                    LeadScoringRule.is_active.is_(True),
+                )
+            )
+        ).scalars().all()
+        context = {
+            "workflow_rules": [
+                {
+                    "id": rule.id,
+                    "name": rule.name,
+                    "object_type": rule.object_type,
+                    "trigger_event": rule.trigger_event,
+                    "trigger_field": rule.trigger_field,
+                    "conditions": list(rule.conditions or []),
+                    "actions": list(rule.actions or []),
+                }
+                for rule in rules
+            ],
+            "scoring_rules": [
+                {
+                    "id": rule.id,
+                    "name": rule.name,
+                    "field": rule.field,
+                    "operator": rule.operator,
+                    "value": rule.value,
+                    "points": rule.points,
+                }
+                for rule in scoring
+            ],
+        }
+        _CACHE[organization_id] = (time.monotonic(), context)
+
+    sync_session = db.sync_session if hasattr(db, "sync_session") else db
+    sync_session.info["automation"] = context
+    return context
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+
+def jsonable(value: Any) -> Any:
+    if isinstance(value, uuid.UUID):
+        return str(value)
+    if isinstance(value, Decimal):
+        return float(value)
+    if isinstance(value, (datetime, date)):
+        return value.isoformat()
+    if isinstance(value, (list, tuple)):
+        return [jsonable(v) for v in value]
+    if isinstance(value, dict):
+        return {k: jsonable(v) for k, v in value.items()}
+    return value
+
+
+def _as_number(value: Any) -> Decimal | None:
+    if value is None or value == "":
+        return None
+    try:
+        return Decimal(str(value))
+    except (InvalidOperation, ValueError):
+        return None
+
+
+def _compare_value(actual: Any) -> Any:
+    if isinstance(actual, uuid.UUID):
+        return str(actual)
+    if isinstance(actual, bool):
+        return "true" if actual else "false"
+    return actual
+
+
+def evaluate_condition(obj: Any, condition: dict[str, Any]) -> bool:
+    field = condition.get("field")
+    operator = condition.get("operator", "equals")
+    expected = condition.get("value")
+    if not field or not hasattr(obj, field):
+        return False
+
+    actual = _compare_value(getattr(obj, field))
+
+    if operator == "is_empty":
+        return actual in (None, "", [], {})
+    if operator == "is_not_empty":
+        return actual not in (None, "", [], {})
+    if actual is None:
+        return operator in {"not_equals", "not_contains"}
+
+    if operator in {"greater_than", "less_than"}:
+        if isinstance(actual, (datetime, date)):
+            try:
+                other = date.fromisoformat(str(expected)[:10])
+                left = actual.date() if isinstance(actual, datetime) else actual
+                return left > other if operator == "greater_than" else left < other
+            except ValueError:
+                return False
+        left, right = _as_number(actual), _as_number(expected)
+        if left is None or right is None:
+            return False
+        return left > right if operator == "greater_than" else left < right
+
+    text_actual = str(actual).lower()
+    text_expected = str(expected if expected is not None else "").lower()
+
+    if operator == "equals":
+        number_left, number_right = _as_number(actual), _as_number(expected)
+        if number_left is not None and number_right is not None and not isinstance(actual, str):
+            return number_left == number_right
+        return text_actual == text_expected
+    if operator == "not_equals":
+        return text_actual != text_expected
+    if operator == "contains":
+        if isinstance(actual, list):
+            return any(str(item).lower() == text_expected for item in actual)
+        return text_expected in text_actual
+    if operator == "not_contains":
+        return text_expected not in text_actual
+    if operator == "starts_with":
+        return text_actual.startswith(text_expected)
+    if operator == "in":
+        options = [part.strip().lower() for part in text_expected.split(",") if part.strip()]
+        return text_actual in options
+    return False
+
+
+def score_lead(lead: Any, rules: list[dict[str, Any]]) -> tuple[int, list[dict[str, Any]]]:
+    breakdown = []
+    total = 0
+    for rule in rules:
+        if evaluate_condition(lead, rule):
+            total += int(rule["points"])
+            breakdown.append({"rule": rule["name"], "points": int(rule["points"])})
+    return max(0, min(100, total)), breakdown
+
+
+def render_template(template: str | None, obj: Any, definition: ObjectDef | None) -> str:
+    if not template:
+        return ""
+
+    def replace(match: re.Match[str]) -> str:
+        key = match.group(1).strip()
+        if key == "record" and definition is not None:
+            try:
+                return definition.label_of(obj)
+            except Exception:  # noqa: BLE001
+                return ""
+        value = getattr(obj, key, None)
+        if value is None:
+            return ""
+        if isinstance(value, Decimal):
+            return f"{value:,.2f}"
+        return str(value)
+
+    return re.sub(r"\{\{\s*([a-zA-Z_]+)\s*\}\}", replace, template)
+
+
+def _label(obj: Any) -> str:
+    definition = object_for_instance(obj)
+    try:
+        if definition is not None:
+            return str(definition.label_of(obj))[:300]
+        audit = AUDIT_ONLY.get(type(obj))
+        if audit:
+            return str(audit[1](obj))[:300]
+    except Exception:  # noqa: BLE001
+        pass
+    return ""
+
+
+def _entity_type(obj: Any) -> str | None:
+    definition = object_for_instance(obj)
+    if definition is not None:
+        return definition.key
+    audit = AUDIT_ONLY.get(type(obj))
+    return audit[0] if audit else None
+
+
+def _changes(obj: Any) -> dict[str, dict[str, Any]]:
+    state = inspect(obj)
+    changes: dict[str, dict[str, Any]] = {}
+    for attr in state.mapper.column_attrs:
+        if attr.key in IGNORED_FIELDS:
+            continue
+        history = state.attrs[attr.key].history
+        if not history.has_changes():
+            continue
+        old = history.deleted[0] if history.deleted else None
+        new = history.added[0] if history.added else None
+        if old == new:
+            continue
+        changes[attr.key] = {"from": jsonable(old), "to": jsonable(new)}
+    return changes
+
+
+# ---------------------------------------------------------------------------
+# Workflow actions
+# ---------------------------------------------------------------------------
+
+
+def _resolve_user(spec: Any, obj: Any, definition: ObjectDef, actor: uuid.UUID | None) -> uuid.UUID | None:
+    if spec in (None, "", "owner"):
+        if definition.owner_field:
+            return getattr(obj, definition.owner_field, None)
+        return actor
+    if spec == "actor":
+        return actor
+    try:
+        return uuid.UUID(str(spec))
+    except ValueError:
+        return None
+
+
+def _coerce_for_field(definition: ObjectDef, field_key: str, value: Any) -> Any:
+    field = definition.field(field_key)
+    if field is None or not field.updatable:
+        raise ValueError(f"Field '{field_key}' can't be updated by a workflow.")
+    if field.type == "enum" and value not in field.options:
+        raise ValueError(f"'{value}' isn't a valid {field.label.lower()}.")
+    if field.type in {"user", "ref"}:
+        return uuid.UUID(str(value)) if value else None
+    return value
+
+
+def _link_task(task: Task, obj: Any, entity_type: str) -> None:
+    if entity_type == "account":
+        task.account_id = obj.id
+    elif entity_type == "contact":
+        task.contact_id = obj.id
+        task.account_id = getattr(obj, "account_id", None)
+    elif entity_type == "lead":
+        task.lead_id = obj.id
+    elif entity_type == "opportunity":
+        task.opportunity_id = obj.id
+        task.account_id = getattr(obj, "account_id", None)
+    elif entity_type in {"case", "quote"}:
+        task.account_id = getattr(obj, "account_id", None)
+        task.contact_id = getattr(obj, "contact_id", None)
+
+
+def run_action(
+    session: Session,
+    action: dict[str, Any],
+    obj: Any,
+    definition: ObjectDef,
+    rule: dict[str, Any],
+    actor: uuid.UUID | None,
+) -> str:
+    kind = action.get("type")
+    params = action.get("params") or {}
+    org_id = obj.organization_id
+
+    if kind == "create_task":
+        due_days = int(params.get("due_in_days") or 1)
+        task = Task(
+            id=uuid.uuid4(),
+            organization_id=org_id,
+            title=render_template(params.get("title") or "Follow up on {{record}}", obj, definition)[:250],
+            description=render_template(params.get("description"), obj, definition) or None,
+            task_type=params.get("task_type") or "follow_up",
+            status="open",
+            priority=params.get("priority") or "medium",
+            source="workflow",
+            due_at=datetime.now(timezone.utc) + timedelta(days=due_days),
+            assigned_to_user_id=_resolve_user(params.get("assign_to"), obj, definition, actor),
+            created_by_user_id=actor,
+            is_recurring=False,
+            is_ai_generated=False,
+            tags=[],
+            task_metadata={
+                "workflow_rule_id": str(rule["id"]),
+                "entity_type": definition.key,
+                "entity_id": str(obj.id),
+            },
+        )
+        _link_task(task, obj, definition.key)
+        session.add(task)
+        return f"Created task “{task.title}”"
+
+    if kind == "update_field":
+        field_key = params.get("field")
+        value = _coerce_for_field(definition, field_key, params.get("value"))
+        setattr(obj, field_key, value)
+        return f"Set {field_key} to {value}"
+
+    if kind == "assign_owner":
+        if not definition.owner_field:
+            raise ValueError("This record type has no owner.")
+        user_id = _resolve_user(params.get("user_id"), obj, definition, actor)
+        if user_id is None:
+            raise ValueError("Choose who should own the record.")
+        setattr(obj, definition.owner_field, user_id)
+        return "Assigned owner"
+
+    if kind == "notify":
+        recipient = _resolve_user(params.get("recipient"), obj, definition, actor)
+        if recipient is None:
+            return "Skipped notification: the record has no owner"
+        session.add(
+            Notification(
+                id=uuid.uuid4(),
+                organization_id=org_id,
+                user_id=recipient,
+                kind="workflow",
+                title=render_template(params.get("title") or "{{record}} needs attention", obj, definition)[:200],
+                body=render_template(params.get("message"), obj, definition) or f"Triggered by workflow “{rule['name']}”.",
+                link=definition.link(obj),
+                is_read=False,
+            )
+        )
+        return "Sent notification"
+
+    raise ValueError(f"Unknown action '{kind}'.")
+
+
+def _rule_matches(rule: dict[str, Any], kind: str, entity_type: str, obj: Any, changes: dict[str, Any]) -> bool:
+    if rule["object_type"] != entity_type:
+        return False
+    trigger = rule["trigger_event"]
+    if trigger == "created" and kind != "created":
+        return False
+    if trigger == "updated" and kind != "updated":
+        return False
+    if trigger == "field_changed" and (kind != "updated" or rule.get("trigger_field") not in changes):
+        return False
+    if trigger == "created_or_updated" and kind not in {"created", "updated"}:
+        return False
+    return all(evaluate_condition(obj, condition) for condition in rule.get("conditions") or [])
+
+
+# ---------------------------------------------------------------------------
+# Flush hook
+# ---------------------------------------------------------------------------
+
+
+@event.listens_for(Session, "before_flush")
+def _before_flush(session: Session, flush_context: Any, instances: Any) -> None:  # noqa: ARG001
+    if session.info.get("automation_disabled"):
+        return
+
+    context = session.info.get("automation") or {}
+    actor = session.info.get("actor_user_id")
+    created_ids: set = session.info.setdefault("aiva_created_ids", set())
+
+    events: list[tuple[str, str, Any, dict[str, Any]]] = []
+
+    for obj in list(session.new):
+        entity_type = _entity_type(obj)
+        if entity_type is None:
+            continue
+        if getattr(obj, "id", None) is None:
+            obj.id = uuid.uuid4()
+        created_ids.add(obj.id)
+        definition = OBJECTS.get(entity_type)
+        if (
+            actor is not None
+            and entity_type in AUTO_OWNER_TYPES
+            and definition is not None
+            and definition.owner_field
+            and getattr(obj, definition.owner_field, None) is None
+        ):
+            setattr(obj, definition.owner_field, actor)
+        events.append(("created", entity_type, obj, {}))
+
+    for obj in list(session.dirty):
+        entity_type = _entity_type(obj)
+        if entity_type is None or obj.id in created_ids:
+            continue
+        if not session.is_modified(obj, include_collections=False):
+            continue
+        changes = _changes(obj)
+        if changes:
+            events.append(("updated", entity_type, obj, changes))
+
+    for obj in list(session.deleted):
+        entity_type = _entity_type(obj)
+        if entity_type is not None:
+            events.append(("deleted", entity_type, obj, {}))
+
+    if not events:
+        return
+
+    scoring_rules = context.get("scoring_rules") or []
+    workflow_rules = context.get("workflow_rules") or []
+
+    for kind, entity_type, obj, changes in events:
+        organization_id = getattr(obj, "organization_id", None)
+
+        # Lead scoring runs before auditing so the score change is recorded.
+        if entity_type == "lead" and kind != "deleted" and scoring_rules:
+            if kind == "created" or set(changes) - {"score"}:
+                new_score, _ = score_lead(obj, scoring_rules)
+                if new_score != obj.score:
+                    if kind == "updated":
+                        changes["score"] = {"from": obj.score, "to": new_score}
+                    obj.score = new_score
+
+        if organization_id is not None:
+            session.add(
+                AuditLog(
+                    id=uuid.uuid4(),
+                    organization_id=organization_id,
+                    actor_user_id=actor,
+                    action={"created": "create", "updated": "update", "deleted": "delete"}[kind],
+                    entity_type=entity_type,
+                    entity_id=getattr(obj, "id", None),
+                    entity_label=_label(obj) or None,
+                    changes=changes,
+                    ip_address=session.info.get("ip"),
+                    user_agent=session.info.get("user_agent"),
+                )
+            )
+
+        if kind == "deleted" or not workflow_rules or entity_type not in OBJECTS:
+            continue
+
+        definition = OBJECTS[entity_type]
+        for rule in workflow_rules:
+            if not _rule_matches(rule, kind, entity_type, obj, changes):
+                continue
+            messages, status = [], "success"
+            for action in rule.get("actions") or []:
+                try:
+                    messages.append(run_action(session, action, obj, definition, rule, actor))
+                except Exception as exc:  # noqa: BLE001 - one bad action must not block the save
+                    status = "error"
+                    messages.append(f"{action.get('type')}: {exc}")
+                    logger.warning("Workflow %s action failed: %s", rule["id"], exc)
+            session.add(
+                WorkflowRun(
+                    id=uuid.uuid4(),
+                    organization_id=organization_id,
+                    rule_id=rule["id"],
+                    entity_type=entity_type,
+                    entity_id=obj.id,
+                    entity_label=_label(obj) or None,
+                    status=status,
+                    message="; ".join(messages)[:2000],
+                )
+            )
+
+
+@event.listens_for(Session, "after_commit")
+@event.listens_for(Session, "after_rollback")
+def _reset_created(session: Session) -> None:
+    session.info.pop("aiva_created_ids", None)
+
+
+def record_audit(
+    db: AsyncSession,
+    *,
+    organization_id: uuid.UUID,
+    action: str,
+    entity_type: str,
+    entity_id: uuid.UUID | None = None,
+    entity_label: str | None = None,
+    changes: dict[str, Any] | None = None,
+    actor_user_id: uuid.UUID | None = None,
+    ip: str | None = None,
+    user_agent: str | None = None,
+) -> None:
+    """Explicit audit entry for events that aren't record changes (sign-ins, role changes)."""
+
+    info = db.sync_session.info if hasattr(db, "sync_session") else {}
+    db.add(
+        AuditLog(
+            id=uuid.uuid4(),
+            organization_id=organization_id,
+            actor_user_id=actor_user_id if actor_user_id is not None else info.get("actor_user_id"),
+            action=action,
+            entity_type=entity_type,
+            entity_id=entity_id,
+            entity_label=(entity_label or "")[:300] or None,
+            changes=jsonable(changes or {}),
+            ip_address=ip or info.get("ip"),
+            user_agent=(user_agent or info.get("user_agent") or None),
+        )
+    )

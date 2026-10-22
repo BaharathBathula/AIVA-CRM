@@ -4,6 +4,7 @@ import uuid
 from datetime import datetime
 
 from sqlalchemy import (
+    Index,
     Boolean,
     DateTime,
     ForeignKey,
@@ -32,6 +33,14 @@ class Contact(
     Base,
 ):
     __tablename__ = "contacts"
+
+    __table_args__ = (
+        Index(
+            "ix_contacts_tags_gin",
+            "tags",
+            postgresql_using="gin",
+        ),
+    )
 
     account_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey(

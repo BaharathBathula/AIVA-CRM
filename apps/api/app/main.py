@@ -8,6 +8,9 @@ from app.core.config import get_settings
 from app.db.session import engine
 from app.infrastructure.redis import redis_client
 
+# Registers the audit / workflow / lead-scoring flush hook.
+import app.services.automation  # noqa: E402,F401
+
 
 settings = get_settings()
 
@@ -26,7 +29,7 @@ app = FastAPI(
         "Backend API for AIVA CRM — an AI-native autonomous "
         "customer relationship management platform."
     ),
-    version="0.1.0",
+    version="0.2.0",
     docs_url="/docs",
     redoc_url="/redoc",
     openapi_url=f"{settings.api_v1_prefix}/openapi.json",
@@ -53,7 +56,7 @@ app.include_router(
 async def root():
     return {
         "name": "AIVA CRM API",
-        "version": "0.1.0",
+        "version": "0.2.0",
         "status": "running",
         "docs": "/docs",
     }

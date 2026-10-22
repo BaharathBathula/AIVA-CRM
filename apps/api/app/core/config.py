@@ -8,6 +8,10 @@ class Settings(BaseSettings):
     environment: str = "development"
     jwt_secret_key: str = ""
     jwt_access_token_expire_minutes: int = 30
+    refresh_token_expire_days: int = 30
+    app_base_url: str = "http://localhost:3000"
+    max_failed_logins: int = 5
+    lockout_minutes: int = 15
     api_v1_prefix: str = "/api/v1"
 
     database_url: str = (
@@ -27,6 +31,15 @@ class Settings(BaseSettings):
         case_sensitive=False,
         extra="ignore",
     )
+
+
+    @property
+    def expose_dev_links(self) -> bool:
+        """Return password-reset and invite links in API responses.
+
+        Only in development and test, where no email provider is configured.
+        """
+        return self.environment in {"development", "test"}
 
 
 @lru_cache

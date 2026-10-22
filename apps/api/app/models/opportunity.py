@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from decimal import Decimal
 
 from sqlalchemy import (
@@ -13,6 +13,7 @@ from sqlalchemy import (
     Numeric,
     String,
     Text,
+    func,
 )
 from sqlalchemy.orm import (
     Mapped,
@@ -126,4 +127,61 @@ class Opportunity(
     description: Mapped[str | None] = mapped_column(
         Text,
         nullable=True,
+    )
+
+    # -------------------------------------------------------------
+    # Enterprise classification (columns added in migration 0010)
+    # -------------------------------------------------------------
+
+    opportunity_type: Mapped[str] = mapped_column(
+        String(50),
+        nullable=False,
+        default="new_business",
+        server_default="new_business",
+        index=True,
+    )
+
+    lead_source: Mapped[str | None] = mapped_column(
+        String(80),
+        nullable=True,
+        index=True,
+    )
+
+    priority: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+        default="medium",
+        server_default="medium",
+        index=True,
+    )
+
+    forecast_category: Mapped[str] = mapped_column(
+        String(30),
+        nullable=False,
+        default="pipeline",
+        server_default="pipeline",
+        index=True,
+    )
+
+    next_step: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+    )
+
+    loss_reason: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+    )
+
+    competitor: Mapped[str | None] = mapped_column(
+        String(250),
+        nullable=True,
+    )
+
+    stage_entered_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+        server_default=func.now(),
+        index=True,
     )

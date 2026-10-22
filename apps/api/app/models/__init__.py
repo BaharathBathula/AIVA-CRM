@@ -7,11 +7,33 @@ from app.models.lead import Lead
 from app.models.meeting import Meeting
 from app.models.membership import OrganizationMembership
 from app.models.opportunity import Opportunity
+from app.models.opportunity_stage_history import OpportunityStageHistory
 from app.models.organization import Organization
 from app.models.pipeline import Pipeline
 from app.models.pipeline_stage import PipelineStage
 from app.models.task import Task
 from app.models.user import User
+from app.models.platform import (
+    AuditLog,
+    AuthToken,
+    Case,
+    CaseComment,
+    Dashboard,
+    ForecastQuota,
+    KnowledgeArticle,
+    LeadScoringRule,
+    Notification,
+    Product,
+    Quote,
+    QuoteLineItem,
+    Report,
+    Role,
+    SlaPolicy,
+    Team,
+    UserSession,
+    WorkflowRule,
+    WorkflowRun,
+)
 
 
 __all__ = [
@@ -23,10 +45,30 @@ __all__ = [
     "Lead",
     "Meeting",
     "Opportunity",
+    "OpportunityStageHistory",
     "Organization",
     "OrganizationMembership",
     "Pipeline",
     "PipelineStage",
     "Task",
     "User",
+    "AuditLog",
+    "AuthToken",
+    "Case",
+    "CaseComment",
+    "Dashboard",
+    "ForecastQuota",
+    "KnowledgeArticle",
+    "LeadScoringRule",
+    "Notification",
+    "Product",
+    "Quote",
+    "QuoteLineItem",
+    "Report",
+    "Role",
+    "SlaPolicy",
+    "Team",
+    "UserSession",
+    "WorkflowRule",
+    "WorkflowRun",
 ]
