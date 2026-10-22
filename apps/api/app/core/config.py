@@ -46,10 +46,16 @@ class Settings(BaseSettings):
         for prefix in ("postgres://", "postgresql://"):
             if value.startswith(prefix):
                 value = "postgresql+asyncpg://" + value[len(prefix):]
-        # asyncpg doesn't understand libpq's sslmode parameter.
-        if "sslmode=" in value:
-            base, _, query = value.partition("?")
-            kept = [part for part in query.split("&") if part and not part.startswith("sslmode=")]
+        # Translate libpq-only query parameters (e.g. Neon's
+        # "?sslmode=require&channel_binding=require") for asyncpg.
+        base, _, query = value.partition("?")
+        if query:
+            kept = []
+            for part in query.split("&"):
+                key, _, val = part.partition("=")
+                if not part or key == "channel_binding":
+                    continue
+                kept.append(f"ssl={val}" if key == "sslmode" else part)
             value = base + ("?" + "&".join(kept) if kept else "")
         return value
 

@@ -17,7 +17,8 @@ settings = get_settings()
 
 config.set_main_option(
     "sqlalchemy.url",
-    settings.database_url,
+    # Escape % (from URL-encoded passwords) for configparser interpolation.
+    settings.database_url.replace("%", "%%"),
 )
 
 

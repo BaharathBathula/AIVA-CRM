@@ -190,6 +190,8 @@ AIVA_INTERNAL_API_URL=http://localhost:8000/api/v1 npm run dev
 
 Every push to `main` redeploys automatically. On first start the container applies migrations and creates the demo workspace; later restarts keep your data.
 
+**Already have a free Render database?** Render allows one per workspace. Either delete the unused one and click **Manual sync** on the Blueprint, or use a free database from [Neon](https://neon.tech) (it doesn't expire): create a Blueprint with **Blueprint path** `render-external-db.yaml` and paste the Neon connection string as `DATABASE_URL`.
+
 Free-plan limits: the service sleeps after 15 minutes without visitors (the next visit takes about a minute), and Render's free database expires 30 days after creation unless you upgrade it. Invitation and password-reset links are shown on screen because no email service is connected (`SHOW_LINKS_WITHOUT_EMAIL`).
 
 ## Testing
