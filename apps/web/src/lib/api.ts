@@ -20,17 +20,8 @@ export async function aivaRequest<T>(
     headers.set("Content-Type", "application/json");
   }
 
-  // Attach an authenticated session when one exists.
-  // Dynamic import avoids a circular dependency:
-  // auth.ts imports aivaRequest() for the login endpoint.
-  if (path !== "/auth/login" && typeof window !== "undefined") {
-    const { getAivaAccessToken } = await import("@/lib/auth");
-    const token = getAivaAccessToken();
-
-    if (token) {
-      headers.set("Authorization", `Bearer ${token}`);
-    }
-  }
+  // Authentication is carried by httpOnly session cookies that the
+  // /api/aiva proxy turns into backend credentials.
 
   const response = await fetch(`${API_URL}${path}`, {
     ...options,
@@ -57,6 +48,15 @@ export async function aivaRequest<T>(
       }
     } catch {
       // Preserve the default error message.
+    }
+
+    if (
+      response.status === 401 &&
+      typeof window !== "undefined" &&
+      !window.location.pathname.startsWith("/login")
+    ) {
+      const next = encodeURIComponent(window.location.pathname + window.location.search);
+      window.location.assign(`/login?next=${next}`);
     }
 
     throw new AivaApiError(message, response.status);

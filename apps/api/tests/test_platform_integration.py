@@ -128,6 +128,28 @@ def test_lockout_and_mfa(client, workspace):
         client.post(f"{API}/auth/login", json={"email": member["email"], "password": "wrong-password"})
     assert client.post(f"{API}/auth/login", json={"email": member["email"], "password": PASSWORD}).status_code == 423
 
+    # Failed attempts and the lockout land in the audit log...
+    events = client.get(
+        f"{API}/admin/audit-logs", params={"entity_id": member["user_id"]}, headers=workspace["headers"]
+    ).json()["items"]
+    actions = {event["action"] for event in events}
+    assert {"login_failed", "account_locked"} <= actions
+
+    # ...and an admin can unlock the account by re-activating it.
+    unlocked = client.patch(f"{API}/admin/users/{member['user_id']}", json={"status": "active"}, headers=workspace["headers"])
+    assert unlocked.status_code == 200, unlocked.text
+    again = client.post(f"{API}/auth/login", json={"email": member["email"], "password": PASSWORD})
+    assert again.status_code == 200 and again.json()["mfa_required"] is True
+
+
+def test_workspace_session_length_controls_token_lifetime(client, workspace):
+    h = workspace["headers"]
+    assert client.patch(f"{API}/admin/organization", json={"settings": {"session_timeout_minutes": 2}}, headers=h).status_code == 422
+    assert client.patch(f"{API}/admin/organization", json={"settings": {"session_timeout_minutes": 60}}, headers=h).status_code == 200
+    session = client.post(f"{API}/auth/login", json={"email": workspace["email"], "password": PASSWORD}).json()
+    assert session["expires_in"] == 60 * 60
+    client.patch(f"{API}/admin/organization", json={"settings": {"session_timeout_minutes": 30}}, headers=h)
+
 
 # ---------------------------------------------------------------------------
 # Administration and permissions
@@ -361,3 +383,56 @@ def test_reports_dashboards_and_search(client, workspace, account):
 
     hits = client.get(f"{API}/search", params={"q": account["name"][:6]}, headers=h).json()
     assert any(group["type"] == "account" for group in hits["groups"])
+
+
+def test_update_endpoints_return_fresh_records(client, workspace):
+    """Every edit endpoint responds with the saved record (including its new timestamps)."""
+    h = workspace["headers"]
+
+    report = client.post(
+        f"{API}/reports", json={"name": "Edit me", "object_type": "lead", "aggregate": "count", "chart_type": "table"}, headers=h
+    ).json()
+    edited = client.patch(f"{API}/reports/{report['id']}", json={**report, "name": "Edited", "filters": []}, headers=h)
+    assert edited.status_code == 200, edited.text
+    assert edited.json()["name"] == "Edited" and edited.json()["updated_at"]
+
+    dashboard = client.post(f"{API}/dashboards", json={"name": "Board"}, headers=h).json()
+    saved = client.put(
+        f"{API}/dashboards/{dashboard['id']}",
+        json={"name": "Board 2", "widgets": [{"report_id": report["id"], "size": "small"}]},
+        headers=h,
+    )
+    assert saved.status_code == 200, saved.text
+    assert saved.json()["widgets"][0]["report_id"] == report["id"]
+
+    workflow = client.post(
+        f"{API}/workflows",
+        json={
+            "name": "Ping",
+            "object_type": "lead",
+            "trigger_event": "created",
+            "actions": [{"type": "notify", "params": {"recipient": "actor", "title": "New lead {{record}}"}}],
+        },
+        headers=h,
+    ).json()
+    changed = client.put(f"{API}/workflows/{workflow['id']}", json={**workflow, "name": "Ping 2"}, headers=h)
+    assert changed.status_code == 200, changed.text
+    assert client.post(f"{API}/workflows/{workflow['id']}/toggle", headers=h).status_code == 200
+
+    product = client.post(f"{API}/products", json={"name": "Edit product", "unit_price": 10}, headers=h).json()
+    assert client.patch(f"{API}/products/{product['id']}", json={**product, "unit_price": 12}, headers=h).json()["unit_price"] == 12
+
+    duplicate = client.post(
+        f"{API}/sla-policies", json={"name": "Low", "priority": "low", "first_response_minutes": 60, "resolution_minutes": 600}, headers=h
+    )
+    assert duplicate.status_code == 409 and "already exists" in duplicate.json()["detail"]
+    policy = client.post(
+        f"{API}/sla-policies", json={"name": "Low (VIP)", "priority": "low", "first_response_minutes": 60, "resolution_minutes": 600}, headers=h
+    ).json()
+    assert client.patch(f"{API}/sla-policies/{policy['id']}", json={**policy, "resolution_minutes": 900}, headers=h).status_code == 200
+
+    article = client.post(f"{API}/knowledge", json={"title": "Edit article", "body": "Hello"}, headers=h).json()
+    assert client.patch(f"{API}/knowledge/{article['id']}", json={"title": "Edited article", "body": "Hi"}, headers=h).status_code == 200
+
+    team = client.post(f"{API}/admin/teams", json={"name": "Edit team"}, headers=h).json()
+    assert client.patch(f"{API}/admin/teams/{team['id']}", json={"name": "Edited team"}, headers=h).status_code == 200

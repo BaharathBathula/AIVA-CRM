@@ -202,6 +202,7 @@ function formatMoney(
       style: "currency",
       currency,
       notation: "compact",
+      minimumFractionDigits: 0,
       maximumFractionDigits: 1,
     }
   ).format(

@@ -55,6 +55,15 @@ def organizations_payload(rows: list[tuple[OrganizationMembership, Organization]
     ]
 
 
+def access_minutes(organization, default: int) -> int:
+    """Access-token lifetime: the workspace's security policy, within safe bounds."""
+    try:
+        minutes = int(((organization.settings if organization else None) or {}).get("session_timeout_minutes") or default)
+    except (TypeError, ValueError):
+        minutes = default
+    return max(5, min(240, minutes))
+
+
 async def issue_session(
     db: AsyncSession,
     user: User,
@@ -85,15 +94,18 @@ async def issue_session(
 
     memberships = await active_memberships(db, user.id)
     role = next((m.role for m, org in memberships if org.id == organization_id), "member")
+    minutes = access_minutes(
+        next((org for _, org in memberships if org.id == organization_id), None), settings.jwt_access_token_expire_minutes
+    )
 
     return {
         "access_token": create_access_token(
             user_id=user.id,
             secret_key=settings.jwt_secret_key,
-            expires_minutes=settings.jwt_access_token_expire_minutes,
+            expires_minutes=minutes,
         ),
         "token_type": "bearer",
-        "expires_in": settings.jwt_access_token_expire_minutes * 60,
+        "expires_in": minutes * 60,
         "refresh_token": refresh_token,
         "session_id": str(session.id),
         "user_id": str(user.id),
@@ -141,15 +153,16 @@ async def rotate_refresh_session(db: AsyncSession, refresh_token: str, organizat
     session.last_used_at = utcnow()
     session.organization_id = target
     role = next(m.role for m, org in memberships if org.id == target)
+    minutes = access_minutes(next((org for _, org in memberships if org.id == target), None), settings.jwt_access_token_expire_minutes)
 
     return {
         "access_token": create_access_token(
             user_id=user.id,
             secret_key=settings.jwt_secret_key,
-            expires_minutes=settings.jwt_access_token_expire_minutes,
+            expires_minutes=minutes,
         ),
         "token_type": "bearer",
-        "expires_in": settings.jwt_access_token_expire_minutes * 60,
+        "expires_in": minutes * 60,
         "refresh_token": new_refresh,
         "session_id": str(session.id),
         "user_id": str(user.id),

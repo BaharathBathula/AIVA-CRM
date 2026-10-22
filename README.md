@@ -1,196 +1,209 @@
 # AIVA CRM
 
-**AI-Native Customer Relationship Management Platform**
+**Sales, service, analytics and automation in one CRM workspace.**
 
-AIVA CRM is a modular, AI-native CRM platform designed to streamline sales operations, customer engagement, and enterprise workflows through a unified application.
+AIVA CRM is a multi-tenant CRM platform modeled on the feature set of the leading CRMs (Salesforce, HubSpot, Microsoft Dynamics 365, ServiceNow, Pipedrive): secure sign-in with roles and two-step verification, a full sales cloud (leads to quotes to forecast), a service desk with SLAs and a knowledge base, a report builder with dashboards, and a no-code workflow engine.
 
-**Project Status:** Active Development
+**Project status:** Active development. Everything listed as *Available* below is implemented end-to-end (database, API, permissions, UI) and covered by tests.
 
-> AIVA CRM is an evolving software platform. The repository contains implemented CRM foundations, while advanced automation, integrations, and enterprise capabilities remain under development.
+## Feature overview
 
-## Vision
+### Sign-in and security
 
-Build an intelligent CRM platform that combines traditional customer relationship management with AI-assisted operations, workflow automation, and enterprise-grade administration.
+| Feature | What it does |
+|---|---|
+| Sign in / sign up | Email + password sign-in, "keep me signed in", self-serve workspace creation |
+| Two-step verification (MFA) | TOTP authenticator apps (Google/Microsoft Authenticator, 1Password) with QR setup |
+| Password policy | 10+ characters, 3 of 4 character types, can't contain the email name |
+| Account lockout | 5 failed attempts lock the account for 15 minutes; admins can unlock |
+| Password reset | Expiring single-use reset links; all other sessions are signed out |
+| Invitations | Admins invite by email with a role and team; invitees set their own password |
+| Session management | httpOnly cookie sessions, rotating refresh tokens, "where you're signed in" list with remote sign-out, workspace-configurable session length |
+| Multiple workspaces | One login can belong to several organizations and switch between them |
 
-The long-term product direction includes capabilities comparable in scope to established CRM platforms such as Salesforce, HubSpot, Zoho CRM, and ServiceNow, with an emphasis on AI-native workflows.
+### Administration
 
-## Core Modules
+| Feature | What it does |
+|---|---|
+| Users | Invite, change role/team, deactivate, reactivate/unlock, send password resets, remove |
+| Roles & permissions | Six built-in roles (Owner, Administrator, Sales manager, Sales representative, Support agent, Read only) plus custom roles from a 23-permission catalog |
+| Teams | Teams with managers; used for case queues and reporting |
+| Audit log | Every sign-in (and failed sign-in), permission change and record create/update/delete with before → after values, IP and device; filter and export |
+| Organization settings | Name, currency, time zone, fiscal year start, session length |
 
-| Module | Capabilities | Development Status |
+### Sales
+
+| Module | Capabilities | Status |
 |---|---|---|
-| Leads | Lead creation, management, conversion, and tracking | Implemented foundation |
-| Accounts | Customer account management and related workflows | Implemented foundation |
-| Contacts | Contact management, ownership, and segmentation | Implemented foundation |
-| Opportunities | Opportunity tracking, bulk actions, pipeline integration, and saved views | Implemented foundation |
-| Sales Pipelines | Pipeline and stage management | Implemented foundation |
-| Activities | Customer interaction logging and activity timelines | Enhancement planned |
-| Tasks | Task creation, editing, assignments, and tracking | Enhancement planned |
-| Email | Email data models, APIs, and compose/reply components | Integration in progress |
-| Meetings | Meeting data model | Scheduling functionality planned |
-| Administration | Organization and user membership foundations | In development |
-| General Settings | Workspace configuration | In development |
-| AI Capabilities | AI-assisted sales and enterprise automation | Planned |
+| Leads | Capture, qualify, convert; automatic lead scoring (A–D grades) from configurable rules | Available |
+| Accounts & Contacts | Company and people records with ownership, hierarchy, duplicate checks | Available |
+| Opportunities & Pipeline | Multiple pipelines and stages, board view, bulk actions, saved views, forecast categories | Available |
+| Products & price book | Catalog with SKUs, families, billing frequency, default tax | Available |
+| Quotes (CPQ) | Quote builder with catalog lines, per-line discount and tax, totals, send/accept/decline with approval permission, duplicate, print/PDF; accepting updates the deal amount | Available |
+| Forecasting | Fiscal-quarter forecast by rep: closed won, commit, best case, pipeline, quotas and attainment | Available |
 
-## Technology Stack
+### Service
+
+| Module | Capabilities | Status |
+|---|---|---|
+| Cases | Queues (my open, unassigned, past SLA…), priorities, channels, assignment, customer replies and internal notes, CSAT | Available |
+| SLA policies | First-response and resolution targets by priority with live countdowns and breach tracking | Available |
+| Knowledge base | Markdown articles with drafts, publishing, categories, view counts, helpful votes; suggested articles on every case | Available |
+
+### Insights and automation
+
+| Module | Capabilities | Status |
+|---|---|---|
+| Home | Live KPIs, items needing attention, pipeline by stage, deals closing soon, my tasks, hottest leads, recent activity | Available |
+| Reports | Report builder over 9 record types: filters (incl. relative dates like "this quarter"), grouping by field or date, sum/avg/min/max, bar/line/donut/number charts, CSV export, folders, sharing | Available |
+| Dashboards | Boards of saved reports with resizable, reorderable widgets | Available |
+| Workflows | "When a record is created/updated/field changes, and conditions match, then…" create a task, update a field, change owner or send a notification; run history | Available |
+| Global search & notifications | ⌘K search across records, cases, quotes, articles and products; in-app notification bell | Available |
+| Engagement | Activities, tasks and email threads | Available (foundation) |
+| AI capabilities | AI-assisted prioritization, summaries and recommendations | Planned |
+
+## Technology stack
 
 | Layer | Technology |
 |---|---|
-| Frontend | Next.js, React, TypeScript, Tailwind CSS |
-| Backend | Python, FastAPI |
-| Database | PostgreSQL |
-| ORM | SQLAlchemy |
-| Database Migrations | Alembic |
-| Caching | Redis |
-| Authentication | JWT-based authentication |
-| Infrastructure | Docker, Docker Compose |
-| Development | GitHub, GitHub Codespaces |
+| Frontend | Next.js 16 (App Router), React 19, TypeScript |
+| Backend | Python, FastAPI, Pydantic v2 |
+| Database | PostgreSQL with SQLAlchemy 2 (async) and Alembic migrations |
+| Cache | Redis |
+| Auth | Argon2 password hashing, short-lived JWT access tokens, rotating opaque refresh tokens, TOTP MFA |
+| Infrastructure | Docker Compose |
 
-## System Architecture
+## Architecture
 
 ```text
-                  AIVA CRM
-                      |
-                Next.js Frontend
-                      |
-                API Proxy Layer
-                      |
-                 FastAPI Backend
-                      |
-             Business Service Layer
-                      |
-          +-----------+-----------+
-          |                       |
-      PostgreSQL                Redis
-          |
-    CRM Business Data
+Browser ──► Next.js (pages + /api/session, /api/aiva proxy)
+                │   httpOnly cookies hold the session; the proxy
+                │   attaches credentials and refreshes tokens
+                ▼
+           FastAPI  /api/v1
+                │   permission checks per route (roles → permissions)
+                │   flush hook: audit log, record owner, lead scoring, workflows
+                ▼
+       PostgreSQL (multi-tenant by organization)      Redis
 ```
 
-The application separates frontend presentation, backend API routes, business services, database models, and infrastructure concerns.
-
-## Repository Structure
+## Repository structure
 
 ```text
 AIVA-CRM/
 ├── apps/
 │   ├── api/
 │   │   ├── app/
-│   │   │   ├── api/routes/
-│   │   │   ├── core/
-│   │   │   ├── db/
-│   │   │   ├── models/
-│   │   │   ├── schemas/
-│   │   │   └── services/
-│   │   └── alembic/
+│   │   │   ├── api/routes/      auth, admin, sales, service, analytics, platform + CRM records
+│   │   │   ├── core/            config, security, permissions, TOTP
+│   │   │   ├── models/          SQLAlchemy models
+│   │   │   ├── services/        auth sessions, automation engine, reporting engine, catalog
+│   │   │   └── scripts/         bootstrap_dev (demo workspace)
+│   │   ├── alembic/             migrations
+│   │   └── tests/               unit + PostgreSQL integration tests
 │   └── web/
 │       └── src/
-│           ├── app/
-│           ├── components/
-│           ├── lib/
-│           └── types/
+│           ├── app/             pages (login, home, cases, quotes, reports, settings, …)
+│           ├── components/      app shell, UI kit, charts, builders
+│           └── lib/             API client, session, formatting
 ├── docker-compose.yml
 ├── .env.example
 └── README.md
 ```
 
-## Development Setup
+## Getting started
 
 ### Prerequisites
 
-- Git
-- Docker and Docker Compose
-- GitHub Codespaces or a compatible development environment
+- Docker and Docker Compose (or Python 3.13+, Node 20.9+, PostgreSQL 16+ and Redis 7+ for a manual setup)
 
-### Clone the repository
+### 1. Configure
 
 ```bash
 git clone https://github.com/BaharathBathula/AIVA-CRM.git
 cd AIVA-CRM
+cp .env.example .env
+# Set JWT_SECRET_KEY to a long random value, e.g. `openssl rand -hex 32`
 ```
 
-### Configure environment
+Never commit `.env` or production credentials.
 
-Create a local `.env` file based on `.env.example`.
-
-Configure the database connection and a unique JWT signing secret. Do not commit `.env` or production credentials to GitHub.
-
-Review the networking configuration in `docker-compose.yml` before starting the services.
-
-### Start a fresh development environment
+### 2. Start a fresh development environment
 
 ```bash
+export JWT_SECRET_KEY=$(openssl rand -hex 32)
 docker compose up -d postgres redis
 docker compose run --rm migrate
 docker compose run --rm bootstrap
 docker compose up -d --no-deps api web
 ```
 
-The bootstrap step is intended for a fresh database. Do not rerun it against an existing seeded database without verifying that it is safe.
+The bootstrap step seeds a demo workspace and is meant for a fresh database.
 
-### Application URLs
+- App: <http://localhost:3000>
+- API docs: <http://localhost:8000/docs>
+- Health check: <http://localhost:8000/api/v1/health>
 
-- Frontend: `http://localhost:3000`
-- API health endpoint: `http://localhost:8000/api/v1/health`
+### 3. Sign in with the demo workspace
 
-When using GitHub Codespaces, access the frontend through its forwarded port.
+All demo users share the password `AivaDemo#2026` (override with `AIVA_DEV_PASSWORD` when bootstrapping).
 
-## Development Roadmap
+| Email | Role | Good for trying |
+|---|---|---|
+| `admin@aiva.local` | Owner | Everything, including users, roles and the audit log |
+| `maya.chen@aiva.local` | Sales manager | Forecast quotas, quote approval, reports |
+| `priya.raman@aiva.local` / `daniel.ruiz@aiva.local` | Sales representative | Leads, deals, quotes |
+| `tom.becker@aiva.local` / `aisha.okafor@aiva.local` | Support agent | Cases, SLAs, knowledge base |
 
-### Phase 1 — CRM Foundation
+In development, invitation and password-reset links are shown on screen because no email service is configured.
 
-Lead, Account, Contact, Opportunity, and Sales Pipeline management.
+### Manual setup (without Docker)
 
-**Status:** Implemented foundations; continued validation and refinement.
+```bash
+# API
+cd apps/api
+python -m venv .venv && source .venv/bin/activate
+pip install -r requirements-dev.txt
+export DATABASE_URL=postgresql+asyncpg://aiva:aiva_local_dev@localhost:5432/aiva_crm
+export REDIS_URL=redis://localhost:6379/0
+export JWT_SECRET_KEY=$(openssl rand -hex 32) ENVIRONMENT=development
+alembic upgrade head
+python -m app.scripts.bootstrap_dev
+uvicorn app.main:app --reload --port 8000
 
-### Phase 2 — Engagement Module
+# Web (new terminal)
+cd apps/web
+npm install
+AIVA_INTERNAL_API_URL=http://localhost:8000/api/v1 npm run dev
+```
 
-Development sequence:
+## Testing
 
-1. Activities
-2. Tasks
-3. Email
-4. Meetings
+```bash
+cd apps/api
+pytest            # unit tests + integration tests (integration tests need PostgreSQL)
 
-Each module will undergo frontend, API, database, authorization, and functional validation.
+cd apps/web
+npx tsc --noEmit  # type check
+npm run build     # production build
+```
 
-### Phase 3 — Administration
+The integration suite signs up a brand-new workspace per run and exercises sign-in, MFA, lockout, invitations, permissions, tenant isolation, quotes, forecasting, cases and SLAs, workflows, reports and dashboards.
 
-- General Settings
-- Users & Roles
-- Sales Configuration
-- Integrations
-- Security
-- AI Settings
+## Security notes
 
-**Status:** In development.
+- Passwords are hashed with Argon2; refresh and reset tokens are stored only as SHA-256 hashes.
+- Browser sessions use httpOnly, SameSite cookies; the frontend never sees tokens.
+- Every API route checks the caller's permissions, and every query is scoped to the caller's organization.
+- Production deployments still need: a real email provider for invitations and resets, HTTPS everywhere, secret management, and rate limiting at the edge.
 
-### Phase 4 — AI-Native CRM
+## Roadmap
 
-Planned capabilities include AI-assisted lead prioritization, opportunity insights, customer interaction summaries, intelligent task recommendations, and workflow automation.
-
-These are roadmap capabilities, not claims of existing autonomous functionality.
-
-### Phase 5 — Enterprise Readiness
-
-- Expanded automated testing
-- Security hardening
-- Auditability and observability
-- Reliable deployment workflows
-- Performance optimization
-- Production-grade authentication and authorization
-
-## Security and Data Management
-
-AIVA CRM is designed around organization-aware data access, API-level authorization, and controlled database changes.
-
-Production readiness requires additional security review, particularly around session persistence, secret management, database configuration, and deployment isolation.
-
-## Current Development Checkpoint
-
-**October 2026**
-
-The current development focus is completing General Settings authentication and persistence, followed by the Engagement Module.
-
-Active work in GitHub Codespaces may be ahead of the committed repository state.
+- Email and calendar sync (Gmail, Microsoft 365) and meeting scheduling
+- Customer self-service portal for cases and knowledge
+- Marketing: campaigns, lists, forms
+- AI: lead and deal insights, case summaries, reply drafting, next-best-action
+- SSO (SAML/OIDC) and SCIM provisioning
 
 ## License
 

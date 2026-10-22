@@ -3,7 +3,6 @@ import {
 } from "@/lib/api";
 
 import {
-  getAivaAccessToken,
   getAivaSession,
 } from "@/lib/auth";
 
@@ -42,10 +41,9 @@ export async function bulkChangeOpportunityOwner(
   opportunityIds: string[],
   ownerUserId: string
 ): Promise<BulkOwnerUpdateResult> {
-  const token = getAivaAccessToken();
   const session = getAivaSession();
 
-  if (!token || !session) {
+  if (!session) {
     throw new Error(
       "Your login session has expired. Please sign in again."
     );

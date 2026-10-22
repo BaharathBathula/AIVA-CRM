@@ -37,22 +37,12 @@ export async function bulkChangeOpportunityForecast(
     throw new Error("Invalid forecast category.");
   }
 
-  const { getAivaAccessToken } = await import("@/lib/auth");
-  const token = getAivaAccessToken();
-
-  if (!token) {
-    throw new Error(
-      "Your session has expired. Please sign in again.",
-    );
-  }
-
   const response = await fetch(
     "/api/aiva/opportunities/bulk/forecast",
     {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify({
         opportunity_ids: opportunityIds,

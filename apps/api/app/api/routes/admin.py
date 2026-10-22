@@ -232,6 +232,12 @@ async def update_member(
         changes["team"] = {"from": str(membership.team_id) if membership.team_id else None, "to": team.name}
         membership.team_id = team.id
 
+    if payload.status == "active" and (user.locked_until is not None or user.failed_login_count):
+        # Re-activating also clears a lockout from repeated failed sign-ins.
+        user.locked_until = None
+        user.failed_login_count = 0
+        changes["lockout"] = {"from": "locked", "to": "unlocked"}
+
     if payload.status is not None and payload.status != membership.status:
         if user_id == principal.user_id:
             raise HTTPException(status.HTTP_409_CONFLICT, "You can't deactivate yourself.")
@@ -679,6 +685,14 @@ async def update_organization(
             if not 1 <= month <= 12:
                 raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "Fiscal year must start in month 1–12.")
             clean["fiscal_year_start_month"] = month
+        if "session_timeout_minutes" in clean:
+            try:
+                minutes = int(clean["session_timeout_minutes"])
+            except (TypeError, ValueError):
+                minutes = 0
+            if not 5 <= minutes <= 240:
+                raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "Session length must be between 5 and 240 minutes.")
+            clean["session_timeout_minutes"] = minutes
         if "currency" in clean and not re.fullmatch(r"[A-Z]{3}", str(clean["currency"])):
             raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "Use a 3-letter currency code like USD.")
         merged = {**(organization.settings or {}), **clean}

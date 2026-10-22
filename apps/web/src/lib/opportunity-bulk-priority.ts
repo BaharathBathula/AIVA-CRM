@@ -25,22 +25,12 @@ export async function bulkChangeOpportunityPriority(
     throw new Error("Duplicate opportunity IDs are not allowed.");
   }
 
-  const { getAivaAccessToken } = await import("@/lib/auth");
-  const token = getAivaAccessToken();
-
-  if (!token) {
-    throw new Error(
-      "Your session has expired. Please sign in again.",
-    );
-  }
-
   const response = await fetch(
     "/api/aiva/opportunities/bulk/priority",
     {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify({
         opportunity_ids: opportunityIds,

@@ -379,6 +379,8 @@ async def seed_demo(db, users: dict[str, uuid.UUID]) -> None:
             sent_at=now() - timedelta(days=3) if status in {"sent", "accepted"} else None,
             accepted_at=now() - timedelta(days=1) if status == "accepted" else None,
         )
+        quote.created_at = now() - timedelta(days=5)
+        quote.updated_at = quote.accepted_at or quote.sent_at or quote.created_at
         quote.line_items = []
         subtotal = discount_total = Decimal(0)
         for position, (product_index, quantity, discount) in enumerate(lines):
@@ -439,15 +441,19 @@ async def seed_demo(db, users: dict[str, uuid.UUID]) -> None:
             tags=[], linked_article_ids=[],
         )
         case.created_at = created
+        case.updated_at = case.resolved_at or case.first_responded_at or created
         db.add(case)
         await db.flush()
         if responded:
-            db.add(CaseComment(id=uuid.uuid4(), organization_id=org, case_id=case.id, author_user_id=agents[offset % 2],
-                               body=f"Thanks for reaching out, {contact.first_name}. I'm looking into this now and will update you shortly.",
-                               is_internal=False))
-            db.add(CaseComment(id=uuid.uuid4(), organization_id=org, case_id=case.id, author_user_id=agents[offset % 2],
+            reply = CaseComment(id=uuid.uuid4(), organization_id=org, case_id=case.id, author_user_id=agents[offset % 2],
+                                body=f"Thanks for reaching out, {contact.first_name}. I'm looking into this now and will update you shortly.",
+                                is_internal=False)
+            reply.created_at = case.first_responded_at
+            note = CaseComment(id=uuid.uuid4(), organization_id=org, case_id=case.id, author_user_id=agents[offset % 2],
                                body="Reproduced in staging. Checking recent deploys before escalating to engineering.",
-                               is_internal=True))
+                               is_internal=True)
+            note.created_at = case.first_responded_at + timedelta(minutes=12)
+            db.add_all([reply, note])
 
     # Workflows
     db.add_all([

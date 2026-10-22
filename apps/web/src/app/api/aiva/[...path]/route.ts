@@ -1,127 +1,104 @@
+import { NextRequest, NextResponse } from "next/server";
+
 import {
-  NextRequest,
-} from "next/server";
+  BACKEND_URL,
+  COOKIE,
+  clearSessionCookies,
+  clientContext,
+  refreshSession,
+  rememberChoice,
+  setSessionCookies,
+  type BackendSession,
+} from "@/lib/session-server";
 
+/**
+ * Forwards browser requests to the FastAPI backend.
+ *
+ * Credentials come from httpOnly cookies set at sign-in. When the access
+ * token has expired, the proxy refreshes it once with the refresh cookie,
+ * retries the request and stores the rotated tokens.
+ */
 
-const BACKEND_URL =
-  process.env.AIVA_INTERNAL_API_URL ??
-  "http://127.0.0.1:8000/api/v1";
+// Only used before a user has signed in (public endpoints).
+const FALLBACK_ORGANIZATION_ID = process.env.AIVA_ORGANIZATION_ID;
 
-const ORGANIZATION_ID =
-  process.env.AIVA_ORGANIZATION_ID ??
-  "10000000-0000-0000-0000-000000000001";
+async function forward(request: NextRequest, body: string | undefined, token?: string, organizationId?: string) {
+  const path = request.nextUrl.pathname.replace(/^\/api\/aiva\/?/, "");
+  const headers = new Headers();
 
+  const contentType = request.headers.get("content-type");
+  if (contentType) headers.set("Content-Type", contentType);
 
-async function proxy(
-  request: NextRequest
-) {
-  const path =
-    request.nextUrl.pathname.replace(
-      /^\/api\/aiva\/?/,
-      ""
-    );
+  if (token) headers.set("Authorization", `Bearer ${token}`);
+  const org = organizationId ?? FALLBACK_ORGANIZATION_ID;
+  if (org) headers.set("X-Organization-ID", org);
 
-  const targetUrl =
-    `${BACKEND_URL}/${path}${request.nextUrl.search}`;
+  const sessionId = request.cookies.get(COOKIE.session)?.value;
+  if (sessionId) headers.set("X-Session-ID", sessionId);
 
-  const headers =
-    new Headers();
+  const context = clientContext(request);
+  if (context.forwardedFor) headers.set("X-Forwarded-For", context.forwardedFor);
+  if (context.userAgent) headers.set("User-Agent", context.userAgent);
 
-  headers.set(
-    "X-Organization-ID",
-    ORGANIZATION_ID
-  );
-
-  const contentType =
-    request.headers.get(
-      "content-type"
-    );
-
-  if (contentType) {
-    headers.set(
-      "Content-Type",
-      contentType
-    );
-  }
-
-  const authorization =
-    request.headers.get(
-      "authorization"
-    );
-
-  if (authorization) {
-    headers.set(
-      "Authorization",
-      authorization
-    );
-  }
-
-  const options: RequestInit = {
+  return fetch(`${BACKEND_URL}/${path}${request.nextUrl.search}`, {
     method: request.method,
     headers,
+    body,
     cache: "no-store",
-  };
+  });
+}
 
-  if (
-    request.method !== "GET" &&
-    request.method !== "HEAD"
-  ) {
-    options.body =
-      await request.text();
+async function proxy(request: NextRequest) {
+  const body = request.method !== "GET" && request.method !== "HEAD" ? await request.text() : undefined;
+
+  let token = request.cookies.get(COOKIE.access)?.value;
+  let organizationId = request.cookies.get(COOKIE.organization)?.value;
+  let refreshed: BackendSession | null = null;
+
+  if (!token && request.cookies.get(COOKIE.refresh)) {
+    refreshed = await refreshSession(request);
+    if (refreshed) {
+      token = refreshed.access_token;
+      organizationId = refreshed.organization_id;
+    }
   }
 
-  const response =
-    await fetch(
-      targetUrl,
-      options
-    );
+  let upstream = await forward(request, body, token, organizationId);
 
-  return new Response(
-    response.body,
-    {
-      status: response.status,
-      headers: {
-        "Content-Type":
-          response.headers.get(
-            "content-type"
-          ) ??
-          "application/json",
-      },
+  if (upstream.status === 401 && !refreshed && request.cookies.get(COOKIE.refresh)) {
+    refreshed = await refreshSession(request);
+    if (refreshed) {
+      upstream = await forward(request, body, refreshed.access_token, refreshed.organization_id);
     }
-  );
+  }
+
+  const response = new NextResponse(upstream.status === 204 ? null : upstream.body, {
+    status: upstream.status,
+    headers: { "Content-Type": upstream.headers.get("content-type") ?? "application/json" },
+  });
+
+  if (refreshed) setSessionCookies(response, refreshed, rememberChoice(request));
+  else if (upstream.status === 401 && request.cookies.get(COOKIE.refresh)) clearSessionCookies(response);
+
+  return response;
 }
 
-
-export async function GET(
-  request: NextRequest
-) {
+export async function GET(request: NextRequest) {
   return proxy(request);
 }
 
-
-export async function POST(
-  request: NextRequest
-) {
+export async function POST(request: NextRequest) {
   return proxy(request);
 }
 
-
-export async function PATCH(
-  request: NextRequest
-) {
+export async function PATCH(request: NextRequest) {
   return proxy(request);
 }
 
-
-export async function PUT(
-  request: NextRequest
-) {
+export async function PUT(request: NextRequest) {
   return proxy(request);
 }
 
-
-export async function DELETE(
-  request: NextRequest
-) {
+export async function DELETE(request: NextRequest) {
   return proxy(request);
 }

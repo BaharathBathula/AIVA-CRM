@@ -88,6 +88,17 @@ export default function LeadsPage() {
     setCreateOpen,
   ] = useState(false);
 
+  // "Create" menu in the top bar links here with ?new=1.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("new") === "1") {
+      setCreateOpen(true);
+      params.delete("new");
+      const rest = params.toString();
+      window.history.replaceState(null, "", `${window.location.pathname}${rest ? `?${rest}` : ""}`);
+    }
+  }, []);
+
 
   useEffect(() => {
     async function load() {

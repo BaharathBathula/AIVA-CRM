@@ -227,6 +227,7 @@ function formatCompactMoney(
       style: "currency",
       currency: "USD",
       notation: "compact",
+      minimumFractionDigits: 0,
       maximumFractionDigits: 1,
     }
   ).format(
@@ -337,6 +338,17 @@ const [
     createOpen,
     setCreateOpen,
   ] = useState(false);
+
+  // "Create" menu in the top bar links here with ?new=1.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("new") === "1") {
+      setCreateOpen(true);
+      params.delete("new");
+      const rest = params.toString();
+      window.history.replaceState(null, "", `${window.location.pathname}${rest ? `?${rest}` : ""}`);
+    }
+  }, []);
 
   const [
     selectedOpportunityIds,

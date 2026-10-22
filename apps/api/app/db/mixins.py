@@ -13,6 +13,10 @@ class UUIDPrimaryKeyMixin:
 
 
 class TimestampMixin:
+    # Fetch server-generated timestamps in the same INSERT/UPDATE (RETURNING) so
+    # they are readable right after a commit without an async lazy-load.
+    __mapper_args__ = {"eager_defaults": True}
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,

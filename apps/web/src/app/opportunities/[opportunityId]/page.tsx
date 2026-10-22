@@ -593,7 +593,7 @@ export default function OpportunityDetailPage() {
             </div>
           )}
 
-          <div style={{ marginBottom: 16 }}>
+          <div style={{ marginBottom: 16, display: "flex", flexWrap: "wrap", gap: 8 }}>
             {!editing && (
               <button
                 type="button"
@@ -603,6 +603,15 @@ export default function OpportunityDetailPage() {
               >
                 Edit Opportunity
               </button>
+            )}
+            {!editing && (
+              <Link
+                href={`/quotes/new?opportunity_id=${opportunity.id}`}
+                className="ui-btn"
+                style={{ height: 40 }}
+              >
+                Create quote
+              </Link>
             )}
           </div>
 

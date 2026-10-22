@@ -118,7 +118,7 @@ class MfaDisableRequest(BaseModel):
 # ---------------------------------------------------------------------------
 
 
-async def _password_step(db: AsyncSession, email: str, password: str) -> User:
+async def _password_step(db: AsyncSession, email: str, password: str, request: Request | None = None) -> User:
     settings = get_settings()
     result = await db.execute(select(User).where(User.email == email.strip().lower()))
     user = result.scalar_one_or_none()
@@ -137,9 +137,22 @@ async def _password_step(db: AsyncSession, email: str, password: str) -> User:
 
     if not verify_password(password, user.password_hash):
         user.failed_login_count = (user.failed_login_count or 0) + 1
-        if user.failed_login_count >= settings.max_failed_logins:
+        attempts = user.failed_login_count
+        locked = attempts >= settings.max_failed_logins
+        if locked:
             user.locked_until = utcnow() + timedelta(minutes=settings.lockout_minutes)
             user.failed_login_count = 0
+        if request is not None:
+            # Failed sign-ins show up in every workspace's audit log the user belongs to.
+            for _membership, organization in await active_memberships(db, user.id):
+                audit_auth_event(
+                    db,
+                    organization.id,
+                    user,
+                    "account_locked" if locked else "login_failed",
+                    request,
+                    {"attempts": attempts},
+                )
         await db.commit()
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, INVALID, headers={"WWW-Authenticate": "Bearer"})
 
@@ -162,7 +175,7 @@ async def _choose_organization(db: AsyncSession, user: User, requested: uuid.UUI
 
 @router.post("/login")
 async def login(payload: LoginRequest, request: Request, db: AsyncSession = Depends(get_db)):
-    user = await _password_step(db, payload.email, payload.password)
+    user = await _password_step(db, payload.email, payload.password, request)
     organization_id = await _choose_organization(db, user, payload.organization_id)
 
     if user.mfa_enabled and user.mfa_secret:

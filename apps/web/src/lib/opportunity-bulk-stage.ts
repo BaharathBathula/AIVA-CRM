@@ -1,8 +1,5 @@
 import { aivaRequest } from "@/lib/api";
-import {
-  getAivaAccessToken,
-  getAivaSession,
-} from "@/lib/auth";
+import { getAivaSession } from "@/lib/auth";
 
 export interface BulkStageUpdateResult {
   updated_count: number;
@@ -17,16 +14,9 @@ export async function bulkChangeOpportunityStage(
   pipelineId: string,
   stageId: string
 ): Promise<BulkStageUpdateResult> {
-  const token = getAivaAccessToken();
   const session = getAivaSession();
 
-  if (!token || !session) {
-    throw new Error(
-      "Your login session has expired. Please sign in again."
-    );
-  }
-
-  if (!["owner", "admin"].includes(session.role)) {
+  if (session && !["owner", "admin"].includes(session.role)) {
     throw new Error(
       "Only organization owners and administrators can change opportunity stages."
     );
