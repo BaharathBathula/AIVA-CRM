@@ -821,7 +821,7 @@ export function CreateAccountModal({
                 "var(--muted)",
 
               fontSize:
-                "10px",
+                "12px",
 
               lineHeight:
                 1.5,
@@ -936,7 +936,7 @@ export function CreateAccountModal({
                   "10px",
 
                 fontSize:
-                  "11px",
+                  "12px",
               }}
             >
               Billing Address
@@ -1080,7 +1080,7 @@ export function CreateAccountModal({
             <div
               style={{
                 border:
-                  "1px solid #f59e0b",
+                  "1px solid var(--warning)",
 
                 borderRadius:
                   "10px",
@@ -1089,7 +1089,7 @@ export function CreateAccountModal({
                   "12px",
 
                 background:
-                  "rgba(245, 158, 11, 0.08)",
+                  "var(--warning-soft)",
               }}
             >
               <div
@@ -1124,7 +1124,7 @@ export function CreateAccountModal({
                         "4px 0 10px",
 
                       fontSize:
-                        "10px",
+                        "12px",
 
                       lineHeight:
                         1.5,
@@ -1194,7 +1194,7 @@ export function CreateAccountModal({
                                   "3px",
 
                                 fontSize:
-                                  "9px",
+                                  "12px",
 
                                 color:
                                   "var(--muted)",

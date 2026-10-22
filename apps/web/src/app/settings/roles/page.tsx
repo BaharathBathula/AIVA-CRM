@@ -90,7 +90,6 @@ function Roles() {
   return (
     <>
       <PageHeader
-        eyebrow="Settings"
         title="Roles & permissions"
         description="Roles decide what people can see and do. Built-in roles cover most teams; duplicate one to tailor it."
         actions={

@@ -59,6 +59,7 @@ AIVA CRM is a multi-tenant CRM platform modeled on the feature set of the leadin
 | Dashboards | Boards of saved reports with resizable, reorderable widgets | Available |
 | Workflows | "When a record is created/updated/field changes, and conditions match, then…" create a task, update a field, change owner or send a notification; run history | Available |
 | Global search & notifications | ⌘K search across records, cases, quotes, articles and products; in-app notification bell | Available |
+| Workspace shell | Floating top navigation with section tabs, an icon rail for Home, Sales, Service, Insights and Settings, and light and dark themes (follows your system until you pick one) | Available |
 | Engagement | Activities, tasks and email threads | Available (foundation) |
 | AI capabilities | AI-assisted prioritization, summaries and recommendations | Planned |
 
@@ -66,7 +67,7 @@ AIVA CRM is a multi-tenant CRM platform modeled on the feature set of the leadin
 
 | Layer | Technology |
 |---|---|
-| Frontend | Next.js 16 (App Router), React 19, TypeScript |
+| Frontend | Next.js 16 (App Router), React 19, TypeScript, Manrope (self-hosted) |
 | Backend | Python, FastAPI, Pydantic v2 |
 | Database | PostgreSQL with SQLAlchemy 2 (async) and Alembic migrations |
 | Cache | Redis |

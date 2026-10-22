@@ -73,7 +73,7 @@ export function OpportunityBulkToolbar({
         padding: "14px 18px",
         borderTop: "1px solid var(--border)",
         borderBottom: "1px solid var(--border)",
-        background: "rgba(99,102,241,0.05)",
+        background: "var(--surface-muted)",
       }}
     >
       <div
@@ -92,7 +92,7 @@ export function OpportunityBulkToolbar({
             gap: 10,
           }}
         >
-          <CheckSquare2 size={18} color="#6366f1" />
+          <CheckSquare2 size={18} color="currentColor" />
 
           <div>
             <strong style={{ fontSize: 13 }}>
@@ -135,7 +135,7 @@ export function OpportunityBulkToolbar({
                 onClick={() => onAction(action.id)}
                 style={
                   action.id === "delete"
-                    ? { color: "#dc2626" }
+                    ? { color: "var(--danger)" }
                     : undefined
                 }
               >

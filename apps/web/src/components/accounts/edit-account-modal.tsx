@@ -879,7 +879,7 @@ export function EditAccountModal({
               color:
                 "var(--muted)",
               fontSize:
-                "10px",
+                "12px",
               lineHeight:
                 1.5,
             }}
@@ -978,7 +978,7 @@ export function EditAccountModal({
                 marginBottom:
                   "10px",
                 fontSize:
-                  "11px",
+                  "12px",
               }}
             >
               Billing Address

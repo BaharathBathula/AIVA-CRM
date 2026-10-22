@@ -91,8 +91,8 @@ export function OpportunityBulkStageDialog({
           width: "100%",
           maxWidth: 460,
           padding: 24,
-          background: "#ffffff",
-          color: "#0f172a",
+          background: "var(--surface)",
+          color: "var(--text)",
           borderRadius: 12,
           boxShadow: "0 20px 50px rgba(0,0,0,0.2)",
         }}
@@ -111,7 +111,7 @@ export function OpportunityBulkStageDialog({
         <p
           style={{
             marginBottom: 20,
-            color: "#475569",
+            color: "var(--text-2)",
           }}
         >
           Update {selectedCount} selected{" "}
@@ -142,7 +142,7 @@ export function OpportunityBulkStageDialog({
             width: "100%",
             padding: 10,
             marginBottom: 16,
-            border: "1px solid #cbd5e1",
+            border: "1px solid var(--border)",
             borderRadius: 6,
           }}
         >
@@ -179,7 +179,7 @@ export function OpportunityBulkStageDialog({
             width: "100%",
             padding: 10,
             marginBottom: 16,
-            border: "1px solid #cbd5e1",
+            border: "1px solid var(--border)",
             borderRadius: 6,
           }}
         >
@@ -199,7 +199,7 @@ export function OpportunityBulkStageDialog({
           <p
             role="alert"
             style={{
-              color: "#b91c1c",
+              color: "var(--danger)",
               fontSize: 13,
               marginBottom: 12,
             }}
@@ -236,9 +236,9 @@ export function OpportunityBulkStageDialog({
               padding: "10px 16px",
               borderRadius: 6,
               background: canSubmit
-                ? "#2563eb"
-                : "#94a3b8",
-              color: "#ffffff",
+                ? "var(--ink)"
+                : "var(--border-strong)",
+              color: "var(--on-ink)",
             }}
           >
             {loading

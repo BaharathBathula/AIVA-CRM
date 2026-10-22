@@ -183,7 +183,7 @@ function CaseView() {
                   value={reply}
                   onChange={(e) => setReply(e.target.value)}
                   placeholder={internal ? "Only teammates see internal notes." : "Write a reply… The first reply stops the response SLA clock."}
-                  style={internal ? { background: "#fffaf0", borderColor: "#f1dfb8" } : undefined}
+                  style={internal ? { background: "var(--warning-soft)", borderColor: "var(--border)" } : undefined}
                   aria-label="Message"
                 />
                 <div className="ui-actions" style={{ justifyContent: "flex-end" }}>

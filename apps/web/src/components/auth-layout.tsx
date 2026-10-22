@@ -8,8 +8,11 @@ export function AuthLayout({ children }: { children: ReactNode }) {
   return (
     <div className="auth-shell">
       <aside className="auth-brand">
-        <Image src="/aiva-logo.png" alt="AIVA CRM" width={150} height={52} priority style={{ height: "auto", position: "relative", zIndex: 1 }} />
-        <div style={{ position: "relative", zIndex: 1 }}>
+        <span className="auth-mark">
+          <Image src="/aiva-mark.png" alt="" width={34} height={34} priority />
+          AIVA
+        </span>
+        <div>
           <h2>Sales, service and insight in one workspace.</h2>
           <p>Work every lead and deal, resolve customer cases on time, and see exactly where the quarter will land.</p>
         </div>
@@ -47,7 +50,10 @@ export function AuthLayout({ children }: { children: ReactNode }) {
       </aside>
       <main className="auth-panel">
         <div className="auth-card">
-          <Image src="/aiva-logo.png" alt="AIVA CRM" width={110} height={38} className="auth-mobile-logo" style={{ height: "auto" }} />
+          <span className="auth-mark auth-mobile-logo">
+            <Image src="/aiva-mark.png" alt="" width={30} height={30} />
+            AIVA
+          </span>
           {children}
         </div>
       </main>

@@ -74,7 +74,7 @@ export function ArticleEditor({ articleId }: { articleId?: string }) {
 
   return (
     <>
-      <PageHeader eyebrow="Knowledge base" title={articleId ? "Edit article" : "New article"} description="Write in Markdown: ## headings, - lists, **bold**, `code` and [links](https://…)." />
+      <PageHeader title={articleId ? "Edit article" : "New article"} description="Write in Markdown: ## headings, - lists, **bold**, `code` and [links](https://…)." />
       <form onSubmit={(event) => void save(event)} className="ui-split">
         <Card
           title={

@@ -1016,7 +1016,7 @@ export default function AccountsPage() {
                         color:
                           "var(--muted)",
                         fontSize:
-                          "10px",
+                          "12px",
                       }}
                     >
                       Showing{" "}

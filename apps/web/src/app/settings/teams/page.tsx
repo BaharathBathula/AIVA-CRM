@@ -45,7 +45,6 @@ function Teams() {
   return (
     <>
       <PageHeader
-        eyebrow="Settings"
         title="Teams"
         description="Group people for case queues, forecasting roll-ups and reporting. Assign members from the Users page."
         actions={

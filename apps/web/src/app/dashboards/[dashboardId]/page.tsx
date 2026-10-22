@@ -100,7 +100,6 @@ function DashboardView() {
         </Link>
       </div>
       <PageHeader
-        eyebrow="Dashboard"
         title={d.name}
         description={`${d.description ? `${d.description} · ` : ""}Updated ${relativeTime(d.updated_at)}`}
         actions={

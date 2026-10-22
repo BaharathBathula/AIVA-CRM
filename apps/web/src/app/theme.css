@@ -1,0 +1,163 @@
+/* ==========================================================================
+   AIVA theme tokens
+   Soft grey canvas, white floating surfaces, ink as the action colour.
+   Light is the default; [data-theme="dark"] on <html> switches palettes.
+   Legacy token names (--background, --primary, …) are mapped here so the
+   older record pages follow both themes too.
+   ========================================================================== */
+
+:root {
+  color-scheme: light;
+
+  /* Surfaces */
+  --canvas: #ecebef;
+  --canvas-glow: #f8f7fa;
+  --surface: #ffffff;
+  --surface-muted: #f6f5f8;
+  --surface-sunken: #efeef2;
+  --pill-active: #e3e1e7;
+
+  /* Text */
+  --text: #18171c;
+  --text-2: #4b4953;
+  --muted: #7a7784;
+
+  /* Lines and actions */
+  --border: #e7e5eb;
+  --border-strong: #d6d3dc;
+  --ink: #18171c;
+  --on-ink: #ffffff;
+  --ink-hover: #2c2a32;
+  --focus: rgba(24, 23, 28, 0.16);
+
+  /* State */
+  --success: #1d7f53;
+  --success-soft: #e2f3ea;
+  --warning: #9a6211;
+  --warning-soft: #fbefd9;
+  --danger: #c0404a;
+  --danger-soft: #fbe6e8;
+  --info: #2c5fc2;
+  --info-soft: #e5edfb;
+  --neutral-soft: #efeef2;
+
+  /* Data series (validated categorical order) */
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --series-3: #1baf7a;
+  --series-4: #eda100;
+  --series-5: #e87ba4;
+  --series-6: #008300;
+  --series-7: #6250d6;
+  --series-8: #e34948;
+  --series-other: #a7a4b0;
+
+  /* Shape and depth */
+  --radius-card: 26px;
+  --radius-control: 14px;
+  --radius-pill: 999px;
+  --shadow-float: 0 1px 2px rgba(24, 23, 28, 0.04), 0 10px 30px rgba(24, 23, 28, 0.06);
+  --shadow-pop: 0 18px 50px rgba(24, 23, 28, 0.16), 0 2px 8px rgba(24, 23, 28, 0.06);
+
+  /* Shell geometry */
+  --top-h: 92px;
+  --rail-w: 104px;
+
+  --font: "Manrope Variable", "Manrope", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  /* Legacy names used by the older pages */
+  --background: var(--canvas);
+  --sidebar: var(--surface);
+  --primary: var(--ink);
+  --primary-soft: var(--pill-active);
+  --radius: 22px;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --canvas: #111014;
+  --canvas-glow: #19181d;
+  --surface: #1b1a1f;
+  --surface-muted: #222127;
+  --surface-sunken: #17161a;
+  --pill-active: #2f2d35;
+
+  --text: #f2f1f5;
+  --text-2: #cac8d1;
+  --muted: #97949f;
+
+  --border: #2b2930;
+  --border-strong: #3a3841;
+  --ink: #f2f1f5;
+  --on-ink: #17161b;
+  --ink-hover: #ffffff;
+  --focus: rgba(242, 241, 245, 0.22);
+
+  --success: #6fd39f;
+  --success-soft: #16301f;
+  --warning: #f0b860;
+  --warning-soft: #3a2c12;
+  --danger: #f08a93;
+  --danger-soft: #3b1b1f;
+  --info: #8db2f5;
+  --info-soft: #182640;
+  --neutral-soft: #26252b;
+
+  --series-1: #3987e5;
+  --series-2: #d95926;
+  --series-3: #199e70;
+  --series-4: #c98500;
+  --series-5: #d55181;
+  --series-6: #008300;
+  --series-7: #9085e9;
+  --series-8: #e66767;
+  --series-other: #6d6a76;
+
+  --shadow-float: 0 1px 0 rgba(255, 255, 255, 0.02), 0 10px 30px rgba(0, 0, 0, 0.35);
+  --shadow-pop: 0 18px 50px rgba(0, 0, 0, 0.55);
+}
+
+html,
+body {
+  background: var(--canvas);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  min-height: 100vh;
+  background:
+    radial-gradient(1200px 700px at 85% -10%, var(--canvas-glow), transparent 60%),
+    var(--canvas);
+  background-attachment: fixed;
+}
+
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
+  color: inherit;
+}
+
+::selection {
+  background: var(--pill-active);
+}
+
+:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}

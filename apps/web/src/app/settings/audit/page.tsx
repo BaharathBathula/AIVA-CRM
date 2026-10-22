@@ -142,7 +142,6 @@ function AuditLogView() {
   return (
     <>
       <PageHeader
-        eyebrow="Settings"
         title="Audit log"
         description="Every sign-in, permission change and record edit, with who did it and from where."
         actions={

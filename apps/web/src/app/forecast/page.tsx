@@ -74,7 +74,6 @@ function ForecastView() {
   return (
     <>
       <PageHeader
-        eyebrow="Sales"
         title="Forecast"
         description="Closed won plus what each rep has committed, against quota, for the fiscal quarter."
         actions={

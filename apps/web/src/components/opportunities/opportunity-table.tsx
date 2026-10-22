@@ -1059,21 +1059,14 @@ export function OpportunityTable({
 
 <>
   {/* AIVA_O273_COLUMN_CONTROLS */}
-  <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
+  <div style={{ display: "flex", justifyContent: "flex-end", padding: "0 18px", marginBottom: 12 }}>
     <div style={{ position: "relative" }}>
       <button
         type="button"
+        className="secondaryButton"
         onClick={() => setColumnMenuOpen(current => !current)}
         aria-expanded={columnMenuOpen}
         aria-haspopup="true"
-        style={{
-          padding: "9px 14px",
-          border: "1px solid #d9deea",
-          borderRadius: 8,
-          background: "white",
-          cursor: "pointer",
-          fontWeight: 600,
-        }}
       >
         Columns
       </button>
@@ -1087,10 +1080,10 @@ export function OpportunityTable({
             zIndex: 30,
             minWidth: 190,
             padding: 12,
-            background: "white",
-            border: "1px solid #d9deea",
-            borderRadius: 10,
-            boxShadow: "0 12px 30px rgba(0,0,0,0.1)",
+            background: "var(--surface)",
+            border: "1px solid var(--border)",
+            borderRadius: 18,
+            boxShadow: "var(--shadow-pop)",
           }}
         >
           {OPPORTUNITY_COLUMNS.map(column => (
@@ -1547,9 +1540,9 @@ export function OpportunityTable({
           }}
           style={{
             padding: "7px 10px",
-            border: "1px solid #d9deea",
+            border: "1px solid var(--border)",
             borderRadius: 8,
-            background: "white",
+            background: "var(--surface)",
           }}
         >
           {[10, 25, 50, 100].map(size => (

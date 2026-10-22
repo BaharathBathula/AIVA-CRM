@@ -78,7 +78,6 @@ function LeadScoring() {
   return (
     <>
       <PageHeader
-        eyebrow="Settings"
         title="Lead scoring"
         description="Points add up to a 0–100 score on every lead. New and edited leads are scored automatically."
         actions={

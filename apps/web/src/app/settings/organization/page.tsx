@@ -68,7 +68,6 @@ function OrganizationForm() {
   return (
     <>
       <PageHeader
-        eyebrow="Settings"
         title="Organization"
         description="Workspace-wide defaults used for money, dates, forecasting periods and security."
       />

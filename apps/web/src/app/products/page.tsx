@@ -72,7 +72,6 @@ function Products() {
   return (
     <>
       <PageHeader
-        eyebrow="Sales"
         title="Products & price book"
         description="The catalog reps add to quotes. Prices here are the defaults; reps can discount per line."
         actions={

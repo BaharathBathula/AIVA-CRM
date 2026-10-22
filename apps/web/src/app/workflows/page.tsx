@@ -48,7 +48,6 @@ function Workflows() {
   return (
     <>
       <PageHeader
-        eyebrow="Automation"
         title="Workflows"
         description="Rules that create tasks, update fields, reassign owners and send alerts the moment records change."
         actions={

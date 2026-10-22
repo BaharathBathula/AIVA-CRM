@@ -11,9 +11,10 @@ import type { ReportResult } from "@/lib/platform-types";
  * and a hover tooltip on every mark.
  */
 
-export const SERIES = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4", "#008300", "#6250d6", "#e34948"];
-const PRIMARY = "#6854e7";
-const OTHER = "#a3a8b5";
+// Theme-aware colours (defined in theme.css for light and dark).
+export const SERIES = Array.from({ length: 8 }, (_, i) => `var(--series-${i + 1})`);
+const PRIMARY = "var(--ink)";
+const OTHER = "var(--series-other)";
 
 export type Datum = { label: string; value: number; href?: string | null };
 export type ValueFormat = "number" | "currency" | "percent";
@@ -59,8 +60,8 @@ function Tooltip({ x, y, label, value }: { x: number; y: number; label: string; 
         transform: "translate(-50%, calc(-100% - 10px))",
         padding: "6px 10px",
         borderRadius: 8,
-        background: "#171923",
-        color: "white",
+        background: "var(--ink)",
+        color: "var(--on-ink)",
         fontSize: 12,
         whiteSpace: "nowrap",
         pointerEvents: "none",
@@ -68,7 +69,7 @@ function Tooltip({ x, y, label, value }: { x: number; y: number; label: string; 
         zIndex: 5,
       }}
     >
-      <div style={{ color: "#aab0be" }}>{label}</div>
+      <div style={{ opacity: 0.7 }}>{label}</div>
       <div style={{ fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>{value}</div>
     </div>
   );
@@ -124,8 +125,8 @@ export function BarChart({
             <g key={`${d.label}-${index}`}>
               <path
                 d={`M${x},${pad.top + innerH} V${y + r} Q${x},${y} ${x + r},${y} H${x + barW - r} Q${x + barW},${y} ${x + barW},${y + r} V${pad.top + innerH} Z`}
-                fill={color}
-                opacity={hover === null || hover === index ? 1 : 0.45}
+                style={{ fill: color }}
+                opacity={hover === null || hover === index ? 1 : 0.4}
               />
               <rect
                 x={pad.left + slot * index}
@@ -216,10 +217,10 @@ export function LineChart({
             </g>
           );
         })}
-        <path d={area} fill={color} opacity={0.08} />
-        <path d={path} fill="none" stroke={color} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
+        <path d={area} style={{ fill: color }} opacity={0.07} />
+        <path d={path} fill="none" style={{ stroke: color }} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
         {hover !== null ? (
-          <line x1={points[hover].x} x2={points[hover].x} y1={pad.top} y2={pad.top + innerH} stroke="#c3c7d1" strokeDasharray="3 3" />
+          <line x1={points[hover].x} x2={points[hover].x} y1={pad.top} y2={pad.top + innerH} style={{ stroke: "var(--border-strong)" }} strokeDasharray="3 3" />
         ) : null}
         {points.map((p, index) => (
           <circle
@@ -227,8 +228,7 @@ export function LineChart({
             cx={p.x}
             cy={p.y}
             r={hover === index ? 5 : data.length <= 16 ? 3.5 : 0}
-            fill={color}
-            stroke="white"
+            style={{ fill: color, stroke: "var(--surface)" }}
             strokeWidth={2}
           />
         ))}
@@ -305,13 +305,12 @@ export function DonutChart({
                 cy={90}
                 r={radius}
                 fill="none"
-                stroke={slice.color}
+                style={{ stroke: slice.color, transition: "stroke-width 0.12s" }}
                 strokeWidth={hover === index ? thickness + 4 : thickness}
                 strokeDasharray={`${dash} ${circumference - dash}`}
                 strokeDashoffset={-offset}
                 onMouseEnter={() => setHover(index)}
                 onMouseLeave={() => setHover(null)}
-                style={{ transition: "stroke-width 0.12s" }}
               />
             );
             offset += length;
@@ -321,7 +320,7 @@ export function DonutChart({
         <text x={90} y={86} textAnchor="middle" style={{ fontSize: 19, fontWeight: 760, fill: "var(--text)" }}>
           {formatValue(active ? active.value : total, format)}
         </text>
-        <text x={90} y={105} textAnchor="middle" style={{ fontSize: 11, fill: "var(--muted)" }}>
+        <text x={90} y={105} textAnchor="middle" style={{ fontSize: 12, fill: "var(--muted)" }}>
           {active ? (active.label.length > 16 ? `${active.label.slice(0, 15)}…` : active.label) : "Total"}
         </text>
       </svg>

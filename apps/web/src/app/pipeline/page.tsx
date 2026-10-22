@@ -1547,7 +1547,7 @@ export default function PipelinePage() {
         .kanbanCard select {
           border: 1px solid var(--border);
           border-radius: 8px;
-          background: white;
+          background: var(--surface);
           color: var(--text);
         }
 
@@ -1572,13 +1572,13 @@ export default function PipelinePage() {
 
         .pipelineRefresh {
           border: 1px solid var(--border);
-          background: white;
+          background: var(--surface);
           color: var(--text);
         }
 
         .pipelineNewDeal {
           background: var(--primary);
-          color: white;
+          color: var(--on-ink);
         }
 
         /* AIVA_P42_CREATE_PIPELINE_STYLES */
@@ -1590,7 +1590,7 @@ export default function PipelinePage() {
           padding: 0 12px;
           border: 1px solid var(--border);
           border-radius: 8px;
-          background: white;
+          background: var(--surface);
           color: var(--text);
           font-size: 12px;
           font-weight: 700;
@@ -1613,8 +1613,8 @@ export default function PipelinePage() {
           max-width: 440px;
           padding: 26px;
           border-radius: 14px;
-          background: white;
-          color: #172033;
+          background: var(--surface);
+          color: var(--text);
           box-shadow: 0 20px 70px rgba(0, 0, 0, 0.2);
         }
 
@@ -1625,7 +1625,7 @@ export default function PipelinePage() {
 
         .pipelineCreateDialog p {
           margin: 0 0 20px;
-          color: #64748b;
+          color: var(--text-2);
           font-size: 13px;
         }
 
@@ -1644,14 +1644,14 @@ export default function PipelinePage() {
           width: 100%;
           height: 42px;
           padding: 0 12px;
-          border: 1px solid #cbd5e1;
+          border: 1px solid var(--border);
           border-radius: 8px;
           font-size: 14px;
         }
 
         .pipelineCreateDialog .pipelineCreateError {
           margin: 0;
-          color: #b91c1c;
+          color: var(--danger);
         }
 
         .pipelineCreateActions {
@@ -1663,10 +1663,10 @@ export default function PipelinePage() {
 
         .pipelineCreateActions button {
           padding: 10px 15px;
-          border: 1px solid #cbd5e1;
+          border: 1px solid var(--border);
           border-radius: 8px;
-          background: white;
-          color: #172033;
+          background: var(--surface);
+          color: var(--text);
           font-weight: 700;
           cursor: pointer;
         }
@@ -1674,7 +1674,7 @@ export default function PipelinePage() {
         .pipelineCreateActions button[type="submit"] {
           border-color: var(--primary);
           background: var(--primary);
-          color: white;
+          color: var(--on-ink);
         }
 
         .pipelineCreateActions button:disabled {
@@ -1699,12 +1699,12 @@ export default function PipelinePage() {
           padding: 15px 16px;
           border: 1px solid var(--border);
           border-radius: 12px;
-          background: white;
+          background: var(--surface);
         }
 
         .pipelineMetrics span {
           color: var(--muted);
-          font-size: 11px;
+          font-size: 12px;
         }
 
         .pipelineMetrics strong {
@@ -1719,7 +1719,7 @@ export default function PipelinePage() {
           gap: 8px;
           border: 1px solid var(--border);
           border-radius: 14px;
-          background: white;
+          background: var(--surface);
           color: var(--muted);
         }
 
@@ -1743,13 +1743,13 @@ export default function PipelinePage() {
           padding: 10px;
           border: 1px solid var(--border);
           border-radius: 12px;
-          background: #f8f9fc;
+          background: var(--surface-muted);
           transition: 0.16s ease;
         }
 
         .kanbanColumn.dragOver {
           border-color: var(--primary);
-          background: #f3f0ff;
+          background: var(--surface-muted);
         }
 
         .kanbanColumnHeader {
@@ -1772,14 +1772,14 @@ export default function PipelinePage() {
         .kanbanColumnHeader p {
           margin: 5px 0 0 17px;
           color: var(--muted);
-          font-size: 9px;
+          font-size: 12px;
         }
 
         .stageDot {
           width: 9px;
           height: 9px;
           border-radius: 50%;
-          background: #8b91a0;
+          background: var(--neutral-soft);
         }
 
         .stage-open {
@@ -1800,15 +1800,15 @@ export default function PipelinePage() {
           display: grid;
           place-items: center;
           border-radius: 999px;
-          background: #e9eaf0;
-          color: #636978;
-          font-size: 9px;
+          background: var(--surface-muted);
+          color: var(--text-2);
+          font-size: 12px;
           font-weight: 800;
         }
 
         .kanbanStageValue {
           color: var(--muted);
-          font-size: 10px;
+          font-size: 12px;
           font-weight: 700;
         }
 
@@ -1820,10 +1820,10 @@ export default function PipelinePage() {
 
         .kanbanEmpty {
           padding: 24px 10px;
-          border: 1px dashed #d8dbe5;
+          border: 1px dashed var(--border);
           border-radius: 9px;
-          color: #9aa0ae;
-          font-size: 10px;
+          color: var(--muted);
+          font-size: 12px;
           text-align: center;
         }
 
@@ -1831,7 +1831,7 @@ export default function PipelinePage() {
           padding: 12px;
           border: 1px solid var(--border);
           border-radius: 10px;
-          background: white;
+          background: var(--surface);
           cursor: grab;
           transition:
             transform 0.14s ease,
@@ -1854,10 +1854,10 @@ export default function PipelinePage() {
           min-height: 16px;
           display: flex;
           justify-content: space-between;
-          color: #a2a8b5;
+          color: var(--muted);
         }
 
-        .kanbanDealName {
+        :global(.kanbanDealName) {
           display: block;
           margin: 5px 0 7px;
           color: var(--text);
@@ -1867,7 +1867,7 @@ export default function PipelinePage() {
           text-decoration: none;
         }
 
-        .kanbanDealName:hover {
+        :global(.kanbanDealName):hover {
           color: var(--primary);
         }
 
@@ -1876,7 +1876,7 @@ export default function PipelinePage() {
           align-items: center;
           gap: 5px;
           color: var(--muted);
-          font-size: 9px;
+          font-size: 12px;
         }
 
         .kanbanCardValue {
@@ -1892,14 +1892,14 @@ export default function PipelinePage() {
           gap: 8px;
           margin-bottom: 10px;
           color: var(--muted);
-          font-size: 9px;
+          font-size: 12px;
         }
 
         .kanbanCard select {
           width: 100%;
           height: 31px;
           padding: 0 7px;
-          font-size: 10px;
+          font-size: 12px;
         }
 
         @media (
@@ -1956,12 +1956,14 @@ export default function PipelinePage() {
         .kanbanColumn {
           padding: 12px;
           border-radius: 14px;
-          background: #f7f8fc;
+          background: var(--surface-muted);
         }
 
         .kanbanColumnHeader {
-          padding: 8px 5px 16px;
-          align-items: flex-start;
+          flex-direction: column;
+          gap: 12px;
+          padding: 6px 4px 14px;
+          align-items: stretch;
         }
 
         .kanbanStageTitle strong {
@@ -1971,7 +1973,7 @@ export default function PipelinePage() {
         }
 
         .kanbanColumnHeader p {
-          font-size: 11px;
+          font-size: 12px;
           margin-top: 7px;
         }
 
@@ -1984,7 +1986,7 @@ export default function PipelinePage() {
           min-width: 23px;
           height: 23px;
           padding: 0 5px;
-          font-size: 11px;
+          font-size: 12px;
         }
 
         .kanbanCards {
@@ -1994,17 +1996,17 @@ export default function PipelinePage() {
         .kanbanCard {
           padding: 16px;
           border-radius: 12px;
-          border-color: #e0e5ef;
+          border-color: var(--border);
           box-shadow: 0 2px 6px rgba(20, 30, 60, 0.025);
         }
 
         .kanbanCard:hover {
           transform: translateY(-2px);
-          border-color: #b8b0f5;
-          box-shadow: 0 10px 26px rgba(40, 35, 100, 0.09);
+          border-color: var(--border-strong);
+          box-shadow: 0 10px 26px var(--focus);
         }
 
-        .kanbanDealName {
+        :global(.kanbanDealName) {
           margin: 8px 0;
           font-size: 14px;
           font-weight: 750;
@@ -2013,14 +2015,14 @@ export default function PipelinePage() {
           overflow-wrap: anywhere;
         }
 
-        .kanbanDealName:hover {
+        :global(.kanbanDealName):hover {
           text-decoration: underline;
           text-underline-offset: 3px;
         }
 
         .kanbanAccount {
           gap: 7px;
-          font-size: 11px;
+          font-size: 12px;
           line-height: 1.5;
         }
 
@@ -2032,7 +2034,7 @@ export default function PipelinePage() {
 
         .kanbanCardMeta {
           margin-bottom: 13px;
-          font-size: 11px;
+          font-size: 12px;
           line-height: 1.4;
         }
 
@@ -2051,7 +2053,7 @@ export default function PipelinePage() {
 
         .kanbanColumn.dragOver {
           border-color: var(--primary);
-          background: #f0edff;
+          background: var(--pill-active);
           box-shadow: inset 0 0 0 1px var(--primary);
         }
 
@@ -2067,7 +2069,7 @@ export default function PipelinePage() {
         .pipelineHeaderActions select:focus-visible,
         .pipelineRefresh:focus-visible,
         .pipelineNewDeal:focus-visible,
-        .kanbanDealName:focus-visible {
+        :global(.kanbanDealName):focus-visible {
           outline: 2px solid var(--primary);
           outline-offset: 2px;
         }

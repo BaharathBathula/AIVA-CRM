@@ -756,7 +756,7 @@ export function CreateContactModal({
                 color:
                   "var(--muted)",
                 fontSize:
-                  "8px",
+                  "11px",
                 fontWeight:
                   400,
               }}
@@ -816,7 +816,7 @@ export function CreateContactModal({
                 color:
                   "var(--muted)",
                 fontSize:
-                  "9px",
+                  "12px",
                 marginTop:
                   "-8px",
               }}
@@ -833,11 +833,11 @@ export function CreateContactModal({
               style={{
                 padding: "12px",
                 border:
-                  "1px solid #f0d69a",
+                  "1px solid var(--border)",
                 borderRadius:
                   "10px",
                 background:
-                  "#fff9e8",
+                  "var(--warning-soft)",
               }}
             >
               <strong
@@ -847,7 +847,7 @@ export function CreateContactModal({
                   marginBottom:
                     "7px",
                   fontSize:
-                    "10px",
+                    "12px",
                 }}
               >
                 Possible Duplicate Contact
@@ -860,7 +860,7 @@ export function CreateContactModal({
                   color:
                     "var(--muted)",
                   fontSize:
-                    "9px",
+                    "12px",
                 }}
               >
                 AIVA found existing contacts
@@ -882,11 +882,11 @@ export function CreateContactModal({
                       padding:
                         "9px",
                       border:
-                        "1px solid #eadfbf",
+                        "1px solid var(--border)",
                       borderRadius:
                         "8px",
                       background:
-                        "white",
+                        "var(--surface)",
                     }}
                   >
                     <strong
@@ -894,7 +894,7 @@ export function CreateContactModal({
                         display:
                           "block",
                         fontSize:
-                          "10px",
+                          "12px",
                       }}
                     >
                       {
@@ -912,7 +912,7 @@ export function CreateContactModal({
                           color:
                             "var(--muted)",
                           fontSize:
-                            "9px",
+                            "12px",
                         }}
                       >
                         {
@@ -928,9 +928,9 @@ export function CreateContactModal({
                         marginTop:
                           "4px",
                         color:
-                          "#8a6700",
+                          "var(--warning)",
                         fontSize:
-                          "8px",
+                          "11px",
                         fontWeight:
                           700,
                       }}
@@ -951,7 +951,7 @@ export function CreateContactModal({
                         color:
                           "var(--muted)",
                         fontSize:
-                          "8px",
+                          "11px",
                       }}
                     >
                       {
@@ -969,9 +969,9 @@ export function CreateContactModal({
                   margin:
                     "9px 0 0",
                   fontSize:
-                    "9px",
+                    "12px",
                   color:
-                    "#775b00",
+                    "var(--warning)",
                 }}
               >
                 Review the matches above.

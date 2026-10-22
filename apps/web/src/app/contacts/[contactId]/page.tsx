@@ -1208,7 +1208,7 @@ export default function ContactDetailPage() {
                 style={{
                   display: "block",
                   color: "var(--muted)",
-                  fontSize: "9px",
+                  fontSize: "12px",
                   marginBottom: "6px",
                 }}
               >
@@ -1237,7 +1237,7 @@ export default function ContactDetailPage() {
                     display: "block",
                     marginTop: "4px",
                     color: "var(--muted)",
-                    fontSize: "8px",
+                    fontSize: "11px",
                   }}
                 >
                   {
@@ -1264,7 +1264,7 @@ export default function ContactDetailPage() {
                 style={{
                   display: "block",
                   color: "var(--muted)",
-                  fontSize: "9px",
+                  fontSize: "12px",
                   marginBottom: "6px",
                 }}
               >
@@ -1287,7 +1287,7 @@ export default function ContactDetailPage() {
                   display: "block",
                   marginTop: "4px",
                   color: "var(--muted)",
-                  fontSize: "8px",
+                  fontSize: "11px",
                 }}
               >
                 Last 30 days
@@ -1305,7 +1305,7 @@ export default function ContactDetailPage() {
                 style={{
                   display: "block",
                   color: "var(--muted)",
-                  fontSize: "9px",
+                  fontSize: "12px",
                   marginBottom: "6px",
                 }}
               >
@@ -1328,7 +1328,7 @@ export default function ContactDetailPage() {
                   display: "block",
                   marginTop: "4px",
                   color: "var(--muted)",
-                  fontSize: "8px",
+                  fontSize: "11px",
                 }}
               >
                 Contact-linked threads
@@ -1346,7 +1346,7 @@ export default function ContactDetailPage() {
                 style={{
                   display: "block",
                   color: "var(--muted)",
-                  fontSize: "9px",
+                  fontSize: "12px",
                   marginBottom: "6px",
                 }}
               >
@@ -1372,17 +1372,17 @@ export default function ContactDetailPage() {
                   borderRadius: "999px",
                   background:
                     engagementScore >= 70
-                      ? "#e6f7ef"
+                      ? "var(--success-soft)"
                       : engagementScore >= 40
-                        ? "#fff6dd"
-                        : "#f7ecee",
+                        ? "var(--warning-soft)"
+                        : "var(--danger-soft)",
                   color:
                     engagementScore >= 70
-                      ? "#197757"
+                      ? "var(--success)"
                       : engagementScore >= 40
-                        ? "#8a6700"
-                        : "#a94d57",
-                  fontSize: "8px",
+                        ? "var(--warning)"
+                        : "var(--danger)",
+                  fontSize: "11px",
                   fontWeight: 700,
                 }}
               >
@@ -1440,7 +1440,7 @@ export default function ContactDetailPage() {
                       style={{
                         display: "block",
                         color: "var(--muted)",
-                        fontSize: "9px",
+                        fontSize: "12px",
                         marginBottom: "4px",
                       }}
                     >
@@ -1466,7 +1466,7 @@ export default function ContactDetailPage() {
                       style={{
                         display: "block",
                         color: "var(--muted)",
-                        fontSize: "9px",
+                        fontSize: "12px",
                         marginBottom: "4px",
                       }}
                     >
@@ -1475,7 +1475,7 @@ export default function ContactDetailPage() {
 
                     <strong
                       style={{
-                        fontSize: "10px",
+                        fontSize: "12px",
                       }}
                     >
                       {
@@ -1530,11 +1530,11 @@ export default function ContactDetailPage() {
                             padding:
                               "12px",
                             border:
-                              "1px solid #eceef3",
+                              "1px solid var(--border)",
                             borderRadius:
                               "10px",
                             background:
-                              "#fdfdfe",
+                              "var(--surface-muted)",
                           }}
                         >
                           <div
@@ -1560,7 +1560,7 @@ export default function ContactDetailPage() {
                                   display:
                                     "block",
                                   fontSize:
-                                    "10px",
+                                    "12px",
                                 }}
                               >
                                 {
@@ -1576,7 +1576,7 @@ export default function ContactDetailPage() {
                                     color:
                                       "var(--muted)",
                                     fontSize:
-                                      "9px",
+                                      "12px",
                                     lineHeight:
                                       1.5,
                                   }}
@@ -1595,7 +1595,7 @@ export default function ContactDetailPage() {
                                 color:
                                   "var(--muted)",
                                 fontSize:
-                                  "8px",
+                                  "11px",
                               }}
                             >
                               {
@@ -1659,7 +1659,7 @@ export default function ContactDetailPage() {
                       style={{
                         display: "block",
                         color: "var(--muted)",
-                        fontSize: "9px",
+                        fontSize: "12px",
                         marginBottom: "4px",
                       }}
                     >
@@ -1686,7 +1686,7 @@ export default function ContactDetailPage() {
                       style={{
                         display: "block",
                         color: "var(--muted)",
-                        fontSize: "9px",
+                        fontSize: "12px",
                         marginBottom: "4px",
                       }}
                     >
@@ -1727,7 +1727,7 @@ export default function ContactDetailPage() {
                       style={{
                         display: "block",
                         color: "var(--muted)",
-                        fontSize: "9px",
+                        fontSize: "12px",
                         marginBottom: "4px",
                       }}
                     >
@@ -1792,11 +1792,11 @@ export default function ContactDetailPage() {
                             padding:
                               "12px",
                             border:
-                              "1px solid #eceef3",
+                              "1px solid var(--border)",
                             borderRadius:
                               "10px",
                             background:
-                              "#fdfdfe",
+                              "var(--surface-muted)",
                             color:
                               "inherit",
                             textDecoration:
@@ -1809,7 +1809,7 @@ export default function ContactDetailPage() {
                                 display:
                                   "block",
                                 fontSize:
-                                  "10px",
+                                  "12px",
                               }}
                             >
                               {
@@ -1826,7 +1826,7 @@ export default function ContactDetailPage() {
                                 color:
                                   "var(--muted)",
                                 fontSize:
-                                  "9px",
+                                  "12px",
                               }}
                             >
                               Probability:{" "}
@@ -1845,7 +1845,7 @@ export default function ContactDetailPage() {
                                   color:
                                     "var(--muted)",
                                   fontSize:
-                                    "9px",
+                                    "12px",
                                 }}
                               >
                                 Expected close:{" "}
@@ -1876,7 +1876,7 @@ export default function ContactDetailPage() {
                               flex:
                                 "0 0 auto",
                               fontSize:
-                                "10px",
+                                "12px",
                             }}
                           >
                             {
@@ -1954,7 +1954,7 @@ export default function ContactDetailPage() {
                       style={{
                         display: "block",
                         color: "var(--muted)",
-                        fontSize: "9px",
+                        fontSize: "12px",
                         marginBottom: "4px",
                       }}
                     >
@@ -1981,7 +1981,7 @@ export default function ContactDetailPage() {
                       style={{
                         display: "block",
                         color: "var(--muted)",
-                        fontSize: "9px",
+                        fontSize: "12px",
                         marginBottom: "4px",
                       }}
                     >
@@ -2008,7 +2008,7 @@ export default function ContactDetailPage() {
                       style={{
                         display: "block",
                         color: "var(--muted)",
-                        fontSize: "9px",
+                        fontSize: "12px",
                         marginBottom: "4px",
                       }}
                     >
@@ -2079,11 +2079,11 @@ export default function ContactDetailPage() {
                               gap: "14px",
                               padding: "12px",
                               border:
-                                "1px solid #eceef3",
+                                "1px solid var(--border)",
                               borderRadius:
                                 "10px",
                               background:
-                                "#fdfdfe",
+                                "var(--surface-muted)",
                             }}
                           >
                             <div
@@ -2094,7 +2094,7 @@ export default function ContactDetailPage() {
                               <strong
                                 style={{
                                   display: "block",
-                                  fontSize: "10px",
+                                  fontSize: "12px",
                                 }}
                               >
                                 {
@@ -2161,7 +2161,7 @@ export default function ContactDetailPage() {
                                     color:
                                       "var(--muted)",
                                     fontSize:
-                                      "9px",
+                                      "12px",
                                     lineHeight:
                                       1.5,
                                   }}
@@ -2189,7 +2189,7 @@ export default function ContactDetailPage() {
                                   color:
                                     "var(--muted)",
                                   fontSize:
-                                    "8px",
+                                    "11px",
                                 }}
                               >
                                 Due
@@ -2202,7 +2202,7 @@ export default function ContactDetailPage() {
                                   marginTop:
                                     "3px",
                                   fontSize:
-                                    "9px",
+                                    "12px",
                                 }}
                               >
                                 {
@@ -2574,7 +2574,7 @@ export default function ContactDetailPage() {
                       color:
                         "var(--muted)",
                       fontSize:
-                        "9px",
+                        "12px",
                     }}
                   >
                     Tags
@@ -2614,7 +2614,7 @@ export default function ContactDetailPage() {
                         color:
                           "var(--muted)",
                         fontSize:
-                          "9px",
+                          "12px",
                       }}
                     >
                       No tags assigned
@@ -2835,7 +2835,7 @@ export default function ContactDetailPage() {
 
                 <div className="aivaPlaceholder">
                   <span>
-                    AI COMING LATER
+                    Coming soon
                   </span>
 
                   <strong>

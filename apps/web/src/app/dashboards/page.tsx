@@ -46,7 +46,6 @@ function Dashboards() {
   return (
     <>
       <PageHeader
-        eyebrow="Insights"
         title="Dashboards"
         description="Live boards of saved reports. Every widget re-runs when you open the dashboard."
         actions={

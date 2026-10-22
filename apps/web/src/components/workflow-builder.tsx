@@ -158,7 +158,6 @@ export function WorkflowBuilder({ workflowId }: { workflowId?: string }) {
         </Link>
       </div>
       <PageHeader
-        eyebrow="Automation"
         title={workflowId ? name || "Workflow" : "New workflow"}
         description="When something happens to a record and the conditions match, AIVA runs the actions — instantly, in the same save."
         actions={

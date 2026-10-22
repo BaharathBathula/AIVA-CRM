@@ -1873,29 +1873,16 @@ return true;
             <OpportunitySavedViews
                 activeView={activeView}
                 onSelectView={applyBuiltInView}
+                actions={
+                  <button
+                    type="button"
+                    className="secondaryButton"
+                    onClick={() => setSaveViewOpen(true)}
+                  >
+                    <Plus size={15} /> Save current view
+                  </button>
+                }
               />
-
-              <div style={{
-                display: "flex",
-                justifyContent: "flex-end",
-                padding: "12px 18px",
-              }}>
-                <button
-                  type="button"
-                  onClick={() => setSaveViewOpen(true)}
-                  style={{
-                    padding: "9px 14px",
-                    borderRadius: 8,
-                    border: "1px solid #6366f1",
-                    color: "#6366f1",
-                    background: "transparent",
-                    cursor: "pointer",
-                    fontWeight: 600,
-                  }}
-                >
-                  + Save Current View
-                </button>
-              </div>
 
               <OpportunityCustomViews
                 views={customViews}
@@ -2071,7 +2058,7 @@ return true;
               {bulkOwnerError && (
                 <div role="alert" style={{
                   marginBottom: 12,
-                  color: "#b91c1c",
+                  color: "var(--danger)",
                   fontSize: 13,
                 }}>
                   {bulkOwnerError}

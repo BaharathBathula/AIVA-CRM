@@ -660,9 +660,9 @@ export default function ContactsPage() {
                     borderRadius:
                       "8px",
                     background:
-                      "white",
+                      "var(--surface)",
                     fontSize:
-                      "10px",
+                      "12px",
                   }}
                 >
                   <option value="all">
@@ -681,9 +681,7 @@ export default function ContactsPage() {
                           segment
                         }
                       >
-                        {
-                          segment
-                        }
+                        {displayLabel(segment)}
                       </option>
                     )
                   )}
@@ -709,9 +707,9 @@ export default function ContactsPage() {
                     borderRadius:
                       "8px",
                     background:
-                      "white",
+                      "var(--surface)",
                     fontSize:
-                      "10px",
+                      "12px",
                   }}
                 >
                   <option value="all">
@@ -984,13 +982,12 @@ export default function ContactsPage() {
                                       display:
                                         "block",
                                       fontSize:
-                                        "10px",
+                                        "12px",
                                     }}
                                   >
-                                    {
-                                      contact.segment
-                                      || "—"
-                                    }
+                                    {contact.segment
+                                      ? displayLabel(contact.segment)
+                                      : "—"}
                                   </strong>
 
                                   {contact.tags.length > 0 && (
@@ -1003,7 +1000,7 @@ export default function ContactsPage() {
                                         color:
                                           "var(--muted)",
                                         fontSize:
-                                          "8px",
+                                          "11px",
                                       }}
                                     >
                                       {

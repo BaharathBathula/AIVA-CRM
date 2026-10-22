@@ -959,7 +959,7 @@ export function EditContactModal({
                 color:
                   "var(--muted)",
                 fontSize:
-                  "8px",
+                  "11px",
                 fontWeight:
                   400,
               }}
@@ -1059,7 +1059,7 @@ export function EditContactModal({
                 color:
                   "var(--muted)",
                 fontSize:
-                  "9px",
+                  "12px",
               }}
             >
               A contact must belong to
@@ -1074,11 +1074,11 @@ export function EditContactModal({
               style={{
                 padding: "12px",
                 border:
-                  "1px solid #f0d69a",
+                  "1px solid var(--border)",
                 borderRadius:
                   "10px",
                 background:
-                  "#fff9e8",
+                  "var(--warning-soft)",
               }}
             >
               <strong
@@ -1088,7 +1088,7 @@ export function EditContactModal({
                   marginBottom:
                     "7px",
                   fontSize:
-                    "10px",
+                    "12px",
                 }}
               >
                 Possible Duplicate Contact
@@ -1108,11 +1108,11 @@ export function EditContactModal({
                       padding:
                         "9px",
                       border:
-                        "1px solid #eadfbf",
+                        "1px solid var(--border)",
                       borderRadius:
                         "8px",
                       background:
-                        "white",
+                        "var(--surface)",
                     }}
                   >
                     <strong
@@ -1120,7 +1120,7 @@ export function EditContactModal({
                         display:
                           "block",
                         fontSize:
-                          "10px",
+                          "12px",
                       }}
                     >
                       {
@@ -1138,7 +1138,7 @@ export function EditContactModal({
                           color:
                             "var(--muted)",
                           fontSize:
-                            "9px",
+                            "12px",
                         }}
                       >
                         {
@@ -1154,9 +1154,9 @@ export function EditContactModal({
                         marginTop:
                           "4px",
                         color:
-                          "#8a6700",
+                          "var(--warning)",
                         fontSize:
-                          "8px",
+                          "11px",
                         fontWeight:
                           700,
                       }}
@@ -1177,7 +1177,7 @@ export function EditContactModal({
                         color:
                           "var(--muted)",
                         fontSize:
-                          "8px",
+                          "11px",
                       }}
                     >
                       {
@@ -1195,9 +1195,9 @@ export function EditContactModal({
                   margin:
                     "9px 0 0",
                   fontSize:
-                    "9px",
+                    "12px",
                   color:
-                    "#775b00",
+                    "var(--warning)",
                 }}
               >
                 Submit again only if this

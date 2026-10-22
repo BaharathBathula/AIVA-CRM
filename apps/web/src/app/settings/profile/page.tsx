@@ -61,7 +61,7 @@ function ProfileForm() {
 
   return (
     <>
-      <PageHeader eyebrow="Settings" title="Your profile" description="How you appear to teammates on records, cases and activity." />
+      <PageHeader title="Your profile" description="How you appear to teammates on records, cases and activity." />
       <div className="ui-stack">
         <Card>
           <div className="ui-row" style={{ gap: 14 }}>

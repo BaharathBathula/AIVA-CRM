@@ -91,7 +91,6 @@ function Users() {
   return (
     <>
       <PageHeader
-        eyebrow="Settings"
         title="Users"
         description="Invite teammates, set their role and team, and control who can sign in."
         actions={

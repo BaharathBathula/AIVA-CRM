@@ -555,6 +555,8 @@ export default function OpportunityDetailPage() {
 
             <div className="detailActions">
               <select
+                className="detailStageSelect"
+                aria-label="Stage"
                 value={
                   opportunity.stage_id
                 }
@@ -578,6 +580,24 @@ export default function OpportunityDetailPage() {
                   )
                 )}
               </select>
+              {!editing && (
+                <Link
+                  href={`/quotes/new?opportunity_id=${opportunity.id}`}
+                  className="secondaryButton"
+                >
+                  Create quote
+                </Link>
+              )}
+              {!editing && (
+                <button
+                  type="button"
+                  className="primaryButton"
+                  onClick={startEditing}
+                  disabled={moving}
+                >
+                  Edit opportunity
+                </button>
+              )}
             </div>
           </section>
 
@@ -586,34 +606,12 @@ export default function OpportunityDetailPage() {
               padding: 12,
               marginBottom: 16,
               borderRadius: 8,
-              background: "#ecfdf3",
-              color: "#166534",
+              background: "var(--success-soft)",
+              color: "var(--success)",
             }}>
               {saveMessage}
             </div>
           )}
-
-          <div style={{ marginBottom: 16, display: "flex", flexWrap: "wrap", gap: 8 }}>
-            {!editing && (
-              <button
-                type="button"
-                className="primaryButton"
-                onClick={startEditing}
-                disabled={moving}
-              >
-                Edit Opportunity
-              </button>
-            )}
-            {!editing && (
-              <Link
-                href={`/quotes/new?opportunity_id=${opportunity.id}`}
-                className="ui-btn"
-                style={{ height: 40 }}
-              >
-                Create quote
-              </Link>
-            )}
-          </div>
 
           {editing && (
             <form
@@ -622,9 +620,9 @@ export default function OpportunityDetailPage() {
               style={{
                 marginBottom: 24,
                 padding: 24,
-                border: "1px solid #e2e8f0",
+                border: "1px solid var(--border)",
                 borderRadius: 12,
-                background: "white",
+                background: "var(--surface)",
               }}
             >
               <h2 style={{ marginBottom: 18 }}>Edit Opportunity</h2>
@@ -876,7 +874,7 @@ export default function OpportunityDetailPage() {
 
                 <div className="aivaPlaceholder">
                   <span>
-                    DEAL DESCRIPTION
+                    Deal description
                   </span>
 
                   <strong>
@@ -1099,7 +1097,7 @@ export default function OpportunityDetailPage() {
                   <Handshake size={20} />
 
                   <span>
-                    AI COMING NEXT
+                    Coming soon
                   </span>
 
                   <strong>

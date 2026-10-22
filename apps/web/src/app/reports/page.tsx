@@ -43,7 +43,6 @@ function Reports() {
   return (
     <>
       <PageHeader
-        eyebrow="Insights"
         title="Reports"
         description="Ask any question of your CRM data: filter, group and chart it, then pin it to a dashboard."
         actions={

@@ -139,7 +139,7 @@ function LoginForm() {
             <label htmlFor="password" className="ui-label">
               Password
             </label>
-            <Link href="/forgot-password" className="ui-small" style={{ color: "var(--primary)", fontWeight: 650, textDecoration: "none" }}>
+            <Link href="/forgot-password" className="ui-small auth-link">
               Forgot password?
             </Link>
           </div>

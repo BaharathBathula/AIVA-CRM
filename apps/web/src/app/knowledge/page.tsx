@@ -38,7 +38,6 @@ function Knowledge() {
   return (
     <>
       <PageHeader
-        eyebrow="Service"
         title="Knowledge base"
         description="Answers your team writes once and reuses on every case. Agents see suggestions right on the case."
         actions={

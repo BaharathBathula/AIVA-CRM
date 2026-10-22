@@ -1515,7 +1515,7 @@ const accountHealth =
                   account.is_archived
                     ? undefined
                     : {
-                        color: "#b42318",
+                        color: "var(--danger)",
                       }
                 }
               >
@@ -1708,7 +1708,7 @@ const accountHealth =
                   "var(--muted)",
 
                 fontSize:
-                  "10px",
+                  "12px",
               }}
             >
               Loading related account
@@ -1823,7 +1823,7 @@ const accountHealth =
                           "var(--muted)",
 
                         fontSize:
-                          "10px",
+                          "12px",
 
                         lineHeight:
                           1.6,
@@ -2008,13 +2008,8 @@ const accountHealth =
                           "var(--muted)",
 
                         fontSize:
-                          "9px",
+                          "12px",
 
-                        textTransform:
-                          "uppercase",
-
-                        letterSpacing:
-                          ".08em",
                       }}
                     >
                       Latest conversation
@@ -2038,7 +2033,7 @@ const accountHealth =
                             "var(--muted)",
 
                           fontSize:
-                            "10px",
+                            "12px",
 
                           lineHeight:
                             1.5,
@@ -2133,7 +2128,7 @@ const accountHealth =
                                     "var(--muted)",
 
                                   fontSize:
-                                    "9px",
+                                    "12px",
                                 }}
                               >
                                 Last message:{" "}
@@ -2250,7 +2245,7 @@ const accountHealth =
                                     "var(--muted)",
 
                                   fontSize:
-                                    "9px",
+                                    "12px",
                                 }}
                               >
                                 Expected close:{" "}
@@ -2363,7 +2358,7 @@ const accountHealth =
                                     "var(--muted)",
 
                                   fontSize:
-                                    "9px",
+                                    "12px",
                                 }}
                               >
                                 Due:{" "}
@@ -2523,7 +2518,7 @@ const accountHealth =
                         "var(--muted)",
 
                       fontSize:
-                        "11px",
+                        "12px",
 
                       lineHeight:
                         1.7,
@@ -2709,7 +2704,7 @@ const accountHealth =
                       color:
                         "var(--muted)",
                       fontSize:
-                        "10px",
+                        "12px",
                     }}
                   >
                     Loading hierarchy...
@@ -2867,7 +2862,7 @@ const accountHealth =
                         "var(--muted)",
 
                       fontSize:
-                        "10px",
+                        "12px",
 
                       lineHeight:
                         1.6,
@@ -3115,7 +3110,7 @@ const accountHealth =
                       size={12}
                     />
 
-                    AI COMING NEXT
+                    Coming soon
                   </span>
 
                   <strong>

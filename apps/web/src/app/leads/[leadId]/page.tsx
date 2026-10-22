@@ -575,7 +575,7 @@ export default function LeadDetailPage() {
 
                 <div className="aivaPlaceholder">
                   <span>
-                    QUALIFICATION NOTES
+                    Qualification notes
                   </span>
 
                   <strong>
@@ -766,7 +766,7 @@ export default function LeadDetailPage() {
                   <Target size={20} />
 
                   <span>
-                    AI COMING NEXT
+                    Coming soon
                   </span>
 
                   <strong>

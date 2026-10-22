@@ -16,7 +16,6 @@ export default function SecurityPage() {
   return (
     <SettingsShell>
       <PageHeader
-        eyebrow="Settings"
         title="Password & security"
         description="Protect your account with a strong password and two-step verification, and review where you're signed in."
       />

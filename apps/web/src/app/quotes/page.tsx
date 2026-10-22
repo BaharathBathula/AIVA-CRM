@@ -50,7 +50,6 @@ function Quotes() {
   return (
     <>
       <PageHeader
-        eyebrow="Sales"
         title="Quotes"
         description="Priced proposals built from your product catalog, with discounts, tax and approval."
         actions={

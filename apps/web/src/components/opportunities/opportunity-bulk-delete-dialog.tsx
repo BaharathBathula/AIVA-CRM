@@ -112,9 +112,9 @@ export function OpportunityBulkDeleteDialog({
               selectedCount === 0
             }
             style={{
-              background: "#dc2626",
-              color: "#ffffff",
-              border: "1px solid #dc2626",
+              background: "var(--danger)",
+              color: "var(--on-ink)",
+              border: "1px solid var(--danger)",
             }}
           >
             {loading

@@ -101,8 +101,8 @@ function OpportunitySaveViewDialogContent({
           maxWidth: 440,
           padding: 24,
           borderRadius: 14,
-          background: "var(--background, #fff)",
-          color: "var(--foreground, #111827)",
+          background: "var(--background, var(--surface))",
+          color: "var(--foreground, var(--text))",
           boxShadow: "0 20px 60px rgba(0,0,0,0.2)",
         }}
       >
@@ -169,7 +169,7 @@ function OpportunitySaveViewDialogContent({
             style={{
               width: "100%",
               padding: "11px 12px",
-              border: "1px solid var(--border, #d1d5db)",
+              border: "1px solid var(--border, var(--border))",
               borderRadius: 8,
               background: "transparent",
               color: "inherit",
@@ -182,7 +182,7 @@ function OpportunitySaveViewDialogContent({
             <p
               id="save-view-error"
               role="alert"
-              style={{ color: "#dc2626", fontSize: 12, marginTop: 8 }}
+              style={{ color: "var(--danger)", fontSize: 12, marginTop: 8 }}
             >
               {error}
             </p>
@@ -211,7 +211,7 @@ function OpportunitySaveViewDialogContent({
               onClick={onClose}
               style={{
                 padding: "10px 16px",
-                border: "1px solid var(--border, #d1d5db)",
+                border: "1px solid var(--border, var(--border))",
                 borderRadius: 8,
                 background: "transparent",
                 color: "inherit",
@@ -227,8 +227,8 @@ function OpportunitySaveViewDialogContent({
                 padding: "10px 16px",
                 border: 0,
                 borderRadius: 8,
-                background: "#6366f1",
-                color: "#fff",
+                background: "var(--ink)",
+                color: "var(--on-ink)",
                 fontWeight: 600,
                 cursor: "pointer",
               }}

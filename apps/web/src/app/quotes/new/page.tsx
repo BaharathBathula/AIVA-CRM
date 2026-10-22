@@ -61,7 +61,7 @@ function NewQuote() {
 
   return (
     <>
-      <PageHeader eyebrow="Quotes" title="New quote" description="Set who it's for, then add products and pricing on the next screen." />
+      <PageHeader title="New quote" description="Set who it's for, then add products and pricing on the next screen." />
       <form onSubmit={submit} style={{ maxWidth: 860 }}>
         <Card
           footer={

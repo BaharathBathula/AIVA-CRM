@@ -61,7 +61,6 @@ function Cases() {
   return (
     <>
       <PageHeader
-        eyebrow="Service"
         title="Cases"
         description="Customer issues with SLA clocks, queues and a shared conversation history."
         actions={

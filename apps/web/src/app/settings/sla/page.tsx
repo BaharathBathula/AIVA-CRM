@@ -49,7 +49,6 @@ function SlaPolicies() {
   return (
     <>
       <PageHeader
-        eyebrow="Settings"
         title="SLA policies"
         description="Response and resolution targets by priority. New cases get due times from the matching active policy; the clock shows on every case."
         actions={

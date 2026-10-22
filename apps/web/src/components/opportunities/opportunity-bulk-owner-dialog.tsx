@@ -67,8 +67,8 @@ export function OpportunityBulkOwnerDialog({
           maxWidth: 480,
           padding: 24,
           borderRadius: 16,
-          background: "var(--background, #ffffff)",
-          color: "var(--foreground, #111827)",
+          background: "var(--background, var(--surface))",
+          color: "var(--foreground, var(--text))",
           boxShadow: "0 24px 70px rgba(0,0,0,0.25)",
         }}
       >
@@ -142,10 +142,10 @@ export function OpportunityBulkOwnerDialog({
             style={{
               width: "100%",
               padding: 12,
-              border: "1px solid #cbd5e1",
+              border: "1px solid var(--border)",
               borderRadius: 8,
-              background: "var(--background, #ffffff)",
-              color: "var(--foreground, #111827)",
+              background: "var(--background, var(--surface))",
+              color: "var(--foreground, var(--text))",
             }}
           >
             <option value="">Select an owner</option>
@@ -163,7 +163,7 @@ export function OpportunityBulkOwnerDialog({
               role="status"
               style={{
                 marginTop: 8,
-                color: "#b45309",
+                color: "var(--warning)",
                 fontSize: 12,
               }}
             >
@@ -176,7 +176,7 @@ export function OpportunityBulkOwnerDialog({
               role="alert"
               style={{
                 marginTop: 8,
-                color: "#dc2626",
+                color: "var(--danger)",
                 fontSize: 12,
               }}
             >
@@ -198,7 +198,7 @@ export function OpportunityBulkOwnerDialog({
               disabled={loading}
               style={{
                 padding: "10px 16px",
-                border: "1px solid #cbd5e1",
+                border: "1px solid var(--border)",
                 borderRadius: 8,
                 background: "transparent",
                 cursor: "pointer",
@@ -218,8 +218,8 @@ export function OpportunityBulkOwnerDialog({
                 padding: "10px 16px",
                 border: 0,
                 borderRadius: 8,
-                background: "#4f46e5",
-                color: "#ffffff",
+                background: "var(--ink)",
+                color: "var(--on-ink)",
                 fontWeight: 600,
                 cursor: loading ? "wait" : "pointer",
                 opacity: loading || !ownerUserId ? 0.6 : 1,

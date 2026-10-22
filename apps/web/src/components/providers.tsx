@@ -132,6 +132,40 @@ export function useToast() {
   return useContext(ToastContext);
 }
 
+// ---------------------------------------------------------------- Theme
+
+export type Theme = "light" | "dark";
+
+const ThemeContext = createContext<{ theme: Theme; setTheme: (theme: Theme) => void }>({
+  theme: "light",
+  setTheme: () => undefined,
+});
+
+function ThemeProvider({ children }: { children: ReactNode }) {
+  const [theme, setThemeState] = useState<Theme>("light");
+
+  // The inline script in layout.tsx already applied the theme before paint.
+  useEffect(() => {
+    setThemeState(document.documentElement.dataset.theme === "dark" ? "dark" : "light");
+  }, []);
+
+  const setTheme = useCallback((next: Theme) => {
+    setThemeState(next);
+    document.documentElement.dataset.theme = next;
+    try {
+      localStorage.setItem("aiva-theme", next);
+    } catch {
+      // Private mode or blocked storage: the choice lasts for this page only.
+    }
+  }, []);
+
+  return <ThemeContext.Provider value={{ theme, setTheme }}>{children}</ThemeContext.Provider>;
+}
+
+export function useTheme() {
+  return useContext(ThemeContext);
+}
+
 // ---------------------------------------------------------------- App shell (mobile nav)
 
 const ShellContext = createContext<{ navOpen: boolean; setNavOpen: (open: boolean) => void }>({
@@ -152,10 +186,12 @@ export function useShell() {
 
 export function Providers({ children }: { children: ReactNode }) {
   return (
-    <SessionProvider>
-      <ToastProvider>
-        <ShellProvider>{children}</ShellProvider>
-      </ToastProvider>
-    </SessionProvider>
+    <ThemeProvider>
+      <SessionProvider>
+        <ToastProvider>
+          <ShellProvider>{children}</ShellProvider>
+        </ToastProvider>
+      </SessionProvider>
+    </ThemeProvider>
   );
 }

@@ -8,6 +8,7 @@ import {
   Target,
   Trophy,
 } from "lucide-react";
+import type { ReactNode } from "react";
 
 export type OpportunityViewId =
   | "all_opportunities"
@@ -19,6 +20,8 @@ export type OpportunityViewId =
 interface OpportunitySavedViewsProps {
   activeView: OpportunityViewId | null;
   onSelectView: (view: OpportunityViewId) => void;
+  /** Extra controls shown at the end of the views row. */
+  actions?: ReactNode;
 }
 
 const BUILT_IN_VIEWS = [
@@ -52,6 +55,7 @@ const BUILT_IN_VIEWS = [
 export function OpportunitySavedViews({
   activeView,
   onSelectView,
+  actions,
 }: OpportunitySavedViewsProps) {
   return (
     <section
@@ -88,6 +92,7 @@ export function OpportunitySavedViews({
             </button>
           );
         })}
+        {actions ? <div className="opportunitySavedViewsActions">{actions}</div> : null}
       </div>
     </section>
   );

@@ -586,7 +586,7 @@ export default function TasksPage() {
 
             <div className="briefContent">
               <span>
-                AIVA TASK INTELLIGENCE
+                Task intelligence
               </span>
 
               <strong>
@@ -1150,7 +1150,13 @@ export default function TasksPage() {
             </div>
 
             {selectedTask.due_at && (
-              <div className="taskDetailNotice">
+              <div
+                className={
+                  isTaskOverdue(selectedTask)
+                    ? "taskDetailNotice overdue"
+                    : "taskDetailNotice"
+                }
+              >
                 <CalendarDays
                   size={15}
                 />
