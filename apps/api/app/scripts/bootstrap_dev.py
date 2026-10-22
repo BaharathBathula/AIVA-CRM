@@ -11,6 +11,7 @@ Environment variables:
 import asyncio
 import os
 import random
+import sys
 import uuid
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
@@ -494,8 +495,12 @@ async def seed_demo(db, users: dict[str, uuid.UUID]) -> None:
     db.sync_session.info["automation_disabled"] = False
 
 
-async def bootstrap() -> None:
+async def bootstrap(if_new: bool = False) -> None:
     async with AsyncSessionLocal() as db:
+        if if_new and await db.get(Organization, DEV_ORGANIZATION_ID) is not None:
+            # Hosted demos call this on every start; leave existing data alone.
+            print("Demo workspace already exists; skipping seed.")
+            return
         users = await upsert_users(db)
         await db.commit()
 
@@ -508,11 +513,14 @@ async def bootstrap() -> None:
     print("AIVA development workspace ready.")
     print(f"Organization ID: {DEV_ORGANIZATION_ID}")
     print(f"Pipeline ID: {DEV_PIPELINE_ID}")
-    print("Sign in at http://localhost:3000/login")
+    print(f"Sign in at {os.getenv('APP_BASE_URL', 'http://localhost:3000')}/login")
     print("  admin@aiva.local (owner), maya.chen@aiva.local (sales manager),")
     print("  daniel.ruiz@aiva.local (sales rep), tom.becker@aiva.local (support)")
-    print(f"  Password for all demo users: {DEV_PASSWORD}  (set AIVA_DEV_PASSWORD to change it)")
+    if os.getenv("AIVA_DEV_PASSWORD"):
+        print("  Password for all demo users: the value of AIVA_DEV_PASSWORD")
+    else:
+        print(f"  Password for all demo users: {DEV_PASSWORD}  (set AIVA_DEV_PASSWORD to change it)")
 
 
 if __name__ == "__main__":
-    asyncio.run(bootstrap())
+    asyncio.run(bootstrap(if_new="--if-new" in sys.argv))

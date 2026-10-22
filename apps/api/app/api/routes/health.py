@@ -43,14 +43,17 @@ async def readiness():
     except Exception:
         database_status = "unavailable"
 
-    try:
-        await redis_client.ping()
-    except Exception:
-        redis_status = "unavailable"
+    if redis_client is None:
+        redis_status = "not_configured"
+    else:
+        try:
+            await redis_client.ping()
+        except Exception:
+            redis_status = "unavailable"
 
     ready = (
         database_status == "ok"
-        and redis_status == "ok"
+        and redis_status in {"ok", "not_configured"}
     )
 
     response = {

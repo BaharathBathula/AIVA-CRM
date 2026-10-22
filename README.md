@@ -177,6 +177,21 @@ npm install
 AIVA_INTERNAL_API_URL=http://localhost:8000/api/v1 npm run dev
 ```
 
+## Deploy online (free, on Render)
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/BaharathBathula/AIVA-CRM)
+
+`render.yaml` deploys AIVA as one free web service (web app and API in one container, built from `deploy/Dockerfile`) plus a free PostgreSQL database.
+
+1. Click the button above, or in Render choose **New → Blueprint** and pick this repository.
+2. When asked for `AIVA_DEV_PASSWORD`, enter the password you want for the demo sign-ins (use a strong one; the site is public).
+3. Click **Deploy Blueprint**. The first build takes several minutes.
+4. Open the URL Render shows for the `aiva-crm` service (`https://aiva-crm-….onrender.com`) and sign in as `admin@aiva.local` with that password.
+
+Every push to `main` redeploys automatically. On first start the container applies migrations and creates the demo workspace; later restarts keep your data.
+
+Free-plan limits: the service sleeps after 15 minutes without visitors (the next visit takes about a minute), and Render's free database expires 30 days after creation unless you upgrade it. Invitation and password-reset links are shown on screen because no email service is connected (`SHOW_LINKS_WITHOUT_EMAIL`).
+
 ## Testing
 
 ```bash
