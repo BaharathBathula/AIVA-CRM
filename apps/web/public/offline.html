@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Offline · AIVA CRM</title>
+    <style>
+      :root { color-scheme: light dark; --bg: #ecebef; --card: #ffffff; --text: #17161b; --muted: #6b6873; }
+      @media (prefers-color-scheme: dark) { :root { --bg: #111014; --card: #1b1a20; --text: #f3f2f6; --muted: #a19eaa; } }
+      body { display: grid; min-height: 100vh; margin: 0; padding: 16px; place-items: center; background: var(--bg); color: var(--text); font: 15px/1.5 system-ui, sans-serif; }
+      main { max-width: 380px; padding: 32px; border-radius: 24px; background: var(--card); text-align: center; }
+      img { width: 56px; height: 56px; border-radius: 14px; }
+      h1 { margin: 16px 0 6px; font-size: 20px; }
+      p { margin: 0 0 18px; color: var(--muted); }
+      button { height: 40px; padding: 0 18px; border: 0; border-radius: 999px; background: var(--text); color: var(--bg); font: inherit; font-weight: 700; cursor: pointer; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <img src="/icon-192.png" alt="" />
+      <h1>You're offline</h1>
+      <p>AIVA needs a connection to load your CRM data. Pages you opened recently are still available.</p>
+      <button type="button" onclick="location.reload()">Try again</button>
+    </main>
+  </body>
+</html>

@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, BookOpen, CheckCircle2, Link2, Lock, MessageSquare, Star, Trash2, Unlink } from "lucide-react";
+import { ArrowLeft, BookOpen, CheckCircle2, Link2, Lock, MessageSquare, Sparkles, Star, Trash2, Unlink } from "lucide-react";
 import { useState, type FormEvent } from "react";
 
 import { AppShell } from "@/components/app-shell";
 import { CASE_STATUS_LABEL, CHANNEL_LABEL, SlaBadge } from "@/components/case-bits";
 import { useSession, useToast } from "@/components/providers";
+import { RecordActions, RecordInsights } from "@/components/record-extras";
 import { Alert, Avatar, Badge, Card, CASE_STATUS_TONE, ConfirmDialog, LoadingRows, PageHeader, PRIORITY_TONE } from "@/components/ui";
 import { dateTime, duration, relativeTime } from "@/lib/format";
 import type { CaseDetail, Member, Team } from "@/lib/platform-types";
@@ -27,8 +28,10 @@ function CaseView() {
   const { caseId } = useParams<{ caseId: string }>();
   const router = useRouter();
   const toast = useToast();
-  const { can, session } = useSession();
+  const { can, has, session } = useSession();
   const detail = useApi<CaseDetail>(`/cases/${caseId}`);
+  const [extrasVersion, setExtrasVersion] = useState(0);
+  const [drafting, setDrafting] = useState(false);
   const suggestions = useApi<Suggestion[]>(`/cases/${caseId}/suggested-articles`);
   const members = useApi<Member[]>("/meta/members");
   const teams = useApi<Team[]>("/admin/teams");
@@ -63,6 +66,24 @@ function CaseView() {
       toast(errorMessage(caught), "danger");
     } finally {
       setSending(false);
+    }
+  }
+
+  async function draftReply() {
+    setDrafting(true);
+    try {
+      const draft = await api.post<{ body: string; source: string }>("/ai/draft", {
+        object_type: "case",
+        record_id: caseId,
+        intent: "reply to the customer about their support request",
+        tone: "friendly",
+      });
+      setInternal(false);
+      setReply(draft.body);
+    } catch (caught) {
+      toast(errorMessage(caught), "danger");
+    } finally {
+      setDrafting(false);
     }
   }
 
@@ -113,7 +134,16 @@ function CaseView() {
           </>
         }
         actions={
-          editable ? (
+          <>
+          <RecordActions
+            objectType="case"
+            recordId={c.id}
+            onChanged={() => {
+              setExtrasVersion((v) => v + 1);
+              void detail.reload();
+            }}
+          />
+          {editable ? (
             closed ? (
               <button type="button" className="ui-btn" onClick={() => void update({ status: "open" }, "Case reopened.")}>
                 Reopen
@@ -130,7 +160,8 @@ function CaseView() {
                 </button>
               </>
             )
-          ) : null
+          ) : null}
+          </>
         }
       />
 
@@ -187,6 +218,11 @@ function CaseView() {
                   aria-label="Message"
                 />
                 <div className="ui-actions" style={{ justifyContent: "flex-end" }}>
+                  {has("extended_ai") && !internal ? (
+                    <button type="button" className="ui-btn ui-btn-ghost" style={{ marginRight: "auto" }} disabled={drafting} onClick={() => void draftReply()}>
+                      <Sparkles size={14} /> {drafting ? "Drafting…" : "Draft a reply"}
+                    </button>
+                  ) : null}
                   {!internal && !closed ? (
                     <button
                       type="button"
@@ -363,6 +399,8 @@ function CaseView() {
               </div>
             </Card>
           ) : null}
+
+          <RecordInsights objectType="case" recordId={c.id} version={extrasVersion} onChanged={() => setExtrasVersion((v) => v + 1)} />
 
           {can("records.delete") ? (
             <button type="button" className="ui-btn ui-btn-danger" onClick={() => setDeleting(true)}>

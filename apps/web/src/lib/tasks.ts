@@ -265,3 +265,26 @@ export function deleteTask(
     }
   );
 }
+
+
+/** "Remind me" choices on task forms, in minutes before the due time. */
+export const REMINDER_OPTIONS: { value: string; label: string }[] = [
+  { value: "", label: "No reminder" },
+  { value: "0", label: "At the due time" },
+  { value: "15", label: "15 minutes before" },
+  { value: "60", label: "1 hour before" },
+  { value: "1440", label: "1 day before" },
+];
+
+export function reminderAt(dueLocal: string, minutesBefore: string): string | null {
+  if (!dueLocal || minutesBefore === "") return null;
+  return new Date(new Date(dueLocal).getTime() - Number(minutesBefore) * 60_000).toISOString();
+}
+
+/** Which reminder option matches a saved task ("" when none, "keep" when it's a custom time). */
+export function reminderChoice(dueAt: string | null, reminder: string | null): string {
+  if (!reminder) return "";
+  if (!dueAt) return "keep";
+  const minutes = Math.round((new Date(dueAt).getTime() - new Date(reminder).getTime()) / 60_000);
+  return REMINDER_OPTIONS.some((o) => o.value === String(minutes)) ? String(minutes) : "keep";
+}

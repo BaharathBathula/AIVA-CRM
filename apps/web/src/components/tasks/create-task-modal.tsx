@@ -12,6 +12,8 @@ import {
 
 import {
   createTask,
+  REMINDER_OPTIONS,
+  reminderAt,
 } from "@/lib/tasks";
 
 import type {
@@ -62,6 +64,9 @@ export function CreateTaskModal({
   const [dueAt, setDueAt] =
     useState("");
 
+  const [remind, setRemind] =
+    useState("");
+
   const [saving, setSaving] =
     useState(false);
 
@@ -110,6 +115,8 @@ export function CreateTaskModal({
                 ).toISOString()
               : null,
 
+          reminder_at: reminderAt(dueAt, remind),
+
           source: "manual",
         });
 
@@ -124,6 +131,7 @@ export function CreateTaskModal({
         "medium"
       );
       setDueAt("");
+      setRemind("");
 
       onClose();
     } catch (err) {
@@ -296,6 +304,17 @@ export function CreateTaskModal({
                 )
               }
             />
+          </label>
+
+          <label>
+            Remind me
+            <select value={remind} disabled={!dueAt} onChange={(event) => setRemind(event.target.value)}>
+              {REMINDER_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
           </label>
 
           {error && (

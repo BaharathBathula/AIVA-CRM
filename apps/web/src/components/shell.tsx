@@ -13,6 +13,7 @@ import {
   ChevronDown,
   CircleHelp,
   ContactRound,
+  CreditCard,
   FilePenLine,
   Handshake,
   Headset,
@@ -609,6 +610,11 @@ function UserMenu() {
           </Link>
           <Link className="ui-menu-item" href="/settings/security" role="menuitem" onClick={() => setOpen(false)}>
             <ShieldCheck size={16} /> Password and security
+          </Link>
+          <Link className="ui-menu-item" href="/settings/billing" role="menuitem" onClick={() => setOpen(false)}>
+            <CreditCard size={16} /> Billing and plan
+            <span className="ui-spacer" />
+            <span className={`plan-chip plan-${session.subscription.plan}`}>{session.subscription.plan_name}</span>
           </Link>
           <button type="button" className="ui-menu-item" role="menuitem" onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>
             {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />} {theme === "dark" ? "Light theme" : "Dark theme"}

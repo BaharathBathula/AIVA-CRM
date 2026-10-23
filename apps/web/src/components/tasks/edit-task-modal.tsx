@@ -13,6 +13,9 @@ import {
 
 import {
   updateTask,
+  REMINDER_OPTIONS,
+  reminderAt,
+  reminderChoice,
 } from "@/lib/tasks";
 
 import type {
@@ -92,6 +95,9 @@ export function EditTaskModal({
     "open"
   );
 
+  const [remind, setRemind] =
+    useState("");
+
   const [dueAt, setDueAt] =
     useState("");
 
@@ -131,6 +137,10 @@ export function EditTaskModal({
       toLocalDateTime(
         task.due_at
       )
+    );
+
+    setRemind(
+      reminderChoice(task.due_at, task.reminder_at)
     );
 
     setError(null);
@@ -185,6 +195,11 @@ export function EditTaskModal({
                     dueAt
                   ).toISOString()
                 : null,
+
+            reminder_at:
+              remind === "keep"
+                ? task.reminder_at
+                : reminderAt(dueAt, remind),
           }
         );
 
@@ -386,6 +401,18 @@ export function EditTaskModal({
                   )
                 }
               />
+            </label>
+
+            <label>
+              Remind me
+              <select value={remind} disabled={!dueAt} onChange={(event) => setRemind(event.target.value)}>
+                {remind === "keep" ? <option value="keep">Keep the current reminder</option> : null}
+                {REMINDER_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
             </label>
           </div>
 
