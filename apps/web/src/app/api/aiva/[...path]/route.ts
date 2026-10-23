@@ -36,6 +36,10 @@ async function forward(request: NextRequest, body: string | undefined, token?: s
   const sessionId = request.cookies.get(COOKIE.session)?.value;
   if (sessionId) headers.set("X-Session-ID", sessionId);
 
+  // Webhook signatures (Stripe) must reach the backend untouched.
+  const signature = request.headers.get("stripe-signature");
+  if (signature) headers.set("Stripe-Signature", signature);
+
   const context = clientContext(request);
   if (context.forwardedFor) headers.set("X-Forwarded-For", context.forwardedFor);
   if (context.userAgent) headers.set("User-Agent", context.userAgent);
@@ -48,8 +52,56 @@ async function forward(request: NextRequest, body: string | undefined, token?: s
   });
 }
 
+/** Headers passed back to the browser (downloads keep their file name). */
+function responseHeaders(upstream: Response) {
+  const headers = new Headers({ "Content-Type": upstream.headers.get("content-type") ?? "application/json" });
+  const disposition = upstream.headers.get("content-disposition");
+  if (disposition) headers.set("Content-Disposition", disposition);
+  return headers;
+}
+
+const PORTAL_PATH = /^portal-api\/([a-z0-9-]{1,80})(?:\/(.*))?$/;
+
+function portalCookie(slug: string) {
+  return `aiva_portal_${slug}`;
+}
+
+/**
+ * Customer and partner portals have their own sign-in, separate from AIVA
+ * staff accounts. Their session token lives in an httpOnly cookie per portal
+ * and is sent upstream as X-Portal-Token; staff credentials are never sent.
+ */
+async function portalProxy(request: NextRequest, slug: string, rest: string, body: string | undefined) {
+  const path = request.nextUrl.pathname.replace(/^\/api\/aiva\/?/, "");
+  const headers = new Headers();
+  const contentType = request.headers.get("content-type");
+  if (contentType) headers.set("Content-Type", contentType);
+  const token = request.cookies.get(portalCookie(slug))?.value;
+  if (token) headers.set("X-Portal-Token", token);
+  const context = clientContext(request);
+  if (context.forwardedFor) headers.set("X-Forwarded-For", context.forwardedFor);
+  if (context.userAgent) headers.set("User-Agent", context.userAgent);
+
+  const upstream = await fetch(`${BACKEND_URL}/${path}${request.nextUrl.search}`, { method: request.method, headers, body, cache: "no-store" });
+  const cookie = { httpOnly: true, sameSite: "lax" as const, secure: process.env.NODE_ENV === "production", path: "/" };
+
+  if (rest === "verify" && upstream.ok) {
+    const data = (await upstream.json()) as { session_token: string; expires_in: number; name: string };
+    const response = NextResponse.json({ name: data.name });
+    response.cookies.set(portalCookie(slug), data.session_token, { ...cookie, maxAge: data.expires_in });
+    return response;
+  }
+
+  const response = new NextResponse(upstream.status === 204 ? null : upstream.body, { status: upstream.status, headers: responseHeaders(upstream) });
+  if (rest === "logout" || (upstream.status === 401 && token)) response.cookies.set(portalCookie(slug), "", { ...cookie, maxAge: 0 });
+  return response;
+}
+
 async function proxy(request: NextRequest) {
   const body = request.method !== "GET" && request.method !== "HEAD" ? await request.text() : undefined;
+
+  const portal = PORTAL_PATH.exec(request.nextUrl.pathname.replace(/^\/api\/aiva\/?/, ""));
+  if (portal) return portalProxy(request, portal[1], portal[2] ?? "", body);
 
   let token = request.cookies.get(COOKIE.access)?.value;
   let organizationId = request.cookies.get(COOKIE.organization)?.value;
@@ -74,7 +126,7 @@ async function proxy(request: NextRequest) {
 
   const response = new NextResponse(upstream.status === 204 ? null : upstream.body, {
     status: upstream.status,
-    headers: { "Content-Type": upstream.headers.get("content-type") ?? "application/json" },
+    headers: responseHeaders(upstream),
   });
 
   if (refreshed) setSessionCookies(response, refreshed, rememberChoice(request));

@@ -25,6 +25,7 @@ import {
 import {
   ActivityTimeline,
 } from "@/components/activities/activity-timeline";
+import { RecordActions, RecordInsights } from "@/components/record-extras";
 
 import {
   LogActivityModal,
@@ -137,6 +138,8 @@ export default function LeadDetailPage() {
   >(null);
 
 
+  const [extrasVersion, setExtrasVersion] = useState(0);
+
   useEffect(() => {
     if (!leadId) {
       return;
@@ -178,7 +181,7 @@ export default function LeadDetailPage() {
     }
 
     load();
-  }, [leadId]);
+  }, [leadId, extrasVersion]);
 
 
   async function qualifyLead() {
@@ -371,6 +374,7 @@ export default function LeadDetailPage() {
             </div>
 
             <div className="detailActions">
+              <RecordActions objectType="lead" recordId={lead.id} call={{ name: `${lead.first_name} ${lead.last_name}`.trim(), phone: lead.phone ?? null, lead_id: lead.id }} onChanged={() => setExtrasVersion((v) => v + 1)} />
               {lead.status !==
                 "converted" &&
                 lead.status !==
@@ -749,38 +753,7 @@ export default function LeadDetailPage() {
                 </section>
               )}
 
-              <section className="detailPanel aiAccountCard">
-                <div className="detailPanelHeader">
-                  <div>
-                    <h2>
-                      AIVA Lead Intelligence
-                    </h2>
-
-                    <p>
-                      AI qualification support.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="aivaPlaceholder">
-                  <Target size={20} />
-
-                  <span>
-                    Coming soon
-                  </span>
-
-                  <strong>
-                    Autonomous lead scoring
-                    and qualification.
-                  </strong>
-
-                  <p>
-                    AIVA will analyze engagement,
-                    intent and fit before
-                    recommending conversion.
-                  </p>
-                </div>
-              </section>
+              <RecordInsights objectType="lead" recordId={lead.id} version={extrasVersion} onChanged={() => setExtrasVersion((v) => v + 1)} />
             </aside>
           </div>
         </div>

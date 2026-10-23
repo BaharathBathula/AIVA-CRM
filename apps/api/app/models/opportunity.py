@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from sqlalchemy.dialects.postgresql import JSONB
+
 import uuid
 from datetime import date, datetime, timezone
 from decimal import Decimal
@@ -184,4 +186,12 @@ class Opportunity(
         default=lambda: datetime.now(timezone.utc),
         server_default=func.now(),
         index=True,
+    )
+
+    # Values of custom fields defined in Settings → Fields & modules.
+    custom_fields: Mapped[dict] = mapped_column(
+        JSONB,
+        nullable=False,
+        default=dict,
+        server_default="{}",
     )

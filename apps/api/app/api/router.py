@@ -6,6 +6,16 @@ from app.api.routes.activities import router as activities_router
 from app.api.routes.admin import router as admin_router
 from app.api.routes.analytics import router as analytics_router
 from app.api.routes.auth import router as auth_router
+from app.api.routes.billing import router as billing_router
+from app.api.routes.customization import router as customization_router
+from app.api.routes.data import router as data_router
+from app.api.routes.enterprise import router as enterprise_router
+from app.api.routes.integrations import router as integrations_router
+from app.api.routes.intelligence import router as intelligence_router
+from app.api.routes.marketing import router as marketing_router
+from app.api.routes.operations import router as operations_router
+from app.api.routes.portals import router as portals_router
+from app.api.routes.public import router as public_router
 from app.api.routes.contacts import router as contacts_router
 from app.api.routes.emails import router as emails_router
 from app.api.routes.health import router as health_router
@@ -24,6 +34,7 @@ api_router = APIRouter()
 # Public: health checks and the sign-in / sign-up flows.
 api_router.include_router(health_router)
 api_router.include_router(auth_router)
+api_router.include_router(public_router)
 
 # Core CRM records: every request needs a signed-in member whose role
 # allows reading (GET), writing (POST/PATCH/PUT) or deleting (DELETE).
@@ -48,3 +59,15 @@ api_router.include_router(sales_router)
 api_router.include_router(service_router)
 api_router.include_router(analytics_router)
 api_router.include_router(platform_router)
+
+# Plans and billing, and the Starter / Pro / Enterprise feature modules.
+# Each endpoint checks its permission and the plan feature it belongs to.
+api_router.include_router(billing_router)
+api_router.include_router(customization_router)
+api_router.include_router(data_router)
+api_router.include_router(marketing_router)
+api_router.include_router(integrations_router)
+api_router.include_router(intelligence_router)
+api_router.include_router(operations_router)
+api_router.include_router(enterprise_router)
+api_router.include_router(portals_router)

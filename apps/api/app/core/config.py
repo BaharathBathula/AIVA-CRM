@@ -31,6 +31,34 @@ class Settings(BaseSettings):
         "http://127.0.0.1:3000",
     ]
 
+    # Encryption key for secrets and encrypted fields (Fernet key or any
+    # long random string). Defaults to a key derived from JWT_SECRET_KEY.
+    field_encryption_key: str = ""
+
+    # Billing. Without Stripe keys, plan changes apply immediately with no
+    # charge (demo billing). With them, upgrades go through Stripe Checkout.
+    stripe_secret_key: str = ""
+    stripe_webhook_secret: str = ""
+
+    # Outgoing email used for reminders and campaigns when a user hasn't
+    # connected their own mailbox. Leave empty to keep mail in the outbox.
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_username: str = ""
+    smtp_password: str = ""
+    smtp_from_email: str = ""
+    smtp_from_name: str = "AIVA CRM"
+    smtp_security: str = "starttls"  # starttls | ssl | none
+
+    # Claude for AI drafting, summaries and "Ask AIVA". Built-in rules are
+    # used when no key is set.
+    anthropic_api_key: str = ""
+    ai_model: str = "claude-haiku-5-5"
+
+    # Background jobs (reminders, campaigns, journeys, chat alerts).
+    scheduler_enabled: bool = True
+    scheduler_interval_seconds: int = 30
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

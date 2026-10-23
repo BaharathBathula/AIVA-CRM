@@ -10,7 +10,9 @@ from fastapi import (
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.crypto import sha256
 from app.db.session import get_db
+from app.models.editions import ApiKey
 from app.models.organization import Organization
 
 
@@ -19,8 +21,19 @@ async def get_current_organization_id(
         str | None,
         Header(alias="X-Organization-ID"),
     ] = None,
+    authorization: Annotated[
+        str | None,
+        Header(alias="Authorization"),
+    ] = None,
     db: AsyncSession = Depends(get_db),
 ) -> uuid.UUID:
+    if not x_organization_id and authorization and authorization.startswith("Bearer aiva_sk_"):
+        # An API key already belongs to one workspace, so the header is optional.
+        key_org = (
+            await db.execute(select(ApiKey.organization_id).where(ApiKey.key_hash == sha256(authorization[7:].strip())))
+        ).scalar_one_or_none()
+        if key_org is not None:
+            x_organization_id = str(key_org)
     if not x_organization_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

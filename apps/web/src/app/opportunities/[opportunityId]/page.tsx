@@ -26,6 +26,7 @@ import {
 import {
   ActivityTimeline,
 } from "@/components/activities/activity-timeline";
+import { ApprovalModal, RecordActions, RecordInsights, approvalFromError, type ApprovalNeeded } from "@/components/record-extras";
 
 import {
   LogActivityModal,
@@ -191,6 +192,9 @@ export default function OpportunityDetailPage() {
   ] = useState(false);
 
 
+  const [extrasVersion, setExtrasVersion] = useState(0);
+  const [approvalNeeded, setApprovalNeeded] = useState<ApprovalNeeded | null>(null);
+
   useEffect(() => {
     if (!opportunityId) {
       return;
@@ -280,7 +284,7 @@ export default function OpportunityDetailPage() {
     }
 
     load();
-  }, [opportunityId]);
+  }, [opportunityId, extrasVersion]);
 
 
   const currentStage =
@@ -414,7 +418,13 @@ export default function OpportunityDetailPage() {
       setOpportunity(
         updated
       );
+      setExtrasVersion((v) => v + 1);
     } catch (err) {
+      const needed = approvalFromError(err);
+      if (needed) {
+        setApprovalNeeded(needed);
+        return;
+      }
       setError(
         err instanceof Error
           ? err.message
@@ -554,6 +564,7 @@ export default function OpportunityDetailPage() {
             </div>
 
             <div className="detailActions">
+              <RecordActions objectType="opportunity" recordId={opportunity.id} call={{ name: opportunity.name, phone: null, opportunity_id: opportunity.id, account_id: opportunity.account_id }} onChanged={() => setExtrasVersion((v) => v + 1)} />
               <select
                 className="detailStageSelect"
                 aria-label="Stage"
@@ -1079,40 +1090,7 @@ export default function OpportunityDetailPage() {
                 </div>
               </section>
 
-              <section className="detailPanel aiAccountCard">
-                <div className="detailPanelHeader">
-                  <div>
-                    <h2>
-                      AIVA Deal Intelligence
-                    </h2>
-
-                    <p>
-                      AI-assisted revenue
-                      intelligence.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="aivaPlaceholder">
-                  <Handshake size={20} />
-
-                  <span>
-                    Coming soon
-                  </span>
-
-                  <strong>
-                    Deal risk, next-best action
-                    and forecast intelligence.
-                  </strong>
-
-                  <p>
-                    AIVA will analyze activities,
-                    engagement and pipeline
-                    velocity to recommend the
-                    next action.
-                  </p>
-                </div>
-              </section>
+              <RecordInsights objectType="opportunity" recordId={opportunity.id} version={extrasVersion} onChanged={() => setExtrasVersion((v) => v + 1)} />
             </aside>
           </div>
         </div>
@@ -1142,6 +1120,13 @@ export default function OpportunityDetailPage() {
             ]
           )
         }
+      />
+      <ApprovalModal
+        needed={approvalNeeded}
+        objectType="opportunity"
+        recordId={opportunity.id}
+        onClose={() => setApprovalNeeded(null)}
+        onSubmitted={() => setExtrasVersion((v) => v + 1)}
       />
     </div>
   );

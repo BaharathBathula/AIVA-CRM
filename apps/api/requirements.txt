@@ -8,4 +8,5 @@ PyJWT==2.10.1
 pwdlib[argon2]==0.3.0
 pytest==8.4.2
 httpx==0.28.1
+cryptography==46.0.3
 pytest-asyncio==1.2.0

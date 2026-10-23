@@ -7,6 +7,7 @@ import { Providers } from "@/components/providers";
 import "./globals.css";
 import "./theme.css";
 import "./platform.css";
+import "./editions.css";
 
 export const metadata: Metadata = {
   title: {
@@ -14,6 +15,9 @@ export const metadata: Metadata = {
     template: "%s · AIVA CRM",
   },
   description: "AIVA CRM: sales, service, analytics and automation in one workspace.",
+  applicationName: "AIVA CRM",
+  appleWebApp: { capable: true, title: "AIVA", statusBarStyle: "default" },
+  icons: { apple: "/apple-touch-icon.png" },
 };
 
 export const viewport: Viewport = {

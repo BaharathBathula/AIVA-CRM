@@ -155,7 +155,7 @@ function LoginForm() {
         </button>
       </form>
       <div className="auth-alt">
-        New to AIVA? <Link href="/signup">Create a workspace</Link>
+        New to AIVA? <Link href="/signup">Start a free trial</Link> · <Link href="/pricing">Pricing</Link>
       </div>
       {SHOW_DEMO ? (
         <div className="auth-demo">

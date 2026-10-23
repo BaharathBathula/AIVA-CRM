@@ -12,6 +12,8 @@ from app.infrastructure.redis import redis_client
 
 # Registers the audit / workflow / lead-scoring flush hook.
 import app.services.automation  # noqa: E402,F401
+from app.services.automation import AutomationBlocked
+from app.services.scheduler import scheduler
 
 
 settings = get_settings()
@@ -19,8 +21,11 @@ settings = get_settings()
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
+    if settings.scheduler_enabled and settings.environment != "test":
+        scheduler.start()
     yield
 
+    await scheduler.stop()
     await engine.dispose()
     if redis_client is not None:
         await redis_client.aclose()
@@ -57,7 +62,19 @@ CONFLICTS = {
     "uq_products_org_sku": "Another product already uses that SKU.",
     "uq_kb_articles_org_slug": "An article with that title already exists.",
     "uq_forecast_quotas_user_period": "That quota was just changed by someone else. Refresh and try again.",
+    "uq_custom_fields_key": "A field with that name already exists.",
+    "uq_custom_modules_key": "A module with that name already exists.",
+    "uq_target_accounts_account": "That account is already a target account.",
+    "uq_team_members_user": "That person is already on the team.",
+    "uq_portal_users_email": "That person already has access to this portal.",
+    "uq_journey_enrollments_record": "That record is already in this journey.",
+    "uq_stage_rules_stage": "That stage already has a playbook.",
 }
+
+
+@app.exception_handler(AutomationBlocked)
+async def automation_blocked_handler(_: Request, exc: AutomationBlocked):
+    return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail, "code": exc.code, **exc.extra})
 
 
 @app.exception_handler(IntegrityError)

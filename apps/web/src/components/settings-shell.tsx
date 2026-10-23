@@ -4,6 +4,7 @@ import { ShieldCheck } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { AppShell } from "@/components/app-shell";
+import { UpgradeGate } from "@/components/plan";
 import { useSession } from "@/components/providers";
 
 /** Frame for settings pages. Their menu lives in the top bar (Settings section). */
@@ -11,16 +12,19 @@ export function SettingsShell({
   children,
   permission,
   what,
+  feature,
 }: {
   children: ReactNode;
   permission?: string | string[];
   what?: string;
+  /** Plan feature the page belongs to; shows the upgrade card when missing. */
+  feature?: string;
 }) {
   return (
     <AppShell>
       <div className="settings-page">
         <PermissionGate permission={permission} what={what}>
-          {children}
+          {feature ? <UpgradeGate feature={feature}>{children}</UpgradeGate> : children}
         </PermissionGate>
       </div>
     </AppShell>

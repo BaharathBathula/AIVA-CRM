@@ -26,7 +26,22 @@ export interface SessionUser {
   last_login_at?: string | null;
 }
 
+export interface SubscriptionState {
+  plan: "trial" | "starter" | "pro" | "enterprise";
+  plan_name: string;
+  status: "trialing" | "active" | "past_due" | "canceled" | "expired";
+  read_only: boolean;
+  trial_ends_at: string | null;
+  days_left: number | null;
+  features: string[];
+  limits: Record<string, number | null>;
+  provider: string;
+}
+
 export interface CurrentSession {
+  subscription: SubscriptionState;
+  is_sandbox: boolean;
+  hipaa_mode: boolean;
   user: SessionUser;
   organization: { id: string; name: string; slug: string; settings: Record<string, unknown> };
   role: string;

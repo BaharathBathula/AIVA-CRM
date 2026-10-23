@@ -25,6 +25,8 @@ PERMISSIONS: tuple[PermissionDef, ...] = (
     PermissionDef("records.delete", "Delete records", "Records", "Delete or archive CRM records."),
     PermissionDef("records.export", "Export data", "Records", "Export record lists to CSV."),
     PermissionDef("records.view_all", "View all records", "Records", "See records owned by anyone, not only your own team."),
+    PermissionDef("data.import", "Import data", "Records", "Import leads, contacts and accounts from CSV files."),
+    PermissionDef("data.view_encrypted", "View encrypted fields", "Records", "See the values of encrypted fields instead of a masked value."),
     # Sales
     PermissionDef("sales.products", "Manage products", "Sales", "Create and edit the product catalog and prices."),
     PermissionDef("sales.quotes", "Create quotes", "Sales", "Create, send and update quotes."),
@@ -32,6 +34,10 @@ PERMISSIONS: tuple[PermissionDef, ...] = (
     PermissionDef("sales.forecast_view", "View forecasts", "Sales", "See the forecast and quota attainment."),
     PermissionDef("sales.forecast_manage", "Manage quotas", "Sales", "Set quotas for users."),
     PermissionDef("sales.lead_scoring", "Configure lead scoring", "Sales", "Edit lead scoring rules and recalculate scores."),
+    PermissionDef("sales.inventory", "Manage inventory", "Sales", "Receive and adjust stock."),
+    PermissionDef("sales.invoices", "Manage invoices", "Sales", "Create invoices from quotes and record payments."),
+    # Marketing
+    PermissionDef("marketing.manage", "Run marketing", "Marketing", "Create email templates, web forms, campaigns, journeys and target accounts."),
     # Service
     PermissionDef("service.cases", "Work cases", "Service", "View, create and update support cases."),
     PermissionDef("service.knowledge_write", "Write knowledge articles", "Service", "Create and edit knowledge base drafts."),
@@ -42,6 +48,7 @@ PERMISSIONS: tuple[PermissionDef, ...] = (
     PermissionDef("analytics.dashboards", "Manage dashboards", "Analytics", "Create and edit dashboards."),
     # Automation
     PermissionDef("automation.workflows", "Manage workflows", "Automation", "Create, edit and turn workflow rules on and off."),
+    PermissionDef("automation.ai", "Use AI agents", "Automation", "Run AI agents and accept their suggestions."),
     # Administration
     PermissionDef("admin.users", "Manage users", "Administration", "Invite, deactivate and change roles of users."),
     PermissionDef("admin.roles", "Manage roles", "Administration", "Create custom roles and edit their permissions."),
@@ -82,8 +89,8 @@ SYSTEM_ROLES: dict[str, SystemRole] = {
             "Works leads, deals, quotes and tasks.",
             frozenset({
                 "records.read", "records.write", "records.export", "records.view_all",
-                "sales.quotes", "sales.forecast_view",
-                "service.cases", "analytics.reports", "analytics.dashboards",
+                "sales.quotes", "sales.forecast_view", "sales.invoices",
+                "service.cases", "analytics.reports", "analytics.dashboards", "automation.ai",
             }),
         ),
         SystemRole(
@@ -92,7 +99,7 @@ SYSTEM_ROLES: dict[str, SystemRole] = {
             "Works the service desk and writes knowledge articles.",
             frozenset({
                 "records.read", "records.write", "records.view_all",
-                "service.cases", "service.knowledge_write", "analytics.reports",
+                "service.cases", "service.knowledge_write", "analytics.reports", "automation.ai",
             }),
         ),
         SystemRole(

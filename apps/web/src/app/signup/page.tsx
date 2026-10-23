@@ -41,8 +41,13 @@ export default function SignupPage() {
 
   return (
     <AuthLayout>
-      <h1>Create your workspace</h1>
-      <p>Start with a clean CRM for your company. You&apos;ll be its owner and can invite your team next.</p>
+      <h1>Start your free trial</h1>
+      <p>
+        Seven days with every Enterprise feature, no credit card needed. You&apos;ll own the workspace and can invite your team next.{" "}
+        <Link href="/pricing" className="auth-link">
+          See plans and pricing
+        </Link>
+      </p>
       <form className="auth-form" onSubmit={handleSubmit}>
         {error ? <Alert>{error}</Alert> : null}
         <Field label="Full name">

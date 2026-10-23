@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { Check, Eye, EyeOff, Gauge, Headset, ShieldCheck, Workflow } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
@@ -46,7 +47,12 @@ export function AuthLayout({ children }: { children: ReactNode }) {
             </span>
           </li>
         </ul>
-        <div className="auth-foot">© {new Date().getFullYear()} AIVA CRM</div>
+        <div className="auth-foot">
+          © {new Date().getFullYear()} AIVA CRM ·{" "}
+          <Link href="/pricing" style={{ color: "inherit" }}>
+            Plans and pricing
+          </Link>
+        </div>
       </aside>
       <main className="auth-panel">
         <div className="auth-card">

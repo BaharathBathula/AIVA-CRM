@@ -38,6 +38,7 @@ from app.services.auth import (
     rotate_refresh_session,
     utcnow,
 )
+from app.services.billing import get_subscription, plan_state, start_trial
 from app.services.workspace import provision_workspace, unique_slug
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
@@ -283,6 +284,7 @@ async def signup(payload: SignupRequest, request: Request, db: AsyncSession = De
         )
     )
     await provision_workspace(db, organization, user.id)
+    db.add(start_trial(organization.id, email))
     await db.flush()
 
     session = await issue_session(
@@ -411,7 +413,16 @@ async def me(principal: Principal = Depends(get_current_principal), db: AsyncSes
     user = await db.get(User, principal.user_id)
     organization = await db.get(Organization, principal.organization_id)
     memberships = await active_memberships(db, principal.user_id)
+    subscription = await get_subscription(db, principal.organization_id)
+    state = plan_state(subscription)
+    org_settings = organization.settings or {}
     return {
+        "subscription": {
+            **state.to_dict(),
+            "provider": subscription.provider if subscription else "demo",
+        },
+        "is_sandbox": bool(org_settings.get("sandbox_of")),
+        "hipaa_mode": bool(org_settings.get("hipaa_mode")) and "hipaa" in state.features,
         "user": {
             "id": str(user.id),
             "email": user.email,

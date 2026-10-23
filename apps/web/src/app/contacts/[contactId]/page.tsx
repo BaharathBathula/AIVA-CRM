@@ -31,6 +31,7 @@ import {
 import {
   EditContactModal,
 } from "@/components/contacts/edit-contact-modal";
+import { RecordActions, RecordInsights } from "@/components/record-extras";
 
 import {
   Sidebar,
@@ -291,6 +292,8 @@ export default function ContactDetailPage() {
   >(null);
 
 
+  const [extrasVersion, setExtrasVersion] = useState(0);
+
   useEffect(() => {
     if (!contactId) {
       return;
@@ -403,6 +406,7 @@ export default function ContactDetailPage() {
     };
   }, [
     contactId,
+    extrasVersion,
   ]);
 
 
@@ -1141,6 +1145,7 @@ export default function ContactDetailPage() {
             </div>
 
             <div className="detailActions">
+              <RecordActions objectType="contact" recordId={contact.id} call={{ name: `${contact.first_name} ${contact.last_name}`.trim(), phone: contact.phone ?? contact.mobile ?? null, contact_id: contact.id, account_id: contact.account_id ?? undefined }} onChanged={() => setExtrasVersion((v) => v + 1)} />
               <button
                 type="button"
                 className="secondaryButton"
@@ -2819,39 +2824,7 @@ export default function ContactDetailPage() {
               </section>
 
 
-              <section className="detailPanel aiAccountCard">
-                <div className="detailPanelHeader">
-                  <div>
-                    <h2>
-                      AIVA Contact Intelligence
-                    </h2>
-
-                    <p>
-                      Relationship intelligence
-                      and engagement signals.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="aivaPlaceholder">
-                  <span>
-                    Coming soon
-                  </span>
-
-                  <strong>
-                    Contact intelligence
-                    will appear here.
-                  </strong>
-
-                  <p>
-                    AIVA will analyze
-                    engagement, communication
-                    patterns, relationship
-                    strength and recommended
-                    next actions.
-                  </p>
-                </div>
-              </section>
+              <RecordInsights objectType="contact" recordId={contact.id} version={extrasVersion} onChanged={() => setExtrasVersion((v) => v + 1)} />
             </aside>
           </div>
         </div>

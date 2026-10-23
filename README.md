@@ -2,9 +2,27 @@
 
 **Sales, service, analytics and automation in one CRM workspace.**
 
-AIVA CRM is a multi-tenant CRM platform modeled on the feature set of the leading CRMs (Salesforce, HubSpot, Microsoft Dynamics 365, ServiceNow, Pipedrive): secure sign-in with roles and two-step verification, a full sales cloud (leads to quotes to forecast), a service desk with SLAs and a knowledge base, a report builder with dashboards, and a no-code workflow engine.
+AIVA CRM is a multi-tenant CRM platform modeled on the feature set of the leading CRMs (Salesforce, HubSpot, Microsoft Dynamics 365, ServiceNow, Pipedrive, Zoho): secure sign-in with roles and two-step verification, a full sales cloud (leads to quotes, invoices and forecast), marketing (mass email, web forms, journeys, ABM), a service desk with SLAs, a knowledge base and customer portals, AI agents and predictions, a report builder with dashboards, and a no-code workflow engine — sold in three plans with a free trial.
 
 **Project status:** Active development. Everything listed as *Available* below is implemented end-to-end (database, API, permissions, UI) and covered by tests.
+
+## Plans and pricing
+
+Prices are per user per month. Every new workspace starts a **7-day free trial with everything in Enterprise** — no card needed. When the trial ends the workspace becomes read-only until someone picks a plan; nothing is deleted.
+
+| | Starter — $19 | Pro — $29 | Enterprise — $59 |
+|---|---|---|---|
+| Core CRM | Leads, contacts, accounts, deals, tasks, meetings and calls, follow-up reminders, standard reports, data import/export, mobile app (PWA), REST API | Everything in Starter | Everything in Pro |
+| Sales | Multiple pipelines, sales forecasting, lead scoring, data enrichment | CPQ (quotes, products, invoices), inventory, predictive intelligence, unlimited reports | Approvals, QuickBooks export |
+| Marketing | Mass email, email templates, web forms, calendar sync | Customer journeys, Google Ads integration | Account-based marketing (ABM) |
+| Service | Service desk, mailbox sync (Gmail, Outlook, SMTP/IMAP) | Customer portal, web-to-case, custom (partner) portals | — |
+| Automation and AI | Workflow automation | AI agents, process management (stage playbooks) | Extended AI (summaries, reply drafts, Ask AIVA) |
+| Customization | Custom modules, Slack/Teams/Zoom, HIPAA mode | — | Extended field types, sequential (multi-step) forms, custom buttons and functions, field-level encryption, sandbox, multiple teams, reporting hierarchy |
+| Limits | 5 pipelines, 3 custom modules, 25 saved reports, 5 dashboards, 5 web forms | 20 custom modules; everything else unlimited | Unlimited |
+
+Plan changes are made in **Settings → Billing and plan** (owners and admins). Without Stripe keys the server runs *demo billing*: switching plans applies instantly and records an invoice with no charge. With `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` set, upgrades go through Stripe Checkout and the Stripe customer portal. The public price list is at `/pricing`.
+
+Features outside a workspace's plan show a lock in the navigation and an upgrade card instead of the page; the API returns `402 Payment Required` for them.
 
 ## Feature overview
 
@@ -30,6 +48,14 @@ AIVA CRM is a multi-tenant CRM platform modeled on the feature set of the leadin
 | Teams | Teams with managers; used for case queues and reporting |
 | Audit log | Every sign-in (and failed sign-in), permission change and record create/update/delete with before → after values, IP and device; filter and export |
 | Organization settings | Name, currency, time zone, fiscal year start, session length |
+| Billing and plan | 7-day trial, Starter / Pro / Enterprise, seats, invoices, cancel and resume, Stripe or demo billing |
+| Fields and modules | Custom fields on leads, contacts, accounts, deals and cases (16 types incl. currency, lookup, formula, auto-number); custom modules with their own records, multi-step forms and encrypted fields |
+| Hierarchy and visibility | Reporting lines, nested teams, people on several teams; record visibility by everyone / team / reporting hierarchy |
+| Sales processes and approvals | Stage playbooks (required fields, checklists, guidance); approval rules for stage changes and quotes with an approvals inbox |
+| Custom buttons | Record-page buttons that open a link, call a signed webhook, or run a function (set fields, create tasks) |
+| API keys | Personal read or read/write keys for the REST API (`Authorization: Bearer aiva_sk_…`) |
+| Import and export | CSV import with column mapping and duplicate handling; CSV export of every record type and custom module |
+| Compliance and sandbox | HIPAA mode (MFA required, shorter sessions, view logging); sandboxes with deploy-to-production |
 
 ### Sales
 
@@ -40,7 +66,9 @@ AIVA CRM is a multi-tenant CRM platform modeled on the feature set of the leadin
 | Opportunities & Pipeline | Multiple pipelines and stages, board view, bulk actions, saved views, forecast categories | Available |
 | Products & price book | Catalog with SKUs, families, billing frequency, default tax | Available |
 | Quotes (CPQ) | Quote builder with catalog lines, per-line discount and tax, totals, send/accept/decline with approval permission, duplicate, print/PDF; accepting updates the deal amount | Available |
-| Forecasting | Fiscal-quarter forecast by rep: closed won, commit, best case, pipeline, quotas and attainment | Available |
+| Invoices and inventory | Invoices from accepted quotes, payments, overdue tracking, QuickBooks Online CSV export; stock levels, receipts and adjustments, automatic stock-out on accepted quotes, low-stock alerts | Available |
+| Forecasting and predictions | Fiscal-quarter forecast by rep with quotas; win probability and predicted close date for every open deal, learned from your closed deals | Available |
+| Calls | Click-to-call with a call timer, outcomes, notes and follow-up tasks; call log with connect rate and talk time | Available |
 
 ### Service
 
@@ -49,6 +77,17 @@ AIVA CRM is a multi-tenant CRM platform modeled on the feature set of the leadin
 | Cases | Queues (my open, unassigned, past SLA…), priorities, channels, assignment, customer replies and internal notes, CSAT | Available |
 | SLA policies | First-response and resolution targets by priority with live countdowns and breach tracking | Available |
 | Knowledge base | Markdown articles with drafts, publishing, categories, view counts, helpful votes; suggested articles on every case | Available |
+| Portals | Customer portal (open and follow cases, help articles, accept quotes, see invoices) and partner portal (deal registration), with passwordless email sign-in | Available |
+
+### Marketing
+
+| Module | Capabilities | Status |
+|---|---|---|
+| Email templates and campaigns | Templates with merge fields, audiences from record filters, test sends, scheduling, open tracking and one-click unsubscribe | Available |
+| Web forms | Hosted or embeddable lead and case forms with multi-step layouts, spam protection and UTM/gclid capture | Available |
+| Customer journeys | Multi-step nurture: send email, wait, create task, update field, notify, branch | Available |
+| Account-based marketing | Target accounts by tier with engagement scores and buying-committee coverage | Available |
+| Google Ads | Lead-form webhook and offline-conversion export for closed deals | Available |
 
 ### Insights and automation
 
@@ -60,8 +99,10 @@ AIVA CRM is a multi-tenant CRM platform modeled on the feature set of the leadin
 | Workflows | "When a record is created/updated/field changes, and conditions match, then…" create a task, update a field, change owner or send a notification; run history | Available |
 | Global search & notifications | ⌘K search across records, cases, quotes, articles and products; in-app notification bell | Available |
 | Workspace shell | Floating top navigation with section tabs, an icon rail for Home, Sales, Service, Insights and Settings, and light and dark themes (follows your system until you pick one) | Available |
-| Engagement | Activities, tasks and email threads | Available (foundation) |
-| AI capabilities | AI-assisted prioritization, summaries and recommendations | Planned |
+| Engagement | Activities, tasks with reminders, email threads, mailbox sync, calendar feed (iCal), Slack/Teams alerts, Zoom links | Available |
+| AI agents | Lead qualifier, deal coach, case triage, follow-up writer and data hygiene agents leave suggestions you accept or dismiss | Available |
+| Extended AI | Record summaries, email and case-reply drafts, and "Ask AIVA" questions about your CRM — Claude when `ANTHROPIC_API_KEY` is set, built-in rules otherwise | Available |
+| Mobile app | Installable on iPhone, Android and desktop (PWA) with offline fallback | Available |
 
 ## Technology stack
 
@@ -95,10 +136,13 @@ AIVA-CRM/
 ├── apps/
 │   ├── api/
 │   │   ├── app/
-│   │   │   ├── api/routes/      auth, admin, sales, service, analytics, platform + CRM records
-│   │   │   ├── core/            config, security, permissions, TOTP
+│   │   │   ├── api/routes/      auth, admin, sales, service, analytics, billing, marketing,
+│   │   │   │                    customization, data, integrations, intelligence, operations,
+│   │   │   │                    enterprise, portals, public + CRM records
+│   │   │   ├── core/            config, security, permissions, plans, encryption, TOTP
 │   │   │   ├── models/          SQLAlchemy models
-│   │   │   ├── services/        auth sessions, automation engine, reporting engine, catalog
+│   │   │   ├── services/        automation, reporting, billing, mailer, AI agents, predictions,
+│   │   │   │                    journeys, approvals, sandbox, background scheduler
 │   │   │   └── scripts/         bootstrap_dev (demo workspace)
 │   │   ├── alembic/             migrations
 │   │   └── tests/               unit + PostgreSQL integration tests
@@ -158,6 +202,19 @@ All demo users share the password `AivaDemo#2026` (override with `AIVA_DEV_PASSW
 
 In development, invitation and password-reset links are shown on screen because no email service is configured.
 
+The demo workspace is on the Enterprise plan with sample data for every feature: a custom module, campaigns, a web form, a journey, target accounts, invoices, tracked inventory, approval rules and a customer portal (Olivia Johnson at Northwind Logistics has access). New sign-ups start a 7-day trial.
+
+### Optional configuration
+
+| Variable | Purpose |
+|---|---|
+| `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` | Real card billing through Stripe Checkout (otherwise demo billing). Point the Stripe webhook at `/api/aiva/public/stripe/webhook`. |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_FROM_EMAIL`, `SMTP_SECURITY` | Server email for invitations, reminders, campaigns and portal sign-in links. People can also connect their own mailbox in Settings → Integrations. |
+| `ANTHROPIC_API_KEY`, `AI_MODEL` | Claude for summaries, drafts and Ask AIVA. Without it, AI features use built-in rules. |
+| `FIELD_ENCRYPTION_KEY` | Key for encrypted fields and stored secrets. Defaults to one derived from `JWT_SECRET_KEY`; set it explicitly in production and keep it safe — changing it makes encrypted values unreadable. |
+| `APP_BASE_URL` | Public URL used in emails, portal links, calendar feeds and webhooks (Render sets it automatically). |
+| `SCHEDULER_ENABLED` | Background jobs for reminders, campaigns, journeys and mailbox sync (default on). |
+
 ### Manual setup (without Docker)
 
 ```bash
@@ -206,21 +263,20 @@ npx tsc --noEmit  # type check
 npm run build     # production build
 ```
 
-The integration suite signs up a brand-new workspace per run and exercises sign-in, MFA, lockout, invitations, permissions, tenant isolation, quotes, forecasting, cases and SLAs, workflows, reports and dashboards.
+The integration suite signs up a brand-new workspace per run and exercises sign-in, MFA, lockout, invitations, permissions, tenant isolation, quotes, forecasting, cases and SLAs, workflows, reports and dashboards — plus plans and trial expiry, custom modules and fields, campaigns, forms, imports, calls, API keys, HIPAA mode, AI agents and predictions, inventory and invoices, approvals, journeys, portals, custom buttons, record visibility, ABM, Google Ads and sandboxes.
 
 ## Security notes
 
-- Passwords are hashed with Argon2; refresh and reset tokens are stored only as SHA-256 hashes.
+- Passwords are hashed with Argon2; refresh, reset, API-key and portal tokens are stored only as SHA-256 hashes.
+- Mailbox passwords, webhook URLs and encrypted fields are encrypted at rest (Fernet).
 - Browser sessions use httpOnly, SameSite cookies; the frontend never sees tokens.
 - Every API route checks the caller's permissions, and every query is scoped to the caller's organization.
 - Production deployments still need: a real email provider for invitations and resets, HTTPS everywhere, secret management, and rate limiting at the edge.
 
 ## Roadmap
 
-- Email and calendar sync (Gmail, Microsoft 365) and meeting scheduling
-- Customer self-service portal for cases and knowledge
-- Marketing: campaigns, lists, forms
-- AI: lead and deal insights, case summaries, reply drafting, next-best-action
+- OAuth sign-in for Gmail and Microsoft 365 mailboxes and two-way calendar sync (today: app passwords and an iCal feed)
+- Native QuickBooks and Google Ads API connections (today: CSV export and lead-form webhook)
 - SSO (SAML/OIDC) and SCIM provisioning
 
 ## License

@@ -6,6 +6,7 @@ import {
   ArrowLeft,
   Check,
   Copy,
+  FileText,
   Pencil,
   Plus,
   Printer,
@@ -18,6 +19,7 @@ import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { useSession, useToast } from "@/components/providers";
 import { QuoteDetailsFields, detailsPayload, type QuoteDetails } from "@/components/quote-details-form";
+import { ApprovalModal, approvalFromError, type ApprovalNeeded } from "@/components/record-extras";
 import { Alert, Badge, Card, ConfirmDialog, LoadingRows, Modal, PageHeader, QUOTE_STATUS_TONE } from "@/components/ui";
 import { date, dateTime, moneyExact, titleCase } from "@/lib/format";
 import type { Product, Quote, QuoteLine, QuoteStatus } from "@/lib/platform-types";
@@ -54,8 +56,9 @@ function QuoteBuilder() {
   const { quoteId } = useParams<{ quoteId: string }>();
   const router = useRouter();
   const toast = useToast();
-  const { can } = useSession();
+  const { can, has } = useSession();
   const quote = useApi<Quote>(`/quotes/${quoteId}`);
+  const [approval, setApproval] = useState<ApprovalNeeded | null>(null);
   const products = useApi<Product[]>("/products?active=true");
   const [lines, setLines] = useState<QuoteLine[]>([]);
   const [dirty, setDirty] = useState(false);
@@ -146,8 +149,9 @@ function QuoteBuilder() {
     if (dirty) await saveLines();
     setBusy(true);
     try {
-      const result = await api.post<Quote>(`/quotes/${quoteId}/status`, { status, sync_opportunity_amount: true });
+      const result = await api.post<Quote & { stock_warnings?: string[] }>(`/quotes/${quoteId}/status`, { status, sync_opportunity_amount: true });
       quote.setData(result);
+      if (result.stock_warnings?.length) toast(`Stock is short: ${result.stock_warnings.join("; ")}.`, "danger");
       toast(
         status === "accepted"
           ? q?.opportunity_id
@@ -158,8 +162,22 @@ function QuoteBuilder() {
             : `Quote ${status}.`
       );
     } catch (caught) {
-      toast(errorMessage(caught), "danger");
+      const needed = approvalFromError(caught);
+      if (needed) setApproval(needed);
+      else toast(errorMessage(caught), "danger");
     } finally {
+      setBusy(false);
+    }
+  }
+
+  async function createInvoice() {
+    setBusy(true);
+    try {
+      const invoice = await api.post<{ id: string; display_number: string }>(`/invoices/from-quote/${quoteId}`, { due_in_days: 30 });
+      toast(`Created ${invoice.display_number} as a draft.`);
+      router.push(`/invoices/${invoice.id}`);
+    } catch (caught) {
+      toast(errorMessage(caught), "danger");
       setBusy(false);
     }
   }
@@ -240,6 +258,11 @@ function QuoteBuilder() {
             <button type="button" className="ui-btn" onClick={() => window.print()}>
               <Printer size={15} /> Print / PDF
             </button>
+            {q.status === "accepted" && has("cpq") && can("sales.invoices") ? (
+              <button type="button" className="ui-btn ui-btn-primary" onClick={() => void createInvoice()} disabled={busy}>
+                <FileText size={15} /> Create invoice
+              </button>
+            ) : null}
             {canEdit ? (
               <button type="button" className="ui-btn" onClick={() => void duplicate()} disabled={busy}>
                 <Copy size={15} /> Duplicate
@@ -492,6 +515,8 @@ function QuoteBuilder() {
         ) : null}
         {details ? <QuoteDetailsFields value={details} onChange={setDetails} /> : null}
       </Modal>
+
+      <ApprovalModal needed={approval} objectType="quote" recordId={quoteId} onClose={() => setApproval(null)} onSubmitted={() => void quote.reload()} />
 
       <ConfirmDialog
         open={deleting}

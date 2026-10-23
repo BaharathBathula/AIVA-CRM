@@ -29,6 +29,10 @@ async function loadOptions(ref: string): Promise<Option[]> {
       const rows = await api.get<{ id: string; name: string }[]>("/opportunities?limit=100");
       return rows.map((row) => ({ value: row.id, label: row.name }));
     }
+    case "lead": {
+      const rows = await api.get<{ id: string; first_name: string; last_name: string; company_name: string | null }[]>("/leads?limit=100");
+      return rows.map((row) => ({ value: row.id, label: `${row.first_name} ${row.last_name}`.trim() + (row.company_name ? ` (${row.company_name})` : "") }));
+    }
     case "team": {
       const rows = await api.get<{ id: string; name: string }[]>("/admin/teams");
       return rows.map((row) => ({ value: row.id, label: row.name }));
@@ -51,6 +55,10 @@ async function loadOptions(ref: string): Promise<Option[]> {
       return groups.flat();
     }
     default:
+      if (ref.startsWith("module:")) {
+        const result = await api.get<{ items: { id: string; name: string }[] }>(`/modules/${ref.slice(7)}/records?page_size=200`);
+        return result.items.map((row) => ({ value: row.id, label: row.name }));
+      }
       return [];
   }
 }

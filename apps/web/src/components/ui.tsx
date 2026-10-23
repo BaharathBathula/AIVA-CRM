@@ -166,6 +166,7 @@ export function Field({
   required,
   children,
   className,
+  htmlFor,
 }: {
   label: ReactNode;
   hint?: ReactNode;
@@ -173,6 +174,8 @@ export function Field({
   required?: boolean;
   children: ReactNode;
   className?: string;
+  /** Id of the control when it isn't a direct native input (e.g. a wrapped component). */
+  htmlFor?: string;
 }) {
   const autoId = useId();
   const noteId = `${autoId}-note`;
@@ -190,7 +193,7 @@ export function Field({
 
   return (
     <div className={`ui-field${className ? ` ${className}` : ""}`}>
-      <label htmlFor={id}>
+      <label htmlFor={id ?? htmlFor}>
         {label}
         {required ? <span className="ui-required"> *</span> : null}
       </label>

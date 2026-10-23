@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from sqlalchemy.dialects.postgresql import JSONB
+
 import uuid
 from datetime import datetime
 from decimal import Decimal
@@ -152,4 +154,12 @@ class Account(
 
     activities: Mapped[list["Activity"]] = relationship(
         back_populates="account",
+    )
+
+    # Values of custom fields defined in Settings → Fields & modules.
+    custom_fields: Mapped[dict] = mapped_column(
+        JSONB,
+        nullable=False,
+        default=dict,
+        server_default="{}",
     )
