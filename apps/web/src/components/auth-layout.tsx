@@ -9,13 +9,12 @@ import {
   Check,
   Eye,
   EyeOff,
+  Gauge,
+  Headset,
   KeyRound,
-  Mail,
-  Phone,
-  Route,
-  Sparkles,
+  ShieldCheck,
   SquareArrowOutUpRight,
-  UserRound,
+  Workflow,
 } from "lucide-react";
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 
@@ -24,101 +23,63 @@ import { discoverSso, fetchProviders, providerUrl, type ProviderAvailability } f
 
 export function AuthLayout({ children }: { children: ReactNode }) {
   return (
-    <div className="signin-shell">
-      <main className="signin-side">
-        <header>
-          <Link href="/login" className="auth-mark" aria-label="AIVA CRM">
-            <Image src="/aiva-mark.png" alt="" width={32} height={32} priority />
+    <div className="auth-shell">
+      <aside className="auth-brand">
+        <Link href="/login" className="auth-mark" aria-label="AIVA CRM">
+          <Image src="/aiva-mark.png" alt="" width={34} height={34} priority />
+          AIVA
+        </Link>
+        <div>
+          <h2>Sales, service and insight in one workspace.</h2>
+          <p>Work every lead and deal, resolve customer cases on time, and see exactly where the quarter will land.</p>
+        </div>
+        <ul className="auth-points">
+          <li>
+            <Gauge size={18} />
+            <span>
+              <strong>Pipeline to forecast</strong>
+              Lead scoring, quotes, quotas and a live commit number.
+            </span>
+          </li>
+          <li>
+            <Headset size={18} />
+            <span>
+              <strong>Service desk with SLAs</strong>
+              Cases, queues and a knowledge base your team writes.
+            </span>
+          </li>
+          <li>
+            <Workflow size={18} />
+            <span>
+              <strong>Reports and automation</strong>
+              Build reports, pin them to dashboards, automate the busywork.
+            </span>
+          </li>
+          <li>
+            <ShieldCheck size={18} />
+            <span>
+              <strong>Enterprise controls</strong>
+              Roles and permissions, two-step verification, full audit log.
+            </span>
+          </li>
+        </ul>
+        <div className="auth-foot">
+          © {new Date().getFullYear()} AIVA CRM · <Link href="/pricing">Plans and pricing</Link>
+        </div>
+      </aside>
+      <main className="auth-panel">
+        <div className="auth-card">
+          <Link href="/login" className="auth-mark auth-mobile-logo" aria-label="AIVA CRM">
+            <Image src="/aiva-mark.png" alt="" width={30} height={30} />
             AIVA
           </Link>
-        </header>
-        <div className="signin-center">
-          <div className="auth-card">{children}</div>
+          {children}
+          <p className="auth-mobile-legal">
+            © {new Date().getFullYear()} AIVA CRM · <Link href="/pricing">Plans and pricing</Link>
+          </p>
         </div>
-        <footer className="signin-legal">
-          © {new Date().getFullYear()} AIVA CRM. All rights reserved. ·{" "}
-          <Link href="/pricing">Plans and pricing</Link>
-        </footer>
       </main>
-      <Showcase />
     </div>
-  );
-}
-
-/** The product preview beside the sign-in form (hidden on phones). */
-function Showcase() {
-  return (
-    <aside className="signin-showcase" aria-label="About AIVA">
-      <div className="signin-stage">
-        <div className="signin-window" aria-hidden>
-          <span />
-          <span />
-          <span />
-        </div>
-        <div className="signin-preview">
-          <div className="signin-preview-head">
-            <span className="auth-mark">
-              <Image src="/aiva-mark.png" alt="" width={20} height={20} />
-              AIVA
-            </span>
-            <span className="signin-tabs" aria-hidden>
-              <b>
-                <UserRound size={12} /> Person
-              </b>
-              <i>
-                <Building2 size={12} /> Account
-              </i>
-            </span>
-          </div>
-          <div className="signin-person">
-            <strong>Olivia Johnson</strong>
-            <span>Operations Director at Northwind Logistics</span>
-            <em>
-              <b>A</b> Lead score 92 · Hot
-            </em>
-          </div>
-          <div className="signin-actions" aria-hidden>
-            <span>
-              <Phone size={15} />
-              Call
-            </span>
-            <span>
-              <Route size={15} />
-              Add to journey
-            </span>
-            <span>
-              <Mail size={15} />
-              Compose email
-            </span>
-          </div>
-          <dl className="signin-contact">
-            <div>
-              <Mail size={15} />
-              <dt>olivia.johnson@northwind.example</dt>
-              <dd>Work</dd>
-            </div>
-            <div>
-              <Phone size={15} />
-              <dt>+1 (214) 555-0147</dt>
-              <dd>Mobile</dd>
-            </div>
-          </dl>
-          <div className="signin-ai">
-            <Sparkles size={14} />
-            <span>
-              <strong>Deal coach</strong> No reply in 6 days. A follow-up email is drafted.
-            </span>
-          </div>
-        </div>
-      </div>
-      <div className="signin-pitch">
-        <strong>Every Enterprise feature, free for 7 days</strong>
-        <p>Sales, service, marketing and AI agents in one workspace. No card needed to start.</p>
-        <Link href="/pricing" className="signin-cta">
-          See plans and pricing
-        </Link>
-      </div>
-    </aside>
   );
 }
 
