@@ -45,6 +45,7 @@ export default function RootLayout({
       </head>
       <body>
         <Providers>{children}</Providers>
+        <div className="app-watermark" aria-hidden="true" />
       </body>
     </html>
   );

@@ -992,3 +992,22 @@
 .method-list li { display: flex; align-items: center; gap: 12px; padding: 10px 4px; border-top: 1px solid var(--border); }
 .method-list li:first-child { border-top: 0; }
 .method-body { display: grid; flex: 1; min-width: 0; gap: 1px; }
+
+/* ---------- AIVA watermark: bottom-right corner of every page ---------- */
+.app-watermark {
+  position: fixed;
+  right: 28px;
+  bottom: 24px;
+  z-index: 50; /* above page content, below the rail, top bar, drawers, dialogs and toasts */
+  width: 150px;
+  aspect-ratio: 320 / 306;
+  background: url("/aiva-watermark.png") no-repeat center / contain;
+  opacity: 0.1;
+  pointer-events: none;
+  user-select: none;
+}
+:root[data-theme="dark"] .app-watermark { opacity: 0.12; }
+@media (max-width: 900px) {
+  .app-watermark { right: 16px; bottom: calc(max(14px, env(safe-area-inset-bottom, 0px)) + 72px); width: 84px; }
+}
+@media print { .app-watermark { display: none; } }
