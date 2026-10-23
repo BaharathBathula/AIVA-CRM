@@ -46,6 +46,7 @@ from app.models.user import User
 from app.services.automation import score_lead
 from app.models.editions import Subscription
 from app.scripts.seed_editions import seed_editions
+from app.scripts.seed_workspace import seed_workspace
 from app.services.workspace import provision_workspace
 
 DEV_ORGANIZATION_ID = uuid.UUID("10000000-0000-0000-0000-000000000001")
@@ -540,6 +541,11 @@ async def add_edition_demo(db) -> None:
     if await seed_editions(db, users, DEV_ORGANIZATION_ID):
         await db.commit()
         print("Demo content for Starter, Pro and Enterprise features created.")
+    try:
+        if await seed_workspace(users, DEV_ORGANIZATION_ID):
+            print("Demo content for orders, purchasing, meetings, documents, services, projects, visits, email and chat created.")
+    except Exception as exc:  # noqa: BLE001 - demo extras must never stop startup
+        print(f"Demo content for the workspace modules skipped: {exc}")
 
 
 async def bootstrap(if_new: bool = False) -> None:

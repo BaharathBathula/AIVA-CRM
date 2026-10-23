@@ -216,7 +216,7 @@ a.mini-title:hover { text-decoration: underline; }
 .inbox-card:hover { background: var(--surface-muted); }
 .inbox-card .subject { overflow: hidden; font-size: 13.5px; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
 .inbox-card.unread .subject { font-weight: 800; }
-.inbox-card .snippet { overflow: hidden; color: var(--muted); font-size: 12.5px; line-height: 1.45; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.inbox-card .inbox-snippet { overflow: hidden; white-space: normal; overflow-wrap: anywhere; color: var(--muted); font-size: 12.5px; line-height: 1.45; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 .inbox-card .foot { display: flex; gap: 8px; align-items: center; color: var(--muted); font-size: 11.5px; }
 
 @media (max-width: 1200px) {

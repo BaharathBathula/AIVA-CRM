@@ -96,7 +96,7 @@ function SalesInbox() {
                     items.map((item) => (
                       <button key={item.id} type="button" className={`inbox-card${item.unread ? " unread" : ""}`} onClick={() => setOpen(item)}>
                         <span className="subject">{item.subject}</span>
-                        {item.snippet ? <span className="snippet">{item.snippet}</span> : null}
+                        {item.snippet ? <span className="inbox-snippet">{item.snippet}</span> : null}
                         <span className="foot">
                           {item.record?.label ? <span className="ui-truncate">{item.record.label}</span> : <span className="ui-truncate">{item.participants[0] ?? ""}</span>}
                           <span className="ui-spacer" />

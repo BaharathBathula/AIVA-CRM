@@ -216,7 +216,7 @@ All demo users share the password `AivaDemo#2026` (override with `AIVA_DEV_PASSW
 
 In development, invitation and password-reset links are shown on screen because no email service is configured.
 
-The demo workspace is on the Enterprise plan with sample data for every feature: a custom module, campaigns, a web form, a journey, target accounts, invoices, tracked inventory, approval rules and a customer portal (Olivia Johnson at Northwind Logistics has access). New sign-ups start a 7-day trial.
+The demo workspace is on the Enterprise plan with sample data for every feature: a custom module, campaigns, a web form, a journey, target accounts, invoices, tracked inventory, approval rules, a customer portal (Olivia Johnson at Northwind Logistics has access), vendors and purchase orders, price books, sales orders, meetings, documents, services and bookings, delivery projects, website visits, SalesInbox email and team chat. Existing demo workspaces pick up content for newly added features on their next start, once. New sign-ups start a 7-day trial.
 
 ### Optional configuration
 

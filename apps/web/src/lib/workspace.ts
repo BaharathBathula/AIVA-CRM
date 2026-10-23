@@ -327,6 +327,8 @@ export function fileKind(contentType: string, name: string) {
 
 /** Three or four letters for a file icon. */
 export function fileBadge(contentType: string, name: string) {
+  const ext = name.includes(".") ? name.split(".").pop()!.toUpperCase() : "";
+  if (["CSV", "TXT", "MD", "JSON", "XML"].includes(ext)) return ext;
   const kind = fileKind(contentType, name);
   const map: Record<string, string> = { Image: "IMG", PDF: "PDF", Spreadsheet: "XLS", Document: "DOC", Slides: "PPT", Archive: "ZIP", File: "FILE" };
   return map[kind] ?? kind.slice(0, 4).toUpperCase();
