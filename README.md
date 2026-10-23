@@ -17,7 +17,7 @@ Prices are per user per month. Every new workspace starts a **7-day free trial w
 | Marketing | Mass email, email templates, web forms, calendar sync | Customer journeys, Google Ads integration | Account-based marketing (ABM) |
 | Service | Service desk, mailbox sync (Gmail, Outlook, SMTP/IMAP) | Customer portal, web-to-case, custom (partner) portals | — |
 | Automation and AI | Workflow automation | AI agents, process management (stage playbooks) | Extended AI (summaries, reply drafts, Ask AIVA) |
-| Customization | Custom modules, Slack/Teams/Zoom, HIPAA mode | — | Extended field types, sequential (multi-step) forms, custom buttons and functions, field-level encryption, sandbox, multiple teams, reporting hierarchy |
+| Customization | Custom modules, Slack/Teams/Zoom, HIPAA mode | — | Extended field types, sequential (multi-step) forms, custom buttons and functions, field-level encryption, sandbox, multiple teams, reporting hierarchy, single sign-on |
 | Limits | 5 pipelines, 3 custom modules, 25 saved reports, 5 dashboards, 5 web forms | 20 custom modules; everything else unlimited | Unlimited |
 
 Plan changes are made in **Settings → Billing and plan** (owners and admins). Without Stripe keys the server runs *demo billing*: switching plans applies instantly and records an invoice with no charge. With `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` set, upgrades go through Stripe Checkout and the Stripe customer portal. The public price list is at `/pricing`.
@@ -31,6 +31,8 @@ Features outside a workspace's plan show a lock in the navigation and an upgrade
 | Feature | What it does |
 |---|---|
 | Sign in / sign up | Email + password sign-in, "keep me signed in", self-serve workspace creation |
+| Google, Microsoft and Apple | "Log In with Google / Microsoft / Apple" and "Sign up with …": OpenID Connect with PKCE, verified emails only, linked to the existing account when the email matches, pending invitations accepted automatically |
+| Log In with your Organization | Workspace single sign-on (Enterprise) with Okta, Microsoft Entra ID, Google Workspace or any OpenID Connect provider: people enter their work email and are sent to their company's sign-in; optional automatic accounts with a default role; those sessions only open that workspace |
 | Two-step verification (MFA) | TOTP authenticator apps (Google/Microsoft Authenticator, 1Password) with QR setup |
 | Password policy | 10+ characters, 3 of 4 character types, can't contain the email name |
 | Account lockout | 5 failed attempts lock the account for 15 minutes; admins can unlock |
@@ -214,6 +216,25 @@ The demo workspace is on the Enterprise plan with sample data for every feature:
 | `FIELD_ENCRYPTION_KEY` | Key for encrypted fields and stored secrets. Defaults to one derived from `JWT_SECRET_KEY`; set it explicitly in production and keep it safe — changing it makes encrypted values unreadable. |
 | `APP_BASE_URL` | Public URL used in emails, portal links, calendar feeds and webhooks (Render sets it automatically). |
 | `SCHEDULER_ENABLED` | Background jobs for reminders, campaigns, journeys and mailbox sync (default on). |
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | Turns on "Log In with Google". |
+| `MICROSOFT_CLIENT_ID`, `MICROSOFT_CLIENT_SECRET`, `MICROSOFT_TENANT_ID` | Turns on "Log In with Microsoft" (tenant `common` allows work and personal accounts). |
+| `APPLE_CLIENT_ID`, `APPLE_TEAM_ID`, `APPLE_KEY_ID`, `APPLE_PRIVATE_KEY` | Turns on "Sign in with Apple" (Services ID, team ID, key ID and the `.p8` key contents). |
+
+### Turning on Google, Microsoft and Apple sign-in
+
+Each button shows on the sign-in page and explains itself until its credentials are set. Register this redirect URI with each provider, using your site's address:
+
+```text
+https://<your-site>/api/session/oauth/google/callback
+https://<your-site>/api/session/oauth/microsoft/callback
+https://<your-site>/api/session/oauth/apple/callback
+```
+
+- **Google:** Google Cloud Console → APIs & Services → Credentials → Create OAuth client ID (Web application). Add the redirect URI, then set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`.
+- **Microsoft:** Microsoft Entra admin center → App registrations → New registration. Supported accounts: "Any organizational directory and personal Microsoft accounts"; platform Web with the redirect URI. Create a client secret under Certificates & secrets, then set `MICROSOFT_CLIENT_ID` (Application ID) and `MICROSOFT_CLIENT_SECRET`.
+- **Apple:** Apple Developer → Identifiers → Services ID with Sign in with Apple, your domain and the redirect URI; Keys → a key with Sign in with Apple. Set `APPLE_CLIENT_ID` (the Services ID), `APPLE_TEAM_ID`, `APPLE_KEY_ID` and `APPLE_PRIVATE_KEY` (the `.p8` contents; `\n` for line breaks is fine). Apple requires https.
+
+Workspace single sign-on needs no server settings: an owner or admin fills in **Settings → Single sign-on** (issuer URL, client ID and secret, email domains). The redirect URI to register with the identity provider is shown on that page (`https://<your-site>/api/session/oauth/sso/callback`).
 
 ### Manual setup (without Docker)
 
@@ -275,9 +296,10 @@ The integration suite signs up a brand-new workspace per run and exercises sign-
 
 ## Roadmap
 
-- OAuth sign-in for Gmail and Microsoft 365 mailboxes and two-way calendar sync (today: app passwords and an iCal feed)
+- OAuth mailbox connection for Gmail and Microsoft 365 and two-way calendar sync (today: app passwords and an iCal feed)
+- Domain verification (DNS) for single sign-on domains and an option to require single sign-on
 - Native QuickBooks and Google Ads API connections (today: CSV export and lead-form webhook)
-- SSO (SAML/OIDC) and SCIM provisioning
+- SAML single sign-on and SCIM provisioning (OpenID Connect single sign-on is available)
 
 ## License
 

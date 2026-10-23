@@ -13,7 +13,7 @@ from app.core.config import get_settings
 from app.core.permissions import SYSTEM_ROLES
 from app.core.security import (
     AuthenticationError,
-    decode_mfa_challenge_token,
+    decode_mfa_challenge,
     hash_password,
     password_policy_error,
     verify_password,
@@ -195,7 +195,7 @@ async def login(payload: LoginRequest, request: Request, db: AsyncSession = Depe
 async def verify_mfa(payload: MfaVerifyRequest, request: Request, db: AsyncSession = Depends(get_db)):
     settings = get_settings()
     try:
-        user_id = decode_mfa_challenge_token(payload.mfa_token, settings.jwt_secret_key)
+        user_id, bound_organization = decode_mfa_challenge(payload.mfa_token, settings.jwt_secret_key)
     except AuthenticationError as exc:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, str(exc)) from exc
 
@@ -211,11 +211,16 @@ async def verify_mfa(payload: MfaVerifyRequest, request: Request, db: AsyncSessi
         await db.commit()
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "That code didn't work. Enter the current 6-digit code.")
 
-    organization_id = await _choose_organization(db, user, payload.organization_id)
+    organization_id = await _choose_organization(db, user, bound_organization or payload.organization_id)
     session = await issue_session(
-        db, user, organization_id, ip=client_ip(request), user_agent=request.headers.get("user-agent")
+        db,
+        user,
+        organization_id,
+        ip=client_ip(request),
+        user_agent=request.headers.get("user-agent"),
+        bound=bound_organization is not None,
     )
-    audit_auth_event(db, organization_id, user, "login", request, {"method": "password+mfa"})
+    audit_auth_event(db, organization_id, user, "login", request, {"method": "sso+mfa" if bound_organization else "password+mfa"})
     await db.commit()
     return session
 
@@ -431,6 +436,7 @@ async def me(principal: Principal = Depends(get_current_principal), db: AsyncSes
             "phone": user.phone,
             "timezone": user.timezone,
             "mfa_enabled": user.mfa_enabled,
+            "has_password": bool(user.password_hash),
             "last_login_at": user.last_login_at,
         },
         "organization": {

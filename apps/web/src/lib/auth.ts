@@ -23,6 +23,8 @@ export interface SessionUser {
   phone?: string | null;
   timezone?: string | null;
   mfa_enabled?: boolean;
+  /** False for people who only sign in with Google, Microsoft, Apple or single sign-on. */
+  has_password?: boolean;
   last_login_at?: string | null;
 }
 
@@ -88,6 +90,37 @@ export function login(email: string, password: string, remember: boolean) {
 
 export function verifyMfa(mfaToken: string, code: string, remember: boolean) {
   return sessionRequest<LoginResult>("mfa", { mfa_token: mfaToken, code, remember });
+}
+
+export type SignInProvider = "google" | "microsoft" | "apple" | "sso";
+
+export interface ProviderAvailability {
+  google: boolean;
+  microsoft: boolean;
+  apple: boolean;
+  sso: boolean;
+}
+
+/** Which sign-in buttons work on this server. */
+export function fetchProviders() {
+  return sessionRequest<ProviderAvailability>("providers");
+}
+
+/** The message from a failed Google / Microsoft / Apple / SSO sign-in, once. */
+export async function fetchAuthError() {
+  return (await sessionRequest<{ message: string | null }>("auth-error")).message;
+}
+
+/** Finds the workspace whose single sign-on covers this email. */
+export function discoverSso(email: string) {
+  return sessionRequest<{ organization_name: string; provider_host: string }>("sso-discover", { email: email.trim().toLowerCase() });
+}
+
+/** Full-page navigation into the provider's sign-in. */
+export function providerUrl(provider: SignInProvider, intent: "login" | "signup" | "link", next = "/", email?: string) {
+  const params = new URLSearchParams({ intent, next });
+  if (email) params.set("email", email.trim().toLowerCase());
+  return `/api/session/oauth/${provider}/start?${params.toString()}`;
 }
 
 export function signup(payload: { full_name: string; email: string; password: string; company_name: string }) {

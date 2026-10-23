@@ -47,7 +47,10 @@ def create_access_token(
     user_id: uuid.UUID,
     secret_key: str,
     expires_minutes: int = 30,
+    organization_id: uuid.UUID | None = None,
 ) -> str:
+    """Access token for a user. ``organization_id`` limits it to one workspace
+    (sessions started through a workspace's single sign-on)."""
     if not secret_key or len(secret_key) < 32:
         raise ValueError(
             "JWT secret must contain at least 32 characters."
@@ -69,6 +72,8 @@ def create_access_token(
         ),
         "type": "access",
     }
+    if organization_id is not None:
+        payload["org"] = str(organization_id)
 
     return jwt.encode(
         payload,
@@ -81,6 +86,22 @@ def decode_access_token(
     token: str,
     secret_key: str,
 ) -> uuid.UUID:
+    return decode_access_claims(token, secret_key)[0]
+
+
+def access_token_organization(token: str, secret_key: str) -> uuid.UUID | None:
+    """The workspace a token is limited to, if any (None for unreadable tokens)."""
+    try:
+        return decode_access_claims(token, secret_key)[1]
+    except AuthenticationError:
+        return None
+
+
+def decode_access_claims(
+    token: str,
+    secret_key: str,
+) -> tuple[uuid.UUID, uuid.UUID | None]:
+    """The user id and, for workspace-bound sessions, the only workspace allowed."""
     if not secret_key or len(secret_key) < 32:
         raise AuthenticationError(
             "Authentication configuration is invalid."
@@ -107,7 +128,8 @@ def decode_access_token(
                 "Invalid token type."
             )
 
-        return uuid.UUID(payload["sub"])
+        bound = payload.get("org")
+        return uuid.UUID(payload["sub"]), uuid.UUID(bound) if bound else None
 
     except (
         InvalidTokenError,
@@ -140,6 +162,7 @@ def create_mfa_challenge_token(
     user_id: uuid.UUID,
     secret_key: str,
     expires_minutes: int = 5,
+    organization_id: uuid.UUID | None = None,
 ) -> str:
     if not secret_key or len(secret_key) < 32:
         raise ValueError("JWT secret must contain at least 32 characters.")
@@ -152,10 +175,17 @@ def create_mfa_challenge_token(
         "exp": now + timedelta(minutes=expires_minutes),
         "type": "mfa",
     }
+    if organization_id is not None:
+        payload["org"] = str(organization_id)
     return jwt.encode(payload, secret_key, algorithm=JWT_ALGORITHM)
 
 
 def decode_mfa_challenge_token(token: str, secret_key: str) -> uuid.UUID:
+    return decode_mfa_challenge(token, secret_key)[0]
+
+
+def decode_mfa_challenge(token: str, secret_key: str) -> tuple[uuid.UUID, uuid.UUID | None]:
+    """The user id and, after a single sign-on step, the workspace it's limited to."""
     try:
         payload = jwt.decode(
             token,
@@ -165,7 +195,8 @@ def decode_mfa_challenge_token(token: str, secret_key: str) -> uuid.UUID:
         )
         if payload.get("type") != "mfa":
             raise AuthenticationError("Invalid token type.")
-        return uuid.UUID(payload["sub"])
+        bound = payload.get("org")
+        return uuid.UUID(payload["sub"]), uuid.UUID(bound) if bound else None
     except (InvalidTokenError, ValueError, TypeError, KeyError) as exc:
         raise AuthenticationError("The sign-in challenge expired. Sign in again.") from exc
 

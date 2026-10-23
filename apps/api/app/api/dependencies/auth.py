@@ -24,7 +24,7 @@ from app.core.context import bind_session_context
 from app.core.crypto import sha256
 from app.core.permissions import SYSTEM_ROLES
 from app.core.plans import ALL_FEATURES, FEATURE_BY_KEY, PLANS
-from app.core.security import AuthenticationError, decode_access_token
+from app.core.security import AuthenticationError, decode_access_claims
 from app.db.session import get_db
 from app.models.editions import ApiKey, Subscription
 from app.models.membership import OrganizationMembership
@@ -143,9 +143,14 @@ async def get_current_principal(
         user_id, api_key = await _api_key_user(db, token, organization_id)
     else:
         try:
-            user_id = decode_access_token(token, settings.jwt_secret_key)
+            user_id, bound_organization = decode_access_claims(token, settings.jwt_secret_key)
         except AuthenticationError as exc:
             raise _unauthorized("Your session expired. Sign in again.") from exc
+        if bound_organization is not None and bound_organization != organization_id:
+            raise HTTPException(
+                status.HTTP_403_FORBIDDEN,
+                "You signed in with your organization's single sign-on, so this session only opens that workspace.",
+            )
 
     result = await db.execute(
         select(User, OrganizationMembership, Organization, Subscription)

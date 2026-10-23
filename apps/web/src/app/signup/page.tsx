@@ -1,16 +1,27 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowRight } from "lucide-react";
-import { useState, type FormEvent } from "react";
+import { Suspense, useEffect, useState, type FormEvent } from "react";
 
-import { AuthLayout, PasswordInput, PasswordStrength, passwordChecks } from "@/components/auth-layout";
+import { AuthLayout, AuthTabs, OrDivider, PasswordInput, PasswordStrength, ProviderButtons, passwordChecks } from "@/components/auth-layout";
 import { Alert, Field } from "@/components/ui";
-import { signup } from "@/lib/auth";
+import { fetchAuthError, signup } from "@/lib/auth";
 
 export default function SignupPage() {
+  return (
+    <AuthLayout>
+      <Suspense fallback={null}>
+        <SignupForm />
+      </Suspense>
+    </AuthLayout>
+  );
+}
+
+function SignupForm() {
   const router = useRouter();
+  const params = useSearchParams();
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [company, setCompany] = useState("");
@@ -20,6 +31,17 @@ export default function SignupPage() {
   const [error, setError] = useState<string | null>(null);
 
   const policyOk = passwordChecks(password, email).every((check) => check.ok);
+
+  useEffect(() => {
+    if (params.get("error") !== "signin") return;
+    let active = true;
+    fetchAuthError()
+      .then((message) => active && setError(message ?? "Sign-up didn't finish. Try again."))
+      .catch(() => undefined);
+    return () => {
+      active = false;
+    };
+  }, [params]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -40,18 +62,21 @@ export default function SignupPage() {
   }
 
   return (
-    <AuthLayout>
+    <>
+      <AuthTabs active="signup" />
       <h1>Start your free trial</h1>
       <p>
-        Seven days with every Enterprise feature, no credit card needed. You&apos;ll own the workspace and can invite your team next.{" "}
+        Seven days with every Enterprise feature, no credit card needed.{" "}
         <Link href="/pricing" className="auth-link">
           See plans and pricing
         </Link>
       </p>
+      {error ? <Alert>{error}</Alert> : null}
+      <ProviderButtons intent="signup" onOrganization={() => router.push("/login")} />
+      <OrDivider />
       <form className="auth-form" onSubmit={handleSubmit}>
-        {error ? <Alert>{error}</Alert> : null}
         <Field label="Full name">
-          <input className="ui-input" value={fullName} onChange={(e) => setFullName(e.target.value)} autoComplete="name" required autoFocus />
+          <input className="ui-input" value={fullName} onChange={(e) => setFullName(e.target.value)} autoComplete="name" required />
         </Field>
         <Field label="Work email">
           <input
@@ -78,14 +103,11 @@ export default function SignupPage() {
           <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} required />
           <span>I agree to the terms of service and acknowledge the privacy policy.</span>
         </label>
-        <button className="ui-btn ui-btn-primary" type="submit" disabled={loading || !agreed}>
+        <button className="ui-btn ui-btn-primary signin-submit" type="submit" disabled={loading || !agreed}>
           {loading ? <span className="ui-spinner" /> : null}
           Create workspace <ArrowRight size={16} />
         </button>
       </form>
-      <div className="auth-alt">
-        Already have an account? <Link href="/login">Sign in</Link>
-      </div>
-    </AuthLayout>
+    </>
   );
 }

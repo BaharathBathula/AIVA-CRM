@@ -2,11 +2,12 @@
 
 import QRCode from "qrcode";
 import { Laptop, ShieldCheck, ShieldOff, Smartphone } from "lucide-react";
-import { useState, type FormEvent } from "react";
+import { Suspense, useState, type FormEvent } from "react";
 
 import { PasswordInput, PasswordStrength, passwordChecks } from "@/components/auth-layout";
 import { useSession, useToast } from "@/components/providers";
 import { SettingsShell } from "@/components/settings-shell";
+import { SignInMethods } from "@/components/sign-in-methods";
 import { Alert, Badge, Card, ConfirmDialog, Field, LoadingRows, Modal, PageHeader } from "@/components/ui";
 import { relativeTime } from "@/lib/format";
 import type { SessionRow } from "@/lib/platform-types";
@@ -21,6 +22,9 @@ export default function SecurityPage() {
       />
       <div className="ui-stack">
         <ChangePassword />
+        <Suspense fallback={null}>
+          <SignInMethods />
+        </Suspense>
         <TwoStep />
         <Sessions />
       </div>
@@ -54,6 +58,17 @@ function ChangePassword() {
     } finally {
       setSaving(false);
     }
+  }
+
+  if (session?.user.has_password === false) {
+    return (
+      <Card title="Password">
+        <p className="ui-muted" style={{ margin: 0 }}>
+          You sign in with Google, Microsoft, Apple or your organization, so there&apos;s no password on this account. To add one, sign out and
+          choose <strong>Forgot password?</strong> on the sign-in page.
+        </p>
+      </Card>
+    );
   }
 
   return (

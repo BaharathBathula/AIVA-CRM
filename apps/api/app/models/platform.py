@@ -102,6 +102,10 @@ class UserSession(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Sessions started through a workspace's single sign-on stay in that workspace.
+    bound_organization_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("organizations.id", ondelete="CASCADE"), nullable=True
+    )
 
 
 class AuditLog(UUIDPrimaryKeyMixin, OrganizationOwnedMixin, TimestampMixin, Base):

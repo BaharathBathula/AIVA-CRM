@@ -74,6 +74,7 @@ FEATURES: tuple[Feature, ...] = (
     Feature("field_encryption", "Field-level encryption", "enterprise", "Encrypt sensitive custom fields at rest and mask them by role."),
     Feature("extended_ai", "Extended AI capabilities", "enterprise", "Ask AIVA questions in plain English, AI summaries and reply drafts."),
     Feature("quickbooks", "QuickBooks integration", "enterprise", "Invoices from quotes, exported in QuickBooks Online format."),
+    Feature("sso", "Single sign-on", "enterprise", "Sign in through your own identity provider (Okta, Microsoft Entra ID, Google Workspace and other OpenID Connect providers)."),
 )
 
 FEATURE_BY_KEY: dict[str, Feature] = {feature.key: feature for feature in FEATURES}

@@ -6,6 +6,7 @@ from app.api.routes.activities import router as activities_router
 from app.api.routes.admin import router as admin_router
 from app.api.routes.analytics import router as analytics_router
 from app.api.routes.auth import router as auth_router
+from app.api.routes.oauth import router as oauth_router
 from app.api.routes.billing import router as billing_router
 from app.api.routes.customization import router as customization_router
 from app.api.routes.data import router as data_router
@@ -34,6 +35,7 @@ api_router = APIRouter()
 # Public: health checks and the sign-in / sign-up flows.
 api_router.include_router(health_router)
 api_router.include_router(auth_router)
+api_router.include_router(oauth_router)
 api_router.include_router(public_router)
 
 # Core CRM records: every request needs a signed-in member whose role

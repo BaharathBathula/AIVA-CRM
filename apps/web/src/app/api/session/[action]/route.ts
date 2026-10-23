@@ -11,6 +11,7 @@ import {
   setSessionCookies,
   type BackendSession,
 } from "@/lib/session-server";
+import { OAUTH_COOKIE, authCookie } from "@/lib/oauth-server";
 
 type Params = { params: Promise<{ action: string }> };
 
@@ -57,8 +58,18 @@ export async function POST(request: NextRequest, { params }: Params) {
         { email: body.email, password: body.password, organization_id: body.organization_id ?? null },
         remember
       );
-    case "mfa":
-      return startSession(request, "/auth/mfa/verify", { mfa_token: body.mfa_token, code: body.code }, remember);
+    case "mfa": {
+      // After Google / Microsoft / Apple / SSO, the challenge waits in an httpOnly cookie.
+      const fromCookie = request.cookies.get(OAUTH_COOKIE.mfa)?.value;
+      const response = await startSession(
+        request,
+        "/auth/mfa/verify",
+        { mfa_token: body.mfa_token === "cookie" ? fromCookie : body.mfa_token, code: body.code },
+        remember
+      );
+      if (response.ok && body.mfa_token === "cookie") response.cookies.set(OAUTH_COOKIE.mfa, "", { ...authCookie(), maxAge: 0 });
+      return response;
+    }
     case "signup":
       return startSession(
         request,
@@ -85,6 +96,12 @@ export async function POST(request: NextRequest, { params }: Params) {
       setSessionCookies(response, refreshed, rememberChoice(request));
       return response;
     }
+    case "sso-discover": {
+      const result = await relay(
+        await backendFetch("/auth/sso/discover", { method: "POST", body: JSON.stringify({ email: body.email }), ...clientContext(request) })
+      );
+      return result.ok ? NextResponse.json(result.body) : error(result.status, result.body);
+    }
     case "logout": {
       const refreshToken = request.cookies.get(COOKIE.refresh)?.value;
       if (refreshToken) {
@@ -105,6 +122,18 @@ export async function POST(request: NextRequest, { params }: Params) {
 
 export async function GET(request: NextRequest, { params }: Params) {
   const { action } = await params;
+  if (action === "providers") {
+    const response = await backendFetch("/auth/providers").catch(() => null);
+    const data = response?.ok ? await response.json() : { google: false, microsoft: false, apple: false, sso: true };
+    return NextResponse.json(data);
+  }
+  if (action === "auth-error") {
+    // The message from a failed provider sign-in, shown once.
+    const message = request.cookies.get(OAUTH_COOKIE.error)?.value ?? null;
+    const response = NextResponse.json({ message });
+    response.cookies.set(OAUTH_COOKIE.error, "", { ...authCookie(), maxAge: 0 });
+    return response;
+  }
   if (action !== "me") return error(404, { detail: "Unknown session action." });
 
   const organizationId = request.cookies.get(COOKIE.organization)?.value;

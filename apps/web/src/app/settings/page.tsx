@@ -75,6 +75,7 @@ const GROUPS: { title: string; tiles: Tile[] }[] = [
       { href: "/settings/data", label: "Import and export", description: "Bring in CSV files and download any list.", icon: Database, feature: "data_import_export" },
       { href: "/settings/api-keys", label: "API keys", description: "Connect other systems to the AIVA API.", icon: KeyRound, feature: "api_access" },
       { href: "/settings/compliance", label: "HIPAA compliance", description: "Enforced two-step sign-in, short sessions, view auditing.", icon: ShieldPlus, feature: "hipaa", permission: "admin.settings" },
+      { href: "/settings/sso", label: "Single sign-on", description: "Okta, Entra ID or Google Workspace sign-in for your team.", icon: KeyRound, permission: "admin.settings", feature: "sso" },
       { href: "/settings/sandbox", label: "Developer sandbox", description: "Test changes in a copy of your setup, then deploy.", icon: FlaskConical, feature: "sandbox", permission: "admin.settings" },
       { href: "/portals", label: "Portals", description: "Customer help center and partner portal.", icon: Target, feature: "customer_portal" },
       { href: "/pipeline", label: "Pipelines", description: "Pipelines and their stages.", icon: GitBranch },

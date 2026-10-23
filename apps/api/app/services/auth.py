@@ -71,8 +71,13 @@ async def issue_session(
     *,
     ip: str | None,
     user_agent: str | None,
+    bound: bool = False,
 ) -> dict:
-    """Create a refresh session and return tokens plus workspace context."""
+    """Create a refresh session and return tokens plus workspace context.
+
+    ``bound`` limits the session to ``organization_id`` (single sign-on):
+    it can't switch to the person's other workspaces.
+    """
 
     settings = get_settings()
     refresh_token = generate_opaque_token()
@@ -80,6 +85,7 @@ async def issue_session(
         id=uuid.uuid4(),
         user_id=user.id,
         organization_id=organization_id,
+        bound_organization_id=organization_id if bound else None,
         refresh_token_hash=hash_token(refresh_token),
         user_agent=(user_agent or "")[:300] or None,
         ip_address=ip,
@@ -93,6 +99,8 @@ async def issue_session(
     user.locked_until = None
 
     memberships = await active_memberships(db, user.id)
+    if bound:
+        memberships = [(m, org) for m, org in memberships if org.id == organization_id]
     role = next((m.role for m, org in memberships if org.id == organization_id), "member")
     minutes = access_minutes(
         next((org for _, org in memberships if org.id == organization_id), None), settings.jwt_access_token_expire_minutes
@@ -103,6 +111,7 @@ async def issue_session(
             user_id=user.id,
             secret_key=settings.jwt_secret_key,
             expires_minutes=minutes,
+            organization_id=organization_id if bound else None,
         ),
         "token_type": "bearer",
         "expires_in": minutes * 60,
@@ -117,11 +126,11 @@ async def issue_session(
     }
 
 
-def mfa_challenge(user: User) -> dict:
+def mfa_challenge(user: User, bound_organization_id: uuid.UUID | None = None) -> dict:
     settings = get_settings()
     return {
         "mfa_required": True,
-        "mfa_token": create_mfa_challenge_token(user.id, settings.jwt_secret_key),
+        "mfa_token": create_mfa_challenge_token(user.id, settings.jwt_secret_key, organization_id=bound_organization_id),
         "user": {"id": str(user.id), "email": user.email, "full_name": user.full_name},
     }
 
@@ -141,6 +150,9 @@ async def rotate_refresh_session(db: AsyncSession, refresh_token: str, organizat
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Your session ended. Sign in again.")
 
     memberships = await active_memberships(db, user.id)
+    if session.bound_organization_id is not None:
+        # A single sign-on session stays in its workspace.
+        memberships = [(m, org) for m, org in memberships if org.id == session.bound_organization_id]
     allowed = {org.id for _, org in memberships}
     target = organization_id or session.organization_id
     if target not in allowed:
@@ -160,6 +172,7 @@ async def rotate_refresh_session(db: AsyncSession, refresh_token: str, organizat
             user_id=user.id,
             secret_key=settings.jwt_secret_key,
             expires_minutes=minutes,
+            organization_id=session.bound_organization_id,
         ),
         "token_type": "bearer",
         "expires_in": minutes * 60,

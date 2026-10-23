@@ -50,6 +50,7 @@ export const SETTINGS_PAGES = [
   "/settings/api-keys",
   "/settings/data",
   "/settings/compliance",
+  "/settings/sso",
   "/settings/sandbox",
   "/settings/mobile",
 ];

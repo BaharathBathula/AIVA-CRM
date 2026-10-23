@@ -62,6 +62,7 @@ export const FEATURE_PLAN: Record<string, { label: string; plan: PaidPlan }> = {
   field_encryption: { label: "Field-level encryption", plan: "enterprise" },
   extended_ai: { label: "Extended AI capabilities", plan: "enterprise" },
   quickbooks: { label: "QuickBooks integration", plan: "enterprise" },
+  sso: { label: "Single sign-on", plan: "enterprise" },
 };
 
 export function featurePlan(feature: string) {

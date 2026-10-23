@@ -55,6 +55,19 @@ class Settings(BaseSettings):
     anthropic_api_key: str = ""
     ai_model: str = "claude-haiku-5-5"
 
+    # Sign in with Google, Microsoft and Apple. Each button works once its
+    # credentials are set; the redirect URI to register with each provider is
+    # {APP_BASE_URL}/api/session/oauth/{provider}/callback.
+    google_client_id: str = ""
+    google_client_secret: str = ""
+    microsoft_client_id: str = ""
+    microsoft_client_secret: str = ""
+    microsoft_tenant_id: str = "common"
+    apple_client_id: str = ""  # the Services ID
+    apple_team_id: str = ""
+    apple_key_id: str = ""
+    apple_private_key: str = ""  # contents of the .p8 key file
+
     # Background jobs (reminders, campaigns, journeys, chat alerts).
     scheduler_enabled: bool = True
     scheduler_interval_seconds: int = 30

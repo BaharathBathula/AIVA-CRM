@@ -17,6 +17,7 @@ from app.api.dependencies.tenant import (
 from app.core.config import get_settings
 from app.core.security import (
     AuthenticationError,
+    access_token_organization,
     decode_access_token,
 )
 from app.db.session import get_db
@@ -68,6 +69,12 @@ async def require_bulk_update_permission(
             detail="Invalid or expired access token.",
             headers={"WWW-Authenticate": "Bearer"},
         ) from exc
+    bound_organization = access_token_organization(credentials.credentials, settings.jwt_secret_key)
+    if bound_organization is not None and bound_organization != organization_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="This session only opens the workspace you signed in to with single sign-on.",
+        )
 
     result = await db.execute(
         select(User).where(

@@ -2,12 +2,12 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft, ArrowRight, ShieldCheck } from "lucide-react";
-import { Suspense, useState, type FormEvent } from "react";
+import { ArrowLeft, ShieldCheck } from "lucide-react";
+import { Suspense, useEffect, useState, type FormEvent } from "react";
 
-import { AuthLayout, PasswordInput } from "@/components/auth-layout";
+import { AuthLayout, AuthTabs, OrDivider, OrganizationSignIn, PasswordInput, ProviderButtons } from "@/components/auth-layout";
 import { Alert, Field } from "@/components/ui";
-import { login, verifyMfa } from "@/lib/auth";
+import { fetchAuthError, login, verifyMfa } from "@/lib/auth";
 
 const SHOW_DEMO = process.env.NODE_ENV !== "production" || process.env.NEXT_PUBLIC_DEMO_MODE === "true";
 
@@ -24,11 +24,24 @@ function LoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [remember, setRemember] = useState(true);
-  const [mfaToken, setMfaToken] = useState<string | null>(null);
-  const [mfaName, setMfaName] = useState("");
+  // After Google / Microsoft / Apple / SSO the challenge is held in an httpOnly cookie ("cookie").
+  const [mfaToken, setMfaToken] = useState<string | null>(params.get("mfa") === "1" ? "cookie" : null);
+  const [mfaName, setMfaName] = useState(params.get("name") ?? "");
   const [code, setCode] = useState("");
+  const [organization, setOrganization] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (params.get("error") !== "signin") return;
+    let active = true;
+    fetchAuthError()
+      .then((message) => active && setError(message ?? "Sign-in didn't finish. Try again."))
+      .catch(() => undefined);
+    return () => {
+      active = false;
+    };
+  }, [params]);
 
   function finish() {
     router.replace(next);
@@ -94,7 +107,7 @@ function LoginForm() {
               required
             />
           </Field>
-          <button className="ui-btn ui-btn-primary" type="submit" disabled={loading || code.replace(/\s/g, "").length < 6}>
+          <button className="ui-btn ui-btn-primary signin-submit" type="submit" disabled={loading || code.replace(/\s/g, "").length < 6}>
             {loading ? <span className="ui-spinner" /> : null}
             Verify and sign in
           </button>
@@ -105,6 +118,7 @@ function LoginForm() {
               setMfaToken(null);
               setCode("");
               setError(null);
+              router.replace("/login");
             }}
           >
             <ArrowLeft size={16} /> Use a different account
@@ -114,14 +128,19 @@ function LoginForm() {
     );
   }
 
+  if (organization) {
+    return <OrganizationSignIn next={next} onBack={() => setOrganization(false)} />;
+  }
+
   return (
     <>
-      <h1>Sign in to AIVA</h1>
-      <p>Welcome back. Use your work email to continue.</p>
+      <AuthTabs active="login" />
+      {notice && !error ? <Alert tone="success">{notice}</Alert> : null}
+      {error ? <Alert>{error}</Alert> : null}
+      <ProviderButtons intent="login" next={next} onOrganization={() => setOrganization(true)} />
+      <OrDivider />
       <form className="auth-form" onSubmit={handleLogin}>
-        {notice && !error ? <Alert tone="success">{notice}</Alert> : null}
-        {error ? <Alert>{error}</Alert> : null}
-        <Field label="Work email">
+        <Field label="Email">
           <input
             id="email"
             className="ui-input"
@@ -129,34 +148,30 @@ function LoginForm() {
             autoComplete="username"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
-            placeholder="you@company.com"
-            autoFocus
+            placeholder="Work email"
             required
           />
         </Field>
         <div className="ui-field">
-          <div className="ui-row" style={{ justifyContent: "space-between" }}>
-            <label htmlFor="password" className="ui-label">
-              Password
-            </label>
-            <Link href="/forgot-password" className="ui-small auth-link">
-              Forgot password?
-            </Link>
-          </div>
-          <PasswordInput id="password" value={password} onChange={setPassword} autoComplete="current-password" />
+          <label htmlFor="password" className="ui-label">
+            Password
+          </label>
+          <PasswordInput id="password" value={password} onChange={setPassword} autoComplete="current-password" placeholder="Enter your password" />
         </div>
-        <label className="ui-check">
-          <input type="checkbox" checked={remember} onChange={(event) => setRemember(event.target.checked)} />
-          Keep me signed in for 30 days
-        </label>
-        <button className="ui-btn ui-btn-primary" type="submit" disabled={loading}>
+        <button className="ui-btn ui-btn-primary signin-submit" type="submit" disabled={loading}>
           {loading ? <span className="ui-spinner" /> : null}
-          Sign in <ArrowRight size={16} />
+          Log In
         </button>
+        <div className="signin-row">
+          <label className="ui-check">
+            <input type="checkbox" checked={remember} onChange={(event) => setRemember(event.target.checked)} />
+            Keep me signed in
+          </label>
+          <Link href="/forgot-password" className="auth-link">
+            Forgot password?
+          </Link>
+        </div>
       </form>
-      <div className="auth-alt">
-        New to AIVA? <Link href="/signup">Start a free trial</Link> · <Link href="/pricing">Pricing</Link>
-      </div>
       {SHOW_DEMO ? (
         <div className="auth-demo">
           <strong>Demo workspace.</strong> Sign in as <code>admin@aiva.local</code>, or a sales manager{" "}

@@ -35,6 +35,7 @@ from app.models.platform import (
     WorkflowRun,
 )
 
+from app.models.identity import SsoConnection, UserIdentity
 from app.models.editions import (
     Subscription,
     BillingInvoice,
@@ -70,6 +71,8 @@ from app.models.editions import (
 
 
 __all__ = [
+    "SsoConnection",
+    "UserIdentity",
     "Account",
     "Activity",
     "Contact",
