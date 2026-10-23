@@ -16,8 +16,13 @@ import {
   CreditCard,
   FilePenLine,
   Handshake,
+  CalendarClock,
+  FolderKanban,
   Headset,
   Lock,
+  PackageCheck,
+  Pin,
+  Truck,
   LogOut,
   Megaphone,
   Moon,
@@ -32,6 +37,7 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { ChatButton, PinsMenu } from "@/components/pins";
 import { useSession, useTheme, useToast } from "@/components/providers";
 import { Avatar } from "@/components/ui";
 import { logout, switchOrganization } from "@/lib/auth";
@@ -130,6 +136,8 @@ export function TopBar() {
           <Search size={19} strokeWidth={1.8} />
         </button>
         <QuickCreate />
+        <PinsMenu />
+        <ChatButton />
         <Notifications />
       </div>
 
@@ -224,7 +232,10 @@ export function Rail() {
                 <li>
                   <kbd>Ctrl</kbd> <kbd>K</kbd> searches records, cases, quotes and articles.
                 </li>
-                <li>The icons on the left switch between Home, Sales, Marketing, Service, Insights, Apps and Settings.</li>
+                <li>The icons on the left switch between Home, Sales, Inventory, Marketing, Service, Insights, Apps and Settings.</li>
+                <li>
+                  <Pin size={12} style={{ verticalAlign: -1 }} /> My pins keeps the records you use most one click away.
+                </li>
                 <li>Tabs with a lock belong to a higher plan; open one to see what it adds.</li>
                 <li>Pages for the current area are in the bar at the top.</li>
                 <li>
@@ -420,7 +431,11 @@ function QuickCreate() {
     { label: "Account", href: "/accounts?new=1", icon: BriefcaseBusiness, show: can("records.write") },
     { label: "Contact", href: "/contacts?new=1", icon: ContactRound, show: can("records.write") },
     { label: "Opportunity", href: "/opportunities?new=1", icon: Handshake, show: can("records.write") },
+    { label: "Meeting", href: "/meetings?new=1", icon: CalendarClock, show: can("records.write") && has("tasks_meetings_calls") },
     { label: "Quote", href: "/quotes/new", icon: FilePenLine, show: can("sales.quotes") && has("cpq") },
+    { label: "Sales order", href: "/sales-orders?new=1", icon: PackageCheck, show: can("sales.orders") && has("sales_orders") },
+    { label: "Purchase order", href: "/purchase-orders?new=1", icon: Truck, show: can("sales.purchasing") && has("purchase_orders") },
+    { label: "Project", href: "/projects?new=1", icon: FolderKanban, show: can("projects.manage") && has("projects") },
     { label: "Case", href: "/cases?new=1", icon: Headset, show: can("service.cases") && can("records.write") },
     { label: "Knowledge article", href: "/knowledge/new", icon: BookOpen, show: can("service.knowledge_write") },
     { label: "Email campaign", href: "/marketing/campaigns?new=1", icon: Megaphone, show: can("marketing.manage") && has("mass_email") },

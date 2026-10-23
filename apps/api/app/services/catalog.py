@@ -15,8 +15,12 @@ from app.models.activity import Activity
 from app.models.contact import Contact
 from app.models.lead import Lead
 from app.models.opportunity import Opportunity
+from app.models.collaboration import Document
+from app.models.meeting import Meeting
 from app.models.platform import Case, KnowledgeArticle, Product, Quote
+from app.models.supply import PriceBook, PurchaseOrder, SalesOrder, Vendor
 from app.models.task import Task
+from app.models.work import Appointment, Project, Service
 
 LEAD_STATUS = ["new", "contacted", "qualified", "unqualified", "nurture", "converted"]
 LIFECYCLE = ["prospect", "lead", "customer", "partner", "inactive", "churned"]
@@ -33,6 +37,12 @@ QUOTE_STATUS = ["draft", "sent", "accepted", "declined", "expired"]
 ACTIVITY_TYPE = ["email", "call", "meeting", "note", "sms", "task_completed", "document", "system", "ai_action"]
 BILLING = ["one_time", "monthly", "quarterly", "annual"]
 KB_STATUS = ["draft", "published", "archived"]
+SO_STATUS = ["draft", "confirmed", "fulfilled", "cancelled"]
+PO_STATUS = ["draft", "issued", "partially_received", "received", "cancelled"]
+PROJECT_STATUS = ["planning", "active", "on_hold", "completed", "cancelled"]
+PROJECT_PRIORITY = ["low", "medium", "high", "critical"]
+APPOINTMENT_STATUS = ["scheduled", "completed", "cancelled", "no_show"]
+MEETING_STATUS = ["scheduled", "completed", "cancelled"]
 
 # Field types: string, number, currency, date, datetime, enum, bool, user, ref
 GROUPABLE_TYPES = {"string", "enum", "bool", "user", "ref", "date", "datetime"}
@@ -284,10 +294,131 @@ OBJECTS: dict[str, ObjectDef] = {
         lambda o: "/products",
         lambda o: o.name,
     ),
+    "vendor": ObjectDef(
+        "vendor", "Vendors", "Vendor", Vendor,
+        (
+            F("name", "Name", "string"),
+            F("category", "Category", "string", updatable=True),
+            F("contact_name", "Contact person", "string"),
+            F("email", "Email", "string"),
+            F("phone", "Phone", "string"),
+            F("payment_terms", "Payment terms", "string", updatable=True),
+            F("country", "Country", "string"),
+            F("is_active", "Active", "bool", updatable=True),
+            F("owner_user_id", "Owner", "user", updatable=True),
+            CREATED, UPDATED,
+        ),
+        ("name", "category", "contact_name", "email", "is_active", "owner_user_id"),
+        "owner_user_id",
+        lambda o: f"/vendors/{o.id}",
+        lambda o: o.name,
+    ),
+    "sales_order": ObjectDef(
+        "sales_order", "Sales orders", "Sales order", SalesOrder,
+        (
+            F("number", "Number", "number"),
+            F("subject", "Subject", "string"),
+            F("status", "Status", "enum", tuple(SO_STATUS)),
+            F("account_id", "Account", "ref", ref="account"),
+            F("opportunity_id", "Deal", "ref", ref="opportunity"),
+            F("order_date", "Order date", "date"),
+            F("due_date", "Due date", "date", updatable=True),
+            F("subtotal", "Subtotal", "currency"),
+            F("total", "Total", "currency"),
+            F("carrier", "Carrier", "string", updatable=True),
+            F("owner_user_id", "Owner", "user", updatable=True),
+            CREATED, UPDATED,
+            F("fulfilled_at", "Fulfilled", "datetime"),
+        ),
+        ("number", "subject", "status", "account_id", "total", "due_date", "owner_user_id"),
+        "owner_user_id",
+        lambda o: f"/sales-orders/{o.id}",
+        lambda o: f"SO-{o.number} {o.subject}",
+    ),
+    "purchase_order": ObjectDef(
+        "purchase_order", "Purchase orders", "Purchase order", PurchaseOrder,
+        (
+            F("number", "Number", "number"),
+            F("subject", "Subject", "string"),
+            F("status", "Status", "enum", tuple(PO_STATUS)),
+            F("order_date", "Order date", "date"),
+            F("expected_date", "Expected", "date", updatable=True),
+            F("total", "Total", "currency"),
+            F("owner_user_id", "Owner", "user", updatable=True),
+            CREATED, UPDATED,
+            F("received_at", "Received", "datetime"),
+        ),
+        ("number", "subject", "status", "total", "expected_date", "owner_user_id"),
+        "owner_user_id",
+        lambda o: f"/purchase-orders/{o.id}",
+        lambda o: f"PO-{o.number} {o.subject}",
+    ),
+    "project": ObjectDef(
+        "project", "Projects", "Project", Project,
+        (
+            F("number", "Number", "number"),
+            F("name", "Name", "string"),
+            F("status", "Status", "enum", tuple(PROJECT_STATUS), updatable=True),
+            F("priority", "Priority", "enum", tuple(PROJECT_PRIORITY), updatable=True),
+            F("account_id", "Account", "ref", ref="account"),
+            F("opportunity_id", "Deal", "ref", ref="opportunity"),
+            F("start_date", "Start", "date"),
+            F("due_date", "Due", "date", updatable=True),
+            F("budget", "Budget", "currency"),
+            F("owner_user_id", "Owner", "user", updatable=True),
+            CREATED, UPDATED,
+            F("completed_at", "Completed", "datetime"),
+        ),
+        ("number", "name", "status", "priority", "account_id", "due_date", "owner_user_id"),
+        "owner_user_id",
+        lambda o: f"/projects/{o.id}",
+        lambda o: f"PRJ-{o.number} {o.name}",
+    ),
+    "appointment": ObjectDef(
+        "appointment", "Appointments", "Appointment", Appointment,
+        (
+            F("number", "Number", "number"),
+            F("title", "Title", "string"),
+            F("status", "Status", "enum", tuple(APPOINTMENT_STATUS)),
+            F("account_id", "Account", "ref", ref="account"),
+            F("contact_id", "Contact", "ref", ref="contact"),
+            F("start_at", "Starts", "datetime"),
+            F("price", "Price", "currency"),
+            F("staff_user_id", "Staff", "user", updatable=True),
+            CREATED,
+        ),
+        ("number", "title", "status", "start_at", "staff_user_id", "price"),
+        "staff_user_id",
+        lambda o: f"/appointments?open={o.id}",
+        lambda o: f"APT-{o.number} {o.title}",
+    ),
+    "meeting": ObjectDef(
+        "meeting", "Meetings", "Meeting", Meeting,
+        (
+            F("title", "Title", "string"),
+            F("status", "Status", "enum", tuple(MEETING_STATUS)),
+            F("account_id", "Account", "ref", ref="account"),
+            F("contact_id", "Contact", "ref", ref="contact"),
+            F("opportunity_id", "Deal", "ref", ref="opportunity"),
+            F("start_at", "Starts", "datetime"),
+            F("is_online", "Online", "bool"),
+            F("organizer_user_id", "Organizer", "user"),
+            CREATED,
+        ),
+        ("title", "status", "start_at", "account_id", "organizer_user_id"),
+        "organizer_user_id",
+        lambda o: f"/meetings?open={o.id}",
+        lambda o: o.title,
+    ),
 }
 
 # Objects that are audited but not reportable on their own.
-AUDIT_ONLY = {KnowledgeArticle: ("kb_article", lambda o: o.title)}
+AUDIT_ONLY = {
+    KnowledgeArticle: ("kb_article", lambda o: o.title),
+    PriceBook: ("price_book", lambda o: o.name),
+    Document: ("document", lambda o: o.name),
+    Service: ("service", lambda o: o.name),
+}
 
 MODEL_TO_OBJECT: dict[type, str] = {definition.model: key for key, definition in OBJECTS.items()}
 

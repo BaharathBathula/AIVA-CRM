@@ -116,8 +116,23 @@ async def _job_mailbox_sync(db) -> int:
     return await mailbox_sync.sync_due(db)
 
 
+async def _job_meeting_reminders(db) -> int:
+    from app.api.routes.meetings import send_meeting_reminders
+    from app.api.routes.work import send_appointment_reminders
+
+    return await send_meeting_reminders(db) + await send_appointment_reminders(db)
+
+
+async def _job_social(db) -> int:
+    from app.api.routes.engagement import publish_due_posts
+
+    return await publish_due_posts(db)
+
+
 JOBS = (
     ("reminders", send_due_reminders),
+    ("meeting_reminders", _job_meeting_reminders),
+    ("social_posts", _job_social),
     ("campaigns", _job_campaigns),
     ("journeys", _job_journeys),
     ("chat", _job_chat),

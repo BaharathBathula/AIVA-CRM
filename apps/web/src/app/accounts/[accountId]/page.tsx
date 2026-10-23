@@ -40,6 +40,8 @@ import {
 import {
   CreateContactModal,
 } from "@/components/accounts/create-contact-modal";
+import { RecordDocuments, RecordMeetings } from "@/components/record-panels";
+import { PinButton } from "@/components/pins";
 import { RecordActions, RecordInsights } from "@/components/record-extras";
 
 import {
@@ -1507,6 +1509,7 @@ const accountHealth =
 
             <div className="detailActions">
               <RecordActions objectType="account" recordId={account.id} call={{ name: account.name, phone: account.phone ?? null, account_id: account.id }} onChanged={() => setExtrasVersion((v) => v + 1)} />
+              <PinButton type="account" id={account.id} />
               <button
                 type="button"
                 className="secondaryButton"
@@ -3096,6 +3099,8 @@ const accountHealth =
 
 
               <RecordInsights objectType="account" recordId={account.id} version={extrasVersion} onChanged={() => setExtrasVersion((v) => v + 1)} />
+              <RecordMeetings recordType="account" recordId={account.id} defaults={{ account_id: account.id, title: `Meeting with ${account.name}` }} />
+              <RecordDocuments recordType="account" recordId={account.id} />
             </aside>
           </div>
         </div>

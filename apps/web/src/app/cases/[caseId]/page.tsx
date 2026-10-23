@@ -8,6 +8,8 @@ import { useState, type FormEvent } from "react";
 import { AppShell } from "@/components/app-shell";
 import { CASE_STATUS_LABEL, CHANNEL_LABEL, SlaBadge } from "@/components/case-bits";
 import { useSession, useToast } from "@/components/providers";
+import { RecordDocuments } from "@/components/record-panels";
+import { PinButton } from "@/components/pins";
 import { RecordActions, RecordInsights } from "@/components/record-extras";
 import { Alert, Avatar, Badge, Card, CASE_STATUS_TONE, ConfirmDialog, LoadingRows, PageHeader, PRIORITY_TONE } from "@/components/ui";
 import { dateTime, duration, relativeTime } from "@/lib/format";
@@ -143,6 +145,7 @@ function CaseView() {
               void detail.reload();
             }}
           />
+          <PinButton type="case" id={c.id} />
           {editable ? (
             closed ? (
               <button type="button" className="ui-btn" onClick={() => void update({ status: "open" }, "Case reopened.")}>
@@ -401,6 +404,7 @@ function CaseView() {
           ) : null}
 
           <RecordInsights objectType="case" recordId={c.id} version={extrasVersion} onChanged={() => setExtrasVersion((v) => v + 1)} />
+              <RecordDocuments recordType="case" recordId={c.id} />
 
           {can("records.delete") ? (
             <button type="button" className="ui-btn ui-btn-danger" onClick={() => setDeleting(true)}>

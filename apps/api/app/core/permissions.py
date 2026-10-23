@@ -36,13 +36,19 @@ PERMISSIONS: tuple[PermissionDef, ...] = (
     PermissionDef("sales.lead_scoring", "Configure lead scoring", "Sales", "Edit lead scoring rules and recalculate scores."),
     PermissionDef("sales.inventory", "Manage inventory", "Sales", "Receive and adjust stock."),
     PermissionDef("sales.invoices", "Manage invoices", "Sales", "Create invoices from quotes and record payments."),
+    PermissionDef("sales.orders", "Manage sales orders", "Sales", "Create, confirm, fulfil and cancel sales orders."),
+    PermissionDef("sales.purchasing", "Manage purchasing", "Sales", "Manage vendors, raise purchase orders and receive goods."),
     # Marketing
     PermissionDef("marketing.manage", "Run marketing", "Marketing", "Create email templates, web forms, campaigns, journeys and target accounts."),
+    PermissionDef("marketing.social", "Publish to social media", "Marketing", "Connect company social accounts and publish or schedule posts."),
     # Service
     PermissionDef("service.cases", "Work cases", "Service", "View, create and update support cases."),
     PermissionDef("service.knowledge_write", "Write knowledge articles", "Service", "Create and edit knowledge base drafts."),
     PermissionDef("service.knowledge_publish", "Publish knowledge articles", "Service", "Publish and archive knowledge articles."),
     PermissionDef("service.sla_manage", "Manage SLA policies", "Service", "Create and edit service level agreements."),
+    PermissionDef("service.services", "Manage services", "Service", "Edit the service catalog: durations, prices and who delivers each service."),
+    # Projects
+    PermissionDef("projects.manage", "Manage projects", "Projects", "Create projects, change their status and milestones, and assign project tasks."),
     # Analytics
     PermissionDef("analytics.reports", "Create reports", "Analytics", "Build, run and save reports."),
     PermissionDef("analytics.dashboards", "Manage dashboards", "Analytics", "Create and edit dashboards."),
@@ -89,8 +95,8 @@ SYSTEM_ROLES: dict[str, SystemRole] = {
             "Works leads, deals, quotes and tasks.",
             frozenset({
                 "records.read", "records.write", "records.export", "records.view_all",
-                "sales.quotes", "sales.forecast_view", "sales.invoices",
-                "service.cases", "analytics.reports", "analytics.dashboards", "automation.ai",
+                "sales.quotes", "sales.forecast_view", "sales.invoices", "sales.orders",
+                "service.cases", "analytics.reports", "analytics.dashboards", "automation.ai", "projects.manage",
             }),
         ),
         SystemRole(

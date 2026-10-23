@@ -73,6 +73,17 @@ class Meeting(
         index=True,
     )
 
+    lead_id: Mapped[
+        uuid.UUID | None
+    ] = mapped_column(
+        ForeignKey(
+            "leads.id",
+            ondelete="SET NULL",
+        ),
+        nullable=True,
+        index=True,
+    )
+
     contact_id: Mapped[
         uuid.UUID | None
     ] = mapped_column(

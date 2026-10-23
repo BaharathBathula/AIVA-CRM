@@ -28,6 +28,13 @@ from app.api.routes.platform import router as platform_router
 from app.api.routes.sales import router as sales_router
 from app.api.routes.service import router as service_router
 from app.api.routes.tasks import router as tasks_router
+from app.api.routes.supply import router as supply_router
+from app.api.routes.meetings import router as meetings_router
+from app.api.routes.documents import router as documents_router
+from app.api.routes.work import router as work_router
+from app.api.routes.engagement import public_router as tracking_router
+from app.api.routes.engagement import router as engagement_router
+from app.api.routes.collab import router as collab_router
 
 
 api_router = APIRouter()
@@ -37,6 +44,7 @@ api_router.include_router(health_router)
 api_router.include_router(auth_router)
 api_router.include_router(oauth_router)
 api_router.include_router(public_router)
+api_router.include_router(tracking_router)
 
 # Core CRM records: every request needs a signed-in member whose role
 # allows reading (GET), writing (POST/PATCH/PUT) or deleting (DELETE).
@@ -73,3 +81,12 @@ api_router.include_router(intelligence_router)
 api_router.include_router(operations_router)
 api_router.include_router(enterprise_router)
 api_router.include_router(portals_router)
+
+# Orders and purchasing, documents and meetings, services and projects,
+# social and website visits, and team collaboration (pins and chat).
+api_router.include_router(supply_router)
+api_router.include_router(meetings_router)
+api_router.include_router(documents_router)
+api_router.include_router(work_router)
+api_router.include_router(engagement_router)
+api_router.include_router(collab_router)

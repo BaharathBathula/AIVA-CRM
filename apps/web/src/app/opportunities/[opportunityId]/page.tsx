@@ -26,6 +26,8 @@ import {
 import {
   ActivityTimeline,
 } from "@/components/activities/activity-timeline";
+import { RecordDocuments, RecordMeetings, DealProjectButton } from "@/components/record-panels";
+import { PinButton } from "@/components/pins";
 import { ApprovalModal, RecordActions, RecordInsights, approvalFromError, type ApprovalNeeded } from "@/components/record-extras";
 
 import {
@@ -565,6 +567,8 @@ export default function OpportunityDetailPage() {
 
             <div className="detailActions">
               <RecordActions objectType="opportunity" recordId={opportunity.id} call={{ name: opportunity.name, phone: null, opportunity_id: opportunity.id, account_id: opportunity.account_id }} onChanged={() => setExtrasVersion((v) => v + 1)} />
+              <PinButton type="opportunity" id={opportunity.id} />
+              <DealProjectButton opportunityId={opportunity.id} />
               <select
                 className="detailStageSelect"
                 aria-label="Stage"
@@ -1091,6 +1095,8 @@ export default function OpportunityDetailPage() {
               </section>
 
               <RecordInsights objectType="opportunity" recordId={opportunity.id} version={extrasVersion} onChanged={() => setExtrasVersion((v) => v + 1)} />
+              <RecordMeetings recordType="opportunity" recordId={opportunity.id} defaults={{ opportunity_id: opportunity.id, account_id: opportunity.account_id, contact_id: opportunity.primary_contact_id ?? null, title: opportunity.name }} />
+              <RecordDocuments recordType="opportunity" recordId={opportunity.id} />
             </aside>
           </div>
         </div>

@@ -159,6 +159,7 @@ def build_message(
     reply_to: str | None = None,
     from_name: str | None = None,
     headers: dict[str, str] | None = None,
+    attachments: list[tuple[str, str, bytes]] | None = None,
 ) -> EmailMessage:
     message = EmailMessage()
     message["Subject"] = subject
@@ -173,6 +174,14 @@ def build_message(
     message.set_content(text or "")
     if html_body:
         message.add_alternative(html_body, subtype="html")
+    for filename, content_type, payload in attachments or []:
+        # e.g. "text/calendar; method=REQUEST" for meeting invitations.
+        kind, _, rest = content_type.partition(";")
+        maintype, _, subtype = kind.strip().partition("/")
+        extra = {}
+        if "method=" in rest:
+            extra = {"params": {"method": rest.split("method=", 1)[1].strip()}}
+        message.add_attachment(payload, maintype=maintype or "application", subtype=subtype or "octet-stream", filename=filename, **extra)
     return message
 
 
@@ -187,6 +196,7 @@ async def send(
     reply_to: str | None = None,
     from_name: str | None = None,
     headers: dict[str, str] | None = None,
+    attachments: list[tuple[str, str, bytes]] | None = None,
 ) -> str:
     """Send one message. Returns "smtp" when delivered, "outbox" when there's no mail server."""
 
@@ -194,7 +204,7 @@ async def send(
         return "outbox"
     message = build_message(
         config, to=to, to_name=to_name, subject=subject, text=text, html_body=html_body,
-        reply_to=reply_to, from_name=from_name, headers=headers,
+        reply_to=reply_to, from_name=from_name, headers=headers, attachments=attachments,
     )
     try:
         await asyncio.to_thread(_smtp_send, config, message)

@@ -50,6 +50,8 @@ FEATURES: tuple[Feature, ...] = (
     Feature("chat_integrations", "Slack, Zoom, Teams integration", "starter", "Deal and case alerts in Slack or Teams; Zoom links on meetings."),
     Feature("service_desk", "Cases, SLAs and knowledge base", "starter", "Support queues with response targets and a knowledge base."),
     Feature("lead_scoring", "Lead scoring", "starter", "Automatic A–D grades from rules you control."),
+    Feature("documents", "Documents", "starter", "Folders and file uploads with versions, linked to any record."),
+    Feature("team_chat", "Team chat", "starter", "Channels and direct messages with @mentions and links to records."),
     # ---------------------------------------------------------------- Pro
     Feature("ai_agents", "AI agents", "pro", "Agents that qualify leads, coach deals, triage cases and draft follow-ups."),
     Feature("process_management", "Process management", "pro", "Stage playbooks with required fields and checklists."),
@@ -62,6 +64,13 @@ FEATURES: tuple[Feature, ...] = (
     Feature("web_to_case", "Web-to-case forms", "pro", "Forms that open support cases."),
     Feature("customer_portal", "Customer portals", "pro", "Customers sign in to raise cases, read articles and accept quotes."),
     Feature("google_ads", "Google Ads integration", "pro", "Capture Google Ads leads and export offline conversions."),
+    Feature("price_books", "Price books", "pro", "List prices and volume discounts per customer segment, applied on quotes and orders."),
+    Feature("sales_orders", "Sales orders", "pro", "Turn accepted quotes into orders, track fulfilment and invoice them."),
+    Feature("purchase_orders", "Vendors and purchase orders", "pro", "Buy from vendors and receive stock against purchase orders."),
+    Feature("services", "Services and appointments", "pro", "A catalog of the services you deliver and a booking calendar for your team."),
+    Feature("projects", "Projects", "pro", "Delivery projects with milestones, tasks and progress, started from won deals."),
+    Feature("social", "Social publishing", "pro", "Publish and schedule posts to LinkedIn, X, Facebook and Instagram."),
+    Feature("website_visits", "Website visits", "pro", "See who visits your website, which pages they read, and link visits to leads and contacts."),
     # ---------------------------------------------------------------- Enterprise
     Feature("multi_team", "Multi-team management", "enterprise", "Nested teams, people on several teams and team-based record visibility."),
     Feature("reporting_hierarchy", "Reporting hierarchy", "enterprise", "Who-reports-to-whom, with managers seeing their reports' records."),

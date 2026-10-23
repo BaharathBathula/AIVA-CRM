@@ -36,6 +36,19 @@ from app.models.platform import (
 )
 
 from app.models.identity import SsoConnection, UserIdentity
+from app.models.supply import PriceBook, PriceBookEntry, PurchaseOrder, SalesOrder, Vendor
+from app.models.collaboration import (
+    ChatChannel,
+    ChatMember,
+    ChatMessage,
+    Document,
+    DocumentFolder,
+    DocumentLink,
+    DocumentVersion,
+    Pin,
+)
+from app.models.work import Appointment, Project, ProjectMilestone, Service
+from app.models.engagement import SocialChannel, SocialPost, TrackingSite, WebPageView, WebSession, WebVisitor
 from app.models.editions import (
     Subscription,
     BillingInvoice,
@@ -71,6 +84,29 @@ from app.models.editions import (
 
 
 __all__ = [
+    "PriceBook",
+    "PriceBookEntry",
+    "PurchaseOrder",
+    "SalesOrder",
+    "Vendor",
+    "ChatChannel",
+    "ChatMember",
+    "ChatMessage",
+    "Document",
+    "DocumentFolder",
+    "DocumentLink",
+    "DocumentVersion",
+    "Pin",
+    "Appointment",
+    "Project",
+    "ProjectMilestone",
+    "Service",
+    "SocialChannel",
+    "SocialPost",
+    "TrackingSite",
+    "WebPageView",
+    "WebSession",
+    "WebVisitor",
     "SsoConnection",
     "UserIdentity",
     "Account",

@@ -46,7 +46,7 @@ Features outside a workspace's plan show a lock in the navigation and an upgrade
 | Feature | What it does |
 |---|---|
 | Users | Invite, change role/team, deactivate, reactivate/unlock, send password resets, remove |
-| Roles & permissions | Six built-in roles (Owner, Administrator, Sales manager, Sales representative, Support agent, Read only) plus custom roles from a 23-permission catalog |
+| Roles & permissions | Six built-in roles (Owner, Administrator, Sales manager, Sales representative, Support agent, Read only) plus custom roles from a 34-permission catalog |
 | Teams | Teams with managers; used for case queues and reporting |
 | Audit log | Every sign-in (and failed sign-in), permission change and record create/update/delete with before → after values, IP and device; filter and export |
 | Organization settings | Name, currency, time zone, fiscal year start, session length |
@@ -67,10 +67,14 @@ Features outside a workspace's plan show a lock in the navigation and an upgrade
 | Accounts & Contacts | Company and people records with ownership, hierarchy, duplicate checks | Available |
 | Opportunities & Pipeline | Multiple pipelines and stages, board view, bulk actions, saved views, forecast categories | Available |
 | Products & price book | Catalog with SKUs, families, billing frequency, default tax | Available |
+| Price books | Named price lists per customer segment or currency with list prices and volume tiers (e.g. 10–49 units at 8% off); pick one on a quote or sales order and every line is priced from it | Pro |
 | Quotes (CPQ) | Quote builder with catalog lines, per-line discount and tax, totals, send/accept/decline with approval permission, duplicate, print/PDF; accepting updates the deal amount | Available |
+| Sales orders | Create from an accepted quote or from scratch; confirm, fulfil (books stock out), cancel; past-due tracking; one click to invoice the order | Pro |
+| Vendors & purchase orders | Vendor records with contacts, terms and spend; purchase orders that are issued to the vendor, received in part or in full (stock goes back on the shelf and the product cost updates) or cancelled; reorder low-stock items in one click | Pro |
 | Invoices and inventory | Invoices from accepted quotes, payments, overdue tracking, QuickBooks Online CSV export; stock levels, receipts and adjustments, automatic stock-out on accepted quotes, low-stock alerts | Available |
 | Forecasting and predictions | Fiscal-quarter forecast by rep with quotas; win probability and predicted close date for every open deal, learned from your closed deals | Available |
 | Calls | Click-to-call with a call timer, outcomes, notes and follow-up tasks; call log with connect rate and talk time | Available |
+| Meetings | Week calendar and agenda; invite colleagues and customers (email invites carry an `.ics` calendar file), RSVPs, email reminders, video-call links, notes and outcomes logged on the lead, contact, account or deal | Available |
 
 ### Service
 
@@ -79,6 +83,8 @@ Features outside a workspace's plan show a lock in the navigation and an upgrade
 | Cases | Queues (my open, unassigned, past SLA…), priorities, channels, assignment, customer replies and internal notes, CSAT | Available |
 | SLA policies | First-response and resolution targets by priority with live countdowns and breach tracking | Available |
 | Knowledge base | Markdown articles with drafts, publishing, categories, view counts, helpful votes; suggested articles on every case | Available |
+| Services & appointments | Catalog of the services you deliver (duration, price, buffer, who can deliver it); booking calendar that checks staff availability (including buffer time) and tracks completed, cancelled and no-show appointments | Pro |
+| Projects | Delivery projects started from won deals, with milestones, tasks, a team, progress and overdue tracking | Pro |
 | Portals | Customer portal (open and follow cases, help articles, accept quotes, see invoices) and partner portal (deal registration), with passwordless email sign-in | Available |
 
 ### Marketing
@@ -90,6 +96,8 @@ Features outside a workspace's plan show a lock in the navigation and an upgrade
 | Customer journeys | Multi-step nurture: send email, wait, create task, update field, notify, branch | Available |
 | Account-based marketing | Target accounts by tier with engagement scores and buying-committee coverage | Available |
 | Google Ads | Lead-form webhook and offline-conversion export for closed deals | Available |
+| Social | Connect LinkedIn, X, Facebook and Instagram; compose once, publish now or schedule, see per-network results and retry failures | Pro |
+| Website visits | A small tracking script for your website: visitors, sessions, pages read, time on page, referrers and UTM sources; visitors who submit a form are matched to their lead or contact, and you can create a lead from any known visitor | Pro |
 
 ### Insights and automation
 
@@ -102,6 +110,10 @@ Features outside a workspace's plan show a lock in the navigation and an upgrade
 | Global search & notifications | ⌘K search across records, cases, quotes, articles and products; in-app notification bell | Available |
 | Workspace shell | Floating top navigation with section tabs, an icon rail for Home, Sales, Service, Insights and Settings, and light and dark themes (follows your system until you pick one) | Available |
 | Engagement | Activities, tasks with reminders, email threads, mailbox sync, calendar feed (iCal), Slack/Teams alerts, Zoom links | Available |
+| SalesInbox | Email sorted into Deals, Contacts, Leads and Others by who it's with, so customer conversations come first | Available |
+| Documents | Folders, uploads up to 25 MB, versions with notes, in-browser preview, private or shared, linked to any account, contact, deal, order or case | Starter |
+| Team chat & people | Channels and direct messages with @mentions and record links; a people directory with roles, teams and reporting lines | Starter |
+| My Pins | Pin any record and reach it from the top bar | Available |
 | AI agents | Lead qualifier, deal coach, case triage, follow-up writer and data hygiene agents leave suggestions you accept or dismiss | Available |
 | Extended AI | Record summaries, email and case-reply drafts, and "Ask AIVA" questions about your CRM — Claude when `ANTHROPIC_API_KEY` is set, built-in rules otherwise | Available |
 | Mobile app | Installable on iPhone, Android and desktop (PWA) with offline fallback | Available |
@@ -219,6 +231,29 @@ The demo workspace is on the Enterprise plan with sample data for every feature:
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | Turns on "Log In with Google". |
 | `MICROSOFT_CLIENT_ID`, `MICROSOFT_CLIENT_SECRET`, `MICROSOFT_TENANT_ID` | Turns on "Log In with Microsoft" (tenant `common` allows work and personal accounts). |
 | `APPLE_CLIENT_ID`, `APPLE_TEAM_ID`, `APPLE_KEY_ID`, `APPLE_PRIVATE_KEY` | Turns on "Sign in with Apple" (Services ID, team ID, key ID and the `.p8` key contents). |
+
+### Tracking website visits
+
+In **Marketing → Visits**, add your website and copy its tracking code into every page, just before `</body>`:
+
+```html
+<script async src="https://YOUR-AIVA-ADDRESS/aiva-track.js" data-site="ws_..."></script>
+```
+
+The script uses first-party storage only and honours the browser's Do Not Track setting. When a visitor submits a form with an email address they're matched to their lead or contact; your site can also call `window.aiva.identify(email, name)` after sign-in.
+
+### Publishing to social networks
+
+In **Marketing → Social**, connect each account with an access token from that network's developer portal. Tokens are stored encrypted and checked when you connect.
+
+| Network | What to paste | Token permissions |
+|---|---|---|
+| LinkedIn | Organization or member ID (the number in `urn:li:organization:…`) | `w_organization_social` (company pages) or `w_member_social` |
+| X | Optional handle | OAuth 2.0 user token with `tweet.write`, `tweet.read`, `users.read` |
+| Facebook | Page ID | Page access token with `pages_manage_posts` |
+| Instagram | Instagram business account ID | Token with `instagram_content_publish`; every post needs a public image URL |
+
+Scheduled posts go out within a minute of their time while the background scheduler is on.
 
 ### Turning on Google, Microsoft and Apple sign-in
 

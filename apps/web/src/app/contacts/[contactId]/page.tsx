@@ -31,6 +31,8 @@ import {
 import {
   EditContactModal,
 } from "@/components/contacts/edit-contact-modal";
+import { RecordDocuments, RecordMeetings, RecordVisits } from "@/components/record-panels";
+import { PinButton } from "@/components/pins";
 import { RecordActions, RecordInsights } from "@/components/record-extras";
 
 import {
@@ -1146,6 +1148,7 @@ export default function ContactDetailPage() {
 
             <div className="detailActions">
               <RecordActions objectType="contact" recordId={contact.id} call={{ name: `${contact.first_name} ${contact.last_name}`.trim(), phone: contact.phone ?? contact.mobile ?? null, contact_id: contact.id, account_id: contact.account_id ?? undefined }} onChanged={() => setExtrasVersion((v) => v + 1)} />
+              <PinButton type="contact" id={contact.id} />
               <button
                 type="button"
                 className="secondaryButton"
@@ -2825,6 +2828,9 @@ export default function ContactDetailPage() {
 
 
               <RecordInsights objectType="contact" recordId={contact.id} version={extrasVersion} onChanged={() => setExtrasVersion((v) => v + 1)} />
+              <RecordMeetings recordType="contact" recordId={contact.id} defaults={{ account_id: contact.account_id ?? null, contact_id: contact.id, title: `Meeting with ${contact.first_name} ${contact.last_name}`.trim() }} />
+              <RecordVisits recordType="contact" recordId={contact.id} />
+              <RecordDocuments recordType="contact" recordId={contact.id} />
             </aside>
           </div>
         </div>

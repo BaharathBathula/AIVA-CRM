@@ -25,6 +25,8 @@ import {
 import {
   ActivityTimeline,
 } from "@/components/activities/activity-timeline";
+import { RecordDocuments, RecordMeetings, RecordVisits } from "@/components/record-panels";
+import { PinButton } from "@/components/pins";
 import { RecordActions, RecordInsights } from "@/components/record-extras";
 
 import {
@@ -375,6 +377,7 @@ export default function LeadDetailPage() {
 
             <div className="detailActions">
               <RecordActions objectType="lead" recordId={lead.id} call={{ name: `${lead.first_name} ${lead.last_name}`.trim(), phone: lead.phone ?? null, lead_id: lead.id }} onChanged={() => setExtrasVersion((v) => v + 1)} />
+              <PinButton type="lead" id={lead.id} />
               {lead.status !==
                 "converted" &&
                 lead.status !==
@@ -754,6 +757,9 @@ export default function LeadDetailPage() {
               )}
 
               <RecordInsights objectType="lead" recordId={lead.id} version={extrasVersion} onChanged={() => setExtrasVersion((v) => v + 1)} />
+              <RecordMeetings recordType="lead" recordId={lead.id} defaults={{ lead_id: lead.id, title: `Call with ${lead.first_name} ${lead.last_name}`.trim() }} />
+              <RecordVisits recordType="lead" recordId={lead.id} />
+              <RecordDocuments recordType="lead" recordId={lead.id} />
             </aside>
           </div>
         </div>

@@ -257,6 +257,7 @@ async def quote_out(db: AsyncSession, quote: Quote, detail: bool = False) -> dic
         "owner_user_id": str(quote.owner_user_id) if quote.owner_user_id else None,
         "owner_name": owners.get(str(quote.owner_user_id)),
         "valid_until": quote.valid_until,
+        "price_book_id": str(quote.price_book_id) if quote.price_book_id else None,
         "currency": quote.currency,
         "subtotal": float(quote.subtotal),
         "discount_total": float(quote.discount_total),

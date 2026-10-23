@@ -22,7 +22,7 @@ import {
 // Only used before a user has signed in (public endpoints).
 const FALLBACK_ORGANIZATION_ID = process.env.AIVA_ORGANIZATION_ID;
 
-async function forward(request: NextRequest, body: string | undefined, token?: string, organizationId?: string) {
+async function forward(request: NextRequest, body: ArrayBuffer | undefined, token?: string, organizationId?: string) {
   const path = request.nextUrl.pathname.replace(/^\/api\/aiva\/?/, "");
   const headers = new Headers();
 
@@ -57,6 +57,11 @@ function responseHeaders(upstream: Response) {
   const headers = new Headers({ "Content-Type": upstream.headers.get("content-type") ?? "application/json" });
   const disposition = upstream.headers.get("content-disposition");
   if (disposition) headers.set("Content-Disposition", disposition);
+  // Keep the download safety headers set by the backend (file previews).
+  for (const name of ["content-security-policy", "x-content-type-options", "cache-control"]) {
+    const value = upstream.headers.get(name);
+    if (value) headers.set(name, value);
+  }
   return headers;
 }
 
@@ -71,7 +76,7 @@ function portalCookie(slug: string) {
  * staff accounts. Their session token lives in an httpOnly cookie per portal
  * and is sent upstream as X-Portal-Token; staff credentials are never sent.
  */
-async function portalProxy(request: NextRequest, slug: string, rest: string, body: string | undefined) {
+async function portalProxy(request: NextRequest, slug: string, rest: string, body: ArrayBuffer | undefined) {
   const path = request.nextUrl.pathname.replace(/^\/api\/aiva\/?/, "");
   const headers = new Headers();
   const contentType = request.headers.get("content-type");
@@ -98,7 +103,8 @@ async function portalProxy(request: NextRequest, slug: string, rest: string, bod
 }
 
 async function proxy(request: NextRequest) {
-  const body = request.method !== "GET" && request.method !== "HEAD" ? await request.text() : undefined;
+  // Raw bytes, so file uploads (multipart) reach the backend unchanged.
+  const body = request.method !== "GET" && request.method !== "HEAD" ? await request.arrayBuffer() : undefined;
 
   const portal = PORTAL_PATH.exec(request.nextUrl.pathname.replace(/^\/api\/aiva\/?/, ""));
   if (portal) return portalProxy(request, portal[1], portal[2] ?? "", body);

@@ -11,6 +11,8 @@ class Settings(BaseSettings):
     jwt_access_token_expire_minutes: int = 30
     refresh_token_expire_days: int = 30
     app_base_url: str = "http://localhost:3000"
+    # Largest file a user can upload to Documents, in megabytes.
+    document_max_mb: int = 25
     max_failed_logins: int = 5
     lockout_minutes: int = 15
     api_v1_prefix: str = "/api/v1"

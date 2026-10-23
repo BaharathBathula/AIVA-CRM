@@ -163,6 +163,7 @@ export interface Quote extends QuoteSummary {
   terms: string | null;
   notes: string | null;
   line_items: QuoteLine[];
+  price_book_id?: string | null;
 }
 
 export interface ScoringRule {

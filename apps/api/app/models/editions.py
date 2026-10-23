@@ -477,6 +477,9 @@ class SalesInvoice(UUIDPrimaryKeyMixin, OrganizationOwnedMixin, TimestampMixin, 
     quote_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("quotes.id", ondelete="SET NULL"), nullable=True, index=True)
     account_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("accounts.id", ondelete="SET NULL"), nullable=True, index=True)
     contact_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("contacts.id", ondelete="SET NULL"), nullable=True)
+    sales_order_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("sales_orders.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     opportunity_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("opportunities.id", ondelete="SET NULL"), nullable=True
     )

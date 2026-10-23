@@ -87,6 +87,24 @@ class Task(
         index=True,
     )
 
+    project_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey(
+            "projects.id",
+            ondelete="CASCADE",
+        ),
+        nullable=True,
+        index=True,
+    )
+
+    project_milestone_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey(
+            "project_milestones.id",
+            ondelete="SET NULL",
+        ),
+        nullable=True,
+        index=True,
+    )
+
     assigned_to_user_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey(
             "users.id",

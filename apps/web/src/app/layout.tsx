@@ -8,6 +8,7 @@ import "./globals.css";
 import "./theme.css";
 import "./platform.css";
 import "./editions.css";
+import "./workspace.css";
 
 export const metadata: Metadata = {
   title: {

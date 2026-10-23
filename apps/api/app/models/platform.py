@@ -179,6 +179,9 @@ class Quote(UUIDPrimaryKeyMixin, OrganizationOwnedMixin, TimestampMixin, Base):
         ForeignKey("contacts.id", ondelete="SET NULL"), nullable=True, index=True
     )
     owner_user_id: Mapped[uuid.UUID | None] = _user_fk()
+    price_book_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("price_books.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     valid_until: Mapped[date | None] = mapped_column(Date, nullable=True)
     currency: Mapped[str] = mapped_column(String(3), nullable=False, default="USD", server_default="USD")
     subtotal: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False, default=0, server_default="0")

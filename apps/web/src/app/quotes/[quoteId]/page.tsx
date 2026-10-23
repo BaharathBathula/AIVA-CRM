@@ -7,6 +7,7 @@ import {
   Check,
   Copy,
   FileText,
+  PackageCheck,
   Pencil,
   Plus,
   Printer,
@@ -24,6 +25,8 @@ import { Alert, Badge, Card, ConfirmDialog, LoadingRows, Modal, PageHeader, QUOT
 import { date, dateTime, moneyExact, titleCase } from "@/lib/format";
 import type { Product, Quote, QuoteLine, QuoteStatus } from "@/lib/platform-types";
 import { api, errorMessage, useApi } from "@/lib/use-api";
+import { bookPrice, type PriceBook } from "@/lib/workspace";
+import { PinButton } from "@/components/pins";
 
 function round(value: number) {
   return Math.round(value * 100) / 100;
@@ -70,6 +73,9 @@ function QuoteBuilder() {
   const [pick, setPick] = useState("");
 
   const q = quote.data;
+  const usesBooks = has("price_books");
+  const book = useApi<PriceBook>(usesBooks && q?.price_book_id ? `/price-books/${q.price_book_id}` : null);
+  const books = useApi<{ items: PriceBook[] }>(usesBooks ? "/price-books?active=true" : null);
   const canEdit = can("sales.quotes");
   const locked = !q || q.status === "accepted" || q.status === "declined" || !canEdit;
   const totals = useMemo(() => lineTotals(lines), [lines]);
@@ -89,13 +95,25 @@ function QuoteBuilder() {
   }, [dirty]);
 
   function updateLine(index: number, changes: Partial<QuoteLine>) {
-    setLines((current) => current.map((line, i) => (i === index ? { ...line, ...changes } : line)));
+    setLines((current) =>
+      current.map((line, i) => {
+        if (i !== index) return line;
+        const merged = { ...line, ...changes };
+        // A new quantity can move a price-book line into another volume tier.
+        if (changes.quantity !== undefined && merged.product_id) {
+          const price = bookPrice(book.data?.entries, merged.product_id, Number(merged.quantity) || 0);
+          if (price && Number(merged.unit_price) === price.unit_price) merged.discount_percent = price.discount_percent;
+        }
+        return merged;
+      })
+    );
     setDirty(true);
   }
 
   function addProduct(productId: string) {
     const product = products.data?.find((item) => item.id === productId);
     if (!product) return;
+    const price = bookPrice(book.data?.entries, product.id, 1);
     setLines((current) => [
       ...current,
       {
@@ -103,8 +121,8 @@ function QuoteBuilder() {
         name: product.name,
         description: product.description,
         quantity: 1,
-        unit_price: product.unit_price,
-        discount_percent: 0,
+        unit_price: price?.unit_price ?? product.unit_price,
+        discount_percent: price?.discount_percent ?? 0,
         tax_percent: product.tax_rate,
       },
     ]);
@@ -176,6 +194,33 @@ function QuoteBuilder() {
       const invoice = await api.post<{ id: string; display_number: string }>(`/invoices/from-quote/${quoteId}`, { due_in_days: 30 });
       toast(`Created ${invoice.display_number} as a draft.`);
       router.push(`/invoices/${invoice.id}`);
+    } catch (caught) {
+      toast(errorMessage(caught), "danger");
+      setBusy(false);
+    }
+  }
+
+  async function applyBook(bookId: string) {
+    if (dirty) await saveLines();
+    setBusy(true);
+    try {
+      const result = await api.post<Quote & { repriced_lines: number }>(`/quotes/${quoteId}/price-book`, { price_book_id: bookId || null });
+      setDirty(false);
+      quote.setData(result);
+      toast(bookId ? `Price book applied. ${result.repriced_lines} line${result.repriced_lines === 1 ? "" : "s"} re-priced.` : "Back to standard prices.");
+    } catch (caught) {
+      toast(errorMessage(caught), "danger");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function createSalesOrder() {
+    setBusy(true);
+    try {
+      const order = await api.post<{ id: string; display_number: string }>(`/sales-orders/from-quote/${quoteId}`);
+      toast(`Created ${order.display_number}.`);
+      router.push(`/sales-orders/${order.id}`);
     } catch (caught) {
       toast(errorMessage(caught), "danger");
       setBusy(false);
@@ -255,9 +300,15 @@ function QuoteBuilder() {
         }
         actions={
           <div className="ui-actions no-print">
+            <PinButton type="quote" id={q.id} />
             <button type="button" className="ui-btn" onClick={() => window.print()}>
               <Printer size={15} /> Print / PDF
             </button>
+            {q.status === "accepted" && has("sales_orders") && can("sales.orders") ? (
+              <button type="button" className="ui-btn" onClick={() => void createSalesOrder()} disabled={busy}>
+                <PackageCheck size={15} /> Create sales order
+              </button>
+            ) : null}
             {q.status === "accepted" && has("cpq") && can("sales.invoices") ? (
               <button type="button" className="ui-btn ui-btn-primary" onClick={() => void createInvoice()} disabled={busy}>
                 <FileText size={15} /> Create invoice
@@ -470,6 +521,25 @@ function QuoteBuilder() {
               <dd>{q.contact_id ? <Link href={`/contacts/${q.contact_id}`}>{q.contact_name}</Link> : "—"}</dd>
               <dt>Valid until</dt>
               <dd>{date(q.valid_until)}</dd>
+              {usesBooks ? (
+                <>
+                  <dt>Price book</dt>
+                  <dd>
+                    {!locked ? (
+                      <select className="ui-select sm no-print" value={q.price_book_id ?? ""} onChange={(e) => void applyBook(e.target.value)} disabled={busy} aria-label="Price book">
+                        <option value="">Standard prices</option>
+                        {(books.data?.items ?? []).map((b) => (
+                          <option key={b.id} value={b.id}>
+                            {b.name}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      books.data?.items.find((b) => b.id === q.price_book_id)?.name ?? (q.price_book_id ? "Price book" : "Standard prices")
+                    )}
+                  </dd>
+                </>
+              ) : null}
               <dt>Created</dt>
               <dd>{dateTime(q.created_at)}</dd>
               <dt>Sent</dt>

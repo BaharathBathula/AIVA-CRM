@@ -131,6 +131,49 @@ async def search(
         {"id": str(p.id), "title": p.name, "subtitle": p.sku or p.family, "href": "/products"} for p in products
     ])
 
+    from app.models.collaboration import Document
+    from app.models.meeting import Meeting
+    from app.models.supply import PurchaseOrder, SalesOrder, Vendor
+    from app.models.work import Project
+
+    def numbered(model, prefix: str, text_column):
+        digits = term.lower().removeprefix(prefix)
+        conditions = [text_column.ilike(like)]
+        if digits.isdigit():
+            conditions.append(model.number == int(digits))
+        return or_(*conditions)
+
+    if principal.has("sales_orders"):
+        rows = (await db.execute(select(SalesOrder).where(SalesOrder.organization_id == org, numbered(SalesOrder, "so-", SalesOrder.subject)).limit(limit))).scalars()
+        await add("sales_order", "Sales orders", [
+            {"id": str(o.id), "title": f"SO-{o.number} · {o.subject}", "subtitle": f"{o.status} · ${float(o.total):,.0f}", "href": f"/sales-orders/{o.id}"} for o in rows
+        ])
+    if principal.has("purchase_orders"):
+        rows = (await db.execute(select(PurchaseOrder).where(PurchaseOrder.organization_id == org, numbered(PurchaseOrder, "po-", PurchaseOrder.subject)).limit(limit))).scalars()
+        await add("purchase_order", "Purchase orders", [
+            {"id": str(o.id), "title": f"PO-{o.number} · {o.subject}", "subtitle": f"{o.status.replace('_', ' ')} · ${float(o.total):,.0f}", "href": f"/purchase-orders/{o.id}"} for o in rows
+        ])
+        rows = (await db.execute(select(Vendor).where(Vendor.organization_id == org, or_(Vendor.name.ilike(like), Vendor.email.ilike(like))).limit(limit))).scalars()
+        await add("vendor", "Vendors", [
+            {"id": str(v.id), "title": v.name, "subtitle": v.category or v.email, "href": f"/vendors/{v.id}"} for v in rows
+        ])
+    if principal.has("projects"):
+        rows = (await db.execute(select(Project).where(Project.organization_id == org, numbered(Project, "prj-", Project.name)).limit(limit))).scalars()
+        await add("project", "Projects", [
+            {"id": str(p.id), "title": f"PRJ-{p.number} · {p.name}", "subtitle": p.status.replace("_", " "), "href": f"/projects/{p.id}"} for p in rows
+        ])
+    if principal.has("documents"):
+        visible = or_(Document.visibility != "private", Document.owner_user_id == principal.user_id)
+        rows = (await db.execute(select(Document).where(Document.organization_id == org, visible, Document.name.ilike(like)).limit(limit))).scalars()
+        await add("document", "Documents", [
+            {"id": str(d.id), "title": d.name, "subtitle": f"Version {d.version}", "href": f"/documents/{d.id}"} for d in rows
+        ])
+    if principal.has("tasks_meetings_calls"):
+        rows = (await db.execute(select(Meeting).where(Meeting.organization_id == org, Meeting.title.ilike(like)).order_by(Meeting.start_at.desc()).limit(limit))).scalars()
+        await add("meeting", "Meetings", [
+            {"id": str(m.id), "title": m.title, "subtitle": f"{m.start_at:%b %d, %Y} · {m.status}", "href": f"/meetings?open={m.id}"} for m in rows
+        ])
+
     return {"query": term, "groups": groups}
 
 
