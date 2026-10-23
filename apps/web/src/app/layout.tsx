@@ -7,6 +7,7 @@ import { Providers } from "@/components/providers";
 import "./globals.css";
 import "./theme.css";
 import "./platform.css";
+import "./editions.css";
 
 export const metadata: Metadata = {
   title: {

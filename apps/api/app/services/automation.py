@@ -28,6 +28,16 @@ from sqlalchemy import event, inspect, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 
+from app.models.editions import (
+    ApprovalRequest,
+    ApprovalRule,
+    Integration,
+    Journey,
+    JourneyEnrollment,
+    OutboundMessage,
+    StageRule,
+)
+from app.models.pipeline_stage import PipelineStage
 from app.models.platform import (
     AuditLog,
     Dashboard,
@@ -71,7 +81,29 @@ OPERATORS = (
     "greater_than", "less_than", "is_empty", "is_not_empty", "in",
 )
 
-ACTION_TYPES = ("create_task", "update_field", "notify", "assign_owner")
+ACTION_TYPES = ("create_task", "update_field", "notify", "assign_owner", "post_to_chat")
+
+CHAT_EVENTS = {
+    "lead_created": "New lead",
+    "deal_created": "New deal",
+    "deal_won": "Deal won",
+    "deal_lost": "Deal lost",
+    "case_created": "New case",
+    "case_urgent": "Urgent case",
+    "quote_accepted": "Quote accepted",
+    "form_submitted": "Web form submitted",
+}
+
+
+class AutomationBlocked(Exception):
+    """Raised inside a flush when a rule stops the change (returned as an API error)."""
+
+    def __init__(self, status_code: int, detail: str, code: str, extra: dict[str, Any] | None = None):
+        super().__init__(detail)
+        self.status_code = status_code
+        self.detail = detail
+        self.code = code
+        self.extra = extra or {}
 TRIGGERS = ("created", "updated", "created_or_updated", "field_changed")
 
 
@@ -87,7 +119,11 @@ def invalidate_automation_cache(organization_id: uuid.UUID | None = None) -> Non
         _CACHE.pop(organization_id, None)
 
 
-async def load_automation_context(db: AsyncSession, organization_id: uuid.UUID) -> dict[str, Any]:
+async def load_automation_context(
+    db: AsyncSession,
+    organization_id: uuid.UUID,
+    features: frozenset[str] | None = None,
+) -> dict[str, Any]:
     entry = _CACHE.get(organization_id)
     if entry and time.monotonic() - entry[0] < CACHE_TTL_SECONDS:
         context = entry[1]
@@ -108,7 +144,68 @@ async def load_automation_context(db: AsyncSession, organization_id: uuid.UUID) 
                 )
             )
         ).scalars().all()
+        stages = (
+            await db.execute(select(PipelineStage).where(PipelineStage.organization_id == organization_id))
+        ).scalars().all()
+        stage_rules = (
+            await db.execute(select(StageRule).where(StageRule.organization_id == organization_id))
+        ).scalars().all()
+        approval_rules = (
+            await db.execute(
+                select(ApprovalRule).where(ApprovalRule.organization_id == organization_id, ApprovalRule.is_active.is_(True))
+            )
+        ).scalars().all()
+        locked = (
+            await db.execute(
+                select(ApprovalRequest.record_id, ApprovalRequest.rule_name).where(
+                    ApprovalRequest.organization_id == organization_id, ApprovalRequest.status == "pending"
+                )
+            )
+        ).all()
+        locking_rules = {rule.name for rule in approval_rules if rule.lock_record}
+        journeys = (
+            await db.execute(
+                select(Journey).where(
+                    Journey.organization_id == organization_id, Journey.status == "active", Journey.trigger == "created"
+                )
+            )
+        ).scalars().all()
+        chats = (
+            await db.execute(
+                select(Integration).where(
+                    Integration.organization_id == organization_id,
+                    Integration.kind.in_(("slack", "teams")),
+                    Integration.is_active.is_(True),
+                )
+            )
+        ).scalars().all()
         context = {
+            "stages": {str(stage.id): {"name": stage.name, "category": stage.category} for stage in stages},
+            "stage_rules": {
+                str(rule.stage_id): {
+                    "required_fields": list(rule.required_fields or []),
+                    "checklist": list(rule.checklist or []),
+                    "exit_requires_checklist": rule.exit_requires_checklist,
+                }
+                for rule in stage_rules
+            },
+            "approval_rules": [
+                {
+                    "id": str(rule.id),
+                    "name": rule.name,
+                    "object_type": rule.object_type,
+                    "trigger": rule.trigger,
+                    "target_stage_id": str(rule.target_stage_id) if rule.target_stage_id else None,
+                    "conditions": list(rule.conditions or []),
+                }
+                for rule in approval_rules
+            ],
+            "locked": {str(record_id): name for record_id, name in locked if name in locking_rules},
+            "journeys": [
+                {"id": journey.id, "object_type": journey.object_type, "conditions": list(journey.conditions or [])}
+                for journey in journeys
+            ],
+            "chat": [{"channel": chat.kind, "events": list(chat.events or [])} for chat in chats],
             "workflow_rules": [
                 {
                     "id": rule.id,
@@ -137,6 +234,8 @@ async def load_automation_context(db: AsyncSession, organization_id: uuid.UUID) 
 
     sync_session = db.sync_session if hasattr(db, "sync_session") else db
     sync_session.info["automation"] = context
+    if features is not None:
+        sync_session.info["features"] = features
     return context
 
 
@@ -415,7 +514,130 @@ def run_action(
         )
         return "Sent notification"
 
+    if kind == "post_to_chat":
+        channel = params.get("channel") or "slack"
+        if channel not in {"slack", "teams"}:
+            raise ValueError("Choose Slack or Microsoft Teams.")
+        text = render_template(params.get("message") or "{{record}} needs attention", obj, definition)
+        session.add(
+            OutboundMessage(
+                id=uuid.uuid4(),
+                organization_id=org_id,
+                channel=channel,
+                event="workflow",
+                payload={"title": rule["name"], "text": text[:3000], "link": definition.link(obj)},
+                status="pending",
+            )
+        )
+        return f"Queued {channel.title()} message"
+
     raise ValueError(f"Unknown action '{kind}'.")
+
+
+def _record_value(obj: Any, key: str) -> Any:
+    if key.startswith("cf."):
+        return (getattr(obj, "custom_fields", None) or {}).get(key[3:])
+    return getattr(obj, key, None)
+
+
+def _check_stage_rules(obj: Any, context: dict[str, Any], old_stage: str | None, new_stage: str | None) -> None:
+    rules = context.get("stage_rules") or {}
+    stages = context.get("stages") or {}
+    playbook = (getattr(obj, "custom_fields", None) or {}).get("_playbook") or {}
+    if old_stage and old_stage in rules:
+        rule = rules[old_stage]
+        done = set(playbook.get(old_stage) or [])
+        open_items = [item for item in rule["checklist"] if item not in done]
+        if rule["exit_requires_checklist"] and open_items:
+            name = stages.get(old_stage, {}).get("name", "this stage")
+            raise AutomationBlocked(
+                422,
+                f"Finish the {name} checklist before moving on: {', '.join(open_items[:3])}{'…' if len(open_items) > 3 else ''}.",
+                "process_checklist",
+                {"stage_id": old_stage, "missing": open_items},
+            )
+    if new_stage and new_stage in rules:
+        missing = [key for key in rules[new_stage]["required_fields"] if _record_value(obj, key) in (None, "", [])]
+        if missing:
+            name = stages.get(new_stage, {}).get("name", "that stage")
+            labels = [key[3:].replace("_", " ") if key.startswith("cf.") else key.replace("_", " ") for key in missing]
+            raise AutomationBlocked(
+                422,
+                f"To move this deal to {name}, fill in: {', '.join(labels)}.",
+                "process_required_fields",
+                {"stage_id": new_stage, "missing": missing},
+            )
+
+
+def _check_approvals(obj: Any, context: dict[str, Any], new_stage: str, bypass: set) -> None:
+    if str(obj.id) in bypass:
+        return
+    for rule in context.get("approval_rules") or []:
+        if rule["object_type"] != "opportunity" or rule["trigger"] != "stage_change":
+            continue
+        if rule["target_stage_id"] and rule["target_stage_id"] != new_stage:
+            continue
+        if all(evaluate_condition(obj, condition) for condition in rule["conditions"]):
+            stage_name = (context.get("stages") or {}).get(new_stage, {}).get("name", "that stage")
+            raise AutomationBlocked(
+                409,
+                f"Moving this deal to {stage_name} needs approval ({rule['name']}). Submit it for approval.",
+                "approval_required",
+                {"rule_id": rule["id"], "rule_name": rule["name"], "requested_change": {"stage_id": new_stage}},
+            )
+
+
+def _chat_events(kind: str, entity_type: str, obj: Any, changes: dict[str, Any], context: dict[str, Any]) -> list[str]:
+    events: list[str] = []
+    if entity_type == "lead" and kind == "created":
+        events.append("lead_created")
+    elif entity_type == "opportunity":
+        if kind == "created":
+            events.append("deal_created")
+        if "stage_id" in changes or kind == "created":
+            category = (context.get("stages") or {}).get(str(obj.stage_id), {}).get("category")
+            if category == "won" and (kind == "updated"):
+                events.append("deal_won")
+            elif category == "lost" and kind == "updated":
+                events.append("deal_lost")
+    elif entity_type == "case":
+        if kind == "created":
+            events.append("case_created")
+        if getattr(obj, "priority", None) == "urgent" and (kind == "created" or "priority" in changes):
+            events.append("case_urgent")
+    elif entity_type == "quote" and kind == "updated" and changes.get("status", {}).get("to") == "accepted":
+        events.append("quote_accepted")
+    return events
+
+
+def _queue_chat(session: Session, obj: Any, entity_type: str, event: str, context: dict[str, Any]) -> None:
+    definition = OBJECTS.get(entity_type)
+    label = _label(obj)
+    details = []
+    amount = getattr(obj, "amount", None) if entity_type == "opportunity" else getattr(obj, "total", None)
+    if amount:
+        details.append(f"${float(amount):,.0f}")
+    if entity_type == "case":
+        details.append(f"priority {obj.priority}")
+    if entity_type == "lead" and getattr(obj, "company_name", None):
+        details.append(obj.company_name)
+    for chat in context.get("chat") or []:
+        if event not in chat["events"]:
+            continue
+        session.add(
+            OutboundMessage(
+                id=uuid.uuid4(),
+                organization_id=obj.organization_id,
+                channel=chat["channel"],
+                event=event,
+                payload={
+                    "title": CHAT_EVENTS.get(event, event),
+                    "text": f"{label}" + (f" · {' · '.join(details)}" if details else ""),
+                    "link": definition.link(obj) if definition else None,
+                },
+                status="pending",
+            )
+        )
 
 
 def _rule_matches(rule: dict[str, Any], kind: str, entity_type: str, obj: Any, changes: dict[str, Any]) -> bool:
@@ -487,9 +709,63 @@ def _before_flush(session: Session, flush_context: Any, instances: Any) -> None:
 
     scoring_rules = context.get("scoring_rules") or []
     workflow_rules = context.get("workflow_rules") or []
+    features = session.info.get("features")
+    bypass = session.info.get("approval_bypass") or set()
+    locked = context.get("locked") or {}
+
+    def enabled(feature: str) -> bool:
+        return features is None or feature in features
 
     for kind, entity_type, obj, changes in events:
         organization_id = getattr(obj, "organization_id", None)
+
+        if kind == "updated" and locked and str(getattr(obj, "id", "")) in locked and str(obj.id) not in bypass:
+            if set(changes) - {"custom_fields", "score"}:
+                raise AutomationBlocked(
+                    423,
+                    f"This record is waiting for approval ({locked[str(obj.id)]}) and can't be edited until it's decided.",
+                    "record_locked",
+                )
+
+        if entity_type == "opportunity" and kind != "deleted":
+            new_stage = str(obj.stage_id) if getattr(obj, "stage_id", None) else None
+            old_stage = None
+            if kind == "updated" and "stage_id" in changes:
+                old_stage = changes["stage_id"]["from"]
+            stage_moved = kind == "created" or "stage_id" in changes
+            if stage_moved and enabled("approvals") and kind == "updated" and new_stage:
+                _check_approvals(obj, context, new_stage, bypass)
+            if stage_moved and enabled("process_management"):
+                _check_stage_rules(obj, context, old_stage, new_stage)
+
+        if kind != "deleted" and organization_id is not None and context.get("chat") and enabled("chat_integrations"):
+            for event_name in _chat_events(kind, entity_type, obj, changes, context):
+                _queue_chat(session, obj, entity_type, event_name, context)
+
+        if (
+            kind == "created"
+            and entity_type in {"lead", "contact"}
+            and context.get("journeys")
+            and enabled("customer_journeys")
+        ):
+            for journey in context["journeys"]:
+                if journey["object_type"] != entity_type:
+                    continue
+                if all(evaluate_condition(obj, condition) for condition in journey["conditions"]):
+                    session.add(
+                        JourneyEnrollment(
+                            id=uuid.uuid4(),
+                            organization_id=organization_id,
+                            journey_id=journey["id"],
+                            record_type=entity_type,
+                            record_id=obj.id,
+                            record_label=_label(obj) or None,
+                            status="active",
+                            current_step=0,
+                            next_run_at=datetime.now(timezone.utc),
+                            history=[],
+                        )
+                    )
 
         # Lead scoring runs before auditing so the score change is recorded.
         if entity_type == "lead" and kind != "deleted" and scoring_rules:

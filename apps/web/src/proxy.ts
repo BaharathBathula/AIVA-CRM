@@ -5,7 +5,7 @@ import { NextResponse, type NextRequest } from "next/server";
  * the sign-in pages redirect to the app when a session already exists.
  */
 
-const PUBLIC_PAGES = ["/login", "/signup", "/forgot-password", "/reset-password", "/accept-invite"];
+const PUBLIC_PAGES = ["/login", "/signup", "/forgot-password", "/reset-password", "/accept-invite", "/pricing", "/f", "/u", "/portal"];
 const GUEST_ONLY = ["/login", "/signup", "/forgot-password"];
 
 export function proxy(request: NextRequest) {
@@ -32,5 +32,5 @@ export function proxy(request: NextRequest) {
 
 export const config = {
   // Pages only: skip API routes, Next internals and static files.
-  matcher: ["/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:png|jpg|jpeg|svg|gif|webp|ico|txt)$).*)"],
+  matcher: ["/((?!api|_next/static|_next/image|favicon.ico|manifest.webmanifest|sw.js|.*\\.(?:png|jpg|jpeg|svg|gif|webp|ico|txt|js|webmanifest)$).*)"],
 };

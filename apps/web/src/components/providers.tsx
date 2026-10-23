@@ -15,7 +15,7 @@ import {
 
 import { fetchCurrentSession, setCachedSession, type CurrentSession } from "@/lib/auth";
 
-export const PUBLIC_ROUTES = ["/login", "/signup", "/forgot-password", "/reset-password", "/accept-invite"];
+export const PUBLIC_ROUTES = ["/login", "/signup", "/forgot-password", "/reset-password", "/accept-invite", "/pricing", "/f", "/u", "/portal"];
 
 export function isPublicRoute(pathname: string | null) {
   return PUBLIC_ROUTES.some((route) => pathname === route || pathname?.startsWith(`${route}/`));
@@ -29,6 +29,8 @@ interface SessionContextValue {
   refresh: () => Promise<CurrentSession | null>;
   setSession: (session: CurrentSession | null) => void;
   can: (permission: string) => boolean;
+  /** Whether the workspace's plan includes a feature (see lib/plans.ts). */
+  has: (feature: string) => boolean;
 }
 
 const SessionContext = createContext<SessionContextValue>({
@@ -37,6 +39,7 @@ const SessionContext = createContext<SessionContextValue>({
   refresh: async () => null,
   setSession: () => undefined,
   can: () => false,
+  has: () => false,
 });
 
 function SessionProvider({ children }: { children: ReactNode }) {
@@ -80,12 +83,14 @@ function SessionProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<SessionContextValue>(() => {
     const permissions = new Set(session?.permissions ?? []);
+    const features = new Set(session?.subscription?.features ?? []);
     return {
       session,
       loading,
       refresh,
       setSession,
       can: (permission: string) => permissions.has(permission),
+      has: (feature: string) => features.has(feature),
     };
   }, [loading, refresh, session, setSession]);
 

@@ -11,7 +11,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import and_, false, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies.auth import Principal, require_permission
+from app.api.dependencies.auth import Principal, require_feature, require_permission
 from app.db.session import get_db
 from app.models.account import Account
 from app.models.contact import Contact
@@ -74,7 +74,7 @@ def product_out(product: Product) -> dict:
     }
 
 
-@router.get("/products")
+@router.get("/products", dependencies=[Depends(require_feature("cpq"))])
 async def list_products(
     search: str | None = Query(default=None, max_length=200),
     family: str | None = None,
@@ -103,7 +103,7 @@ async def _check_sku(db: AsyncSession, organization_id: uuid.UUID, sku: str | No
         raise HTTPException(status.HTTP_409_CONFLICT, f"Another product already uses SKU {sku}.")
 
 
-@router.post("/products", status_code=status.HTTP_201_CREATED)
+@router.post("/products", status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_feature("cpq"))])
 async def create_product(
     payload: ProductPayload,
     principal: Principal = Depends(require_permission("sales.products")),
@@ -126,7 +126,7 @@ async def _get_product(db: AsyncSession, principal: Principal, product_id: uuid.
     return product
 
 
-@router.patch("/products/{product_id}")
+@router.patch("/products/{product_id}", dependencies=[Depends(require_feature("cpq"))])
 async def update_product(
     product_id: uuid.UUID,
     payload: ProductPayload,
@@ -144,7 +144,7 @@ async def update_product(
     return product_out(product)
 
 
-@router.delete("/products/{product_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/products/{product_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(require_feature("cpq"))])
 async def delete_product(
     product_id: uuid.UUID,
     principal: Principal = Depends(require_permission("sales.products")),
@@ -296,7 +296,7 @@ async def _get_quote(db: AsyncSession, principal: Principal, quote_id: uuid.UUID
     return quote
 
 
-@router.get("/quotes")
+@router.get("/quotes", dependencies=[Depends(require_feature("cpq"))])
 async def list_quotes(
     quote_status: str | None = Query(default=None, alias="status"),
     account_id: uuid.UUID | None = None,
@@ -333,7 +333,7 @@ async def list_quotes(
     return [await quote_out(db, quote) for quote in quotes]
 
 
-@router.post("/quotes", status_code=status.HTTP_201_CREATED)
+@router.post("/quotes", status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_feature("cpq"))])
 async def create_quote(
     payload: QuoteCreate,
     principal: Principal = Depends(require_permission("sales.quotes")),
@@ -362,7 +362,7 @@ async def create_quote(
     return await quote_out(db, quote, detail=True)
 
 
-@router.get("/quotes/{quote_id}")
+@router.get("/quotes/{quote_id}", dependencies=[Depends(require_feature("cpq"))])
 async def get_quote(
     quote_id: uuid.UUID,
     principal: Principal = Depends(require_permission("records.read")),
@@ -376,7 +376,7 @@ def _ensure_editable(quote: Quote) -> None:
         raise HTTPException(status.HTTP_409_CONFLICT, f"This quote is {quote.status}. Duplicate it to make changes.")
 
 
-@router.patch("/quotes/{quote_id}")
+@router.patch("/quotes/{quote_id}", dependencies=[Depends(require_feature("cpq"))])
 async def update_quote(
     quote_id: uuid.UUID,
     payload: QuoteUpdate,
@@ -394,7 +394,7 @@ async def update_quote(
     return await quote_out(db, quote, detail=True)
 
 
-@router.put("/quotes/{quote_id}/line-items")
+@router.put("/quotes/{quote_id}/line-items", dependencies=[Depends(require_feature("cpq"))])
 async def replace_line_items(
     quote_id: uuid.UUID,
     items: list[LineItemPayload],
@@ -418,7 +418,7 @@ async def replace_line_items(
     return await quote_out(db, quote, detail=True)
 
 
-@router.post("/quotes/{quote_id}/status")
+@router.post("/quotes/{quote_id}/status", dependencies=[Depends(require_feature("cpq"))])
 async def set_quote_status(
     quote_id: uuid.UUID,
     payload: QuoteStatusUpdate,
@@ -433,8 +433,25 @@ async def set_quote_status(
         raise HTTPException(status.HTTP_409_CONFLICT, "Add at least one line item before sending.")
     if quote.status in {"accepted", "declined"} and target != quote.status:
         raise HTTPException(status.HTTP_409_CONFLICT, f"This quote is already {quote.status}.")
+    if target == "sent" and quote.status == "draft" and principal.has("approvals"):
+        from app.services.approvals import matching_quote_rule
+        from app.services.automation import AutomationBlocked
+
+        rule = await matching_quote_rule(db, quote)
+        if rule is not None:
+            raise AutomationBlocked(
+                409,
+                f"This quote needs approval before it's sent ({rule.name}). Submit it for approval.",
+                "approval_required",
+                {"rule_id": str(rule.id), "rule_name": rule.name, "requested_change": {"status": "sent"}},
+            )
 
     now = datetime.now(timezone.utc)
+    stock_warnings: list[str] = []
+    if target == "accepted" and quote.status != "accepted" and principal.has("inventory"):
+        from app.api.routes.operations import apply_quote_sale
+
+        stock_warnings = await apply_quote_sale(db, quote, principal.user_id)
     quote.status = target
     if target == "sent":
         quote.sent_at = now
@@ -448,10 +465,13 @@ async def set_quote_status(
         quote.declined_at = now
     await db.commit()
     await db.refresh(quote)
-    return await quote_out(db, quote, detail=True)
+    data = await quote_out(db, quote, detail=True)
+    if stock_warnings:
+        data["stock_warnings"] = stock_warnings
+    return data
 
 
-@router.post("/quotes/{quote_id}/duplicate", status_code=status.HTTP_201_CREATED)
+@router.post("/quotes/{quote_id}/duplicate", status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_feature("cpq"))])
 async def duplicate_quote(
     quote_id: uuid.UUID,
     principal: Principal = Depends(require_permission("sales.quotes")),
@@ -499,7 +519,7 @@ async def duplicate_quote(
     return await quote_out(db, copy, detail=True)
 
 
-@router.delete("/quotes/{quote_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/quotes/{quote_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(require_feature("cpq"))])
 async def delete_quote(
     quote_id: uuid.UUID,
     principal: Principal = Depends(require_permission("sales.quotes")),

@@ -44,6 +44,8 @@ from app.models.platform import (
 from app.models.task import Task
 from app.models.user import User
 from app.services.automation import score_lead
+from app.models.editions import Subscription
+from app.scripts.seed_editions import seed_editions
 from app.services.workspace import provision_workspace
 
 DEV_ORGANIZATION_ID = uuid.UUID("10000000-0000-0000-0000-000000000001")
@@ -196,6 +198,25 @@ async def upsert_users(db) -> dict[str, uuid.UUID]:
     teams["Enterprise Sales"].manager_user_id = ids["Maya Chen"]
     teams["Customer Support"].manager_user_id = ids["Tom Becker"]
     await provision_workspace(db, organization, DEV_USER_ID, pipeline_id=DEV_PIPELINE_ID, stage_ids=DEV_STAGE_IDS)
+
+    # The demo workspace runs on Enterprise so every feature can be tried.
+    subscription = (
+        await db.execute(select(Subscription).where(Subscription.organization_id == DEV_ORGANIZATION_ID))
+    ).scalar_one_or_none()
+    if subscription is None:
+        db.add(
+            Subscription(
+                id=uuid.uuid4(),
+                organization_id=DEV_ORGANIZATION_ID,
+                plan="enterprise",
+                status="active",
+                seats=len(users),
+                provider="demo",
+                billing_email="admin@aiva.local",
+                current_period_start=now(),
+                current_period_end=now() + timedelta(days=30),
+            )
+        )
     return ids
 
 
@@ -495,10 +516,50 @@ async def seed_demo(db, users: dict[str, uuid.UUID]) -> None:
     db.sync_session.info["automation_disabled"] = False
 
 
+def known_users() -> dict[str, uuid.UUID]:
+    users = {"AIVA Administrator": DEV_USER_ID}
+    for suffix, _, name, *_ in TEAM_USERS:
+        users[name] = uuid.UUID(f"20000000-0000-0000-0000-00000000000{suffix}")
+    return users
+
+
+async def add_edition_demo(db) -> None:
+    """Demo content for plan features; runs once, also on existing demo workspaces."""
+
+    if not SEED_DEMO:
+        return
+    users = known_users()
+    present = {
+        user_id
+        for user_id in (
+            await db.execute(select(OrganizationMembership.user_id).where(OrganizationMembership.organization_id == DEV_ORGANIZATION_ID))
+        ).scalars()
+    }
+    if not set(users.values()) <= present:
+        return
+    if await seed_editions(db, users, DEV_ORGANIZATION_ID):
+        await db.commit()
+        print("Demo content for Starter, Pro and Enterprise features created.")
+
+
 async def bootstrap(if_new: bool = False) -> None:
     async with AsyncSessionLocal() as db:
         if if_new and await db.get(Organization, DEV_ORGANIZATION_ID) is not None:
-            # Hosted demos call this on every start; leave existing data alone.
+            # Hosted demos call this on every start; leave existing data alone,
+            # apart from adding demo content for features added since.
+            subscription = (
+                await db.execute(select(Subscription).where(Subscription.organization_id == DEV_ORGANIZATION_ID))
+            ).scalar_one_or_none()
+            if subscription is None:
+                db.add(
+                    Subscription(
+                        id=uuid.uuid4(), organization_id=DEV_ORGANIZATION_ID, plan="enterprise", status="active",
+                        seats=len(known_users()), provider="demo", billing_email="admin@aiva.local",
+                        current_period_start=now(), current_period_end=now() + timedelta(days=30),
+                    )
+                )
+                await db.commit()
+            await add_edition_demo(db)
             print("Demo workspace already exists; skipping seed.")
             return
         users = await upsert_users(db)
@@ -509,6 +570,7 @@ async def bootstrap(if_new: bool = False) -> None:
             await seed_demo(db, users)
             await db.commit()
             print("Demo data created.")
+        await add_edition_demo(db)
 
     print("AIVA development workspace ready.")
     print(f"Organization ID: {DEV_ORGANIZATION_ID}")

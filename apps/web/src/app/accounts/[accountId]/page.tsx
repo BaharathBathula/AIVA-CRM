@@ -40,6 +40,7 @@ import {
 import {
   CreateContactModal,
 } from "@/components/accounts/create-contact-modal";
+import { RecordActions, RecordInsights } from "@/components/record-extras";
 
 import {
   EditAccountModal,
@@ -459,6 +460,8 @@ export default function AccountDetailPage() {
   ] = useState<OrganizationMember[]>([]);
 
 
+  const [extrasVersion, setExtrasVersion] = useState(0);
+
   useEffect(() => {
     if (!accountId) {
       return;
@@ -642,6 +645,7 @@ export default function AccountDetailPage() {
     };
   }, [
     accountId,
+    extrasVersion,
   ]);
 
 
@@ -1502,6 +1506,7 @@ const accountHealth =
 
 
             <div className="detailActions">
+              <RecordActions objectType="account" recordId={account.id} call={{ name: account.name, phone: account.phone ?? null, account_id: account.id }} onChanged={() => setExtrasVersion((v) => v + 1)} />
               <button
                 type="button"
                 className="secondaryButton"
@@ -3090,43 +3095,7 @@ const accountHealth =
               </section>
 
 
-              <section className="detailPanel aiAccountCard">
-                <div className="detailPanelHeader">
-                  <div>
-                    <h2>
-                      AIVA Account Summary
-                    </h2>
-
-                    <p>
-                      AI relationship
-                      intelligence.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="aivaPlaceholder">
-                  <span>
-                    <Sparkles
-                      size={12}
-                    />
-
-                    Coming soon
-                  </span>
-
-                  <strong>
-                    Customer intelligence
-                    will appear here.
-                  </strong>
-
-                  <p>
-                    The Account 360 data
-                    foundation is ready for
-                    AI summarization, risk
-                    detection and next-best-
-                    action recommendations.
-                  </p>
-                </div>
-              </section>
+              <RecordInsights objectType="account" recordId={account.id} version={extrasVersion} onChanged={() => setExtrasVersion((v) => v + 1)} />
             </aside>
           </div>
         </div>

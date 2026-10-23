@@ -65,6 +65,10 @@ class Team(UUIDPrimaryKeyMixin, OrganizationOwnedMixin, TimestampMixin, Base):
     name: Mapped[str] = mapped_column(String(120), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     manager_user_id: Mapped[uuid.UUID | None] = _user_fk()
+    # Teams can nest (Enterprise: multi-team management).
+    parent_team_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("teams.id", ondelete="SET NULL"), nullable=True, index=True
+    )
 
 
 class AuthToken(UUIDPrimaryKeyMixin, TimestampMixin, Base):
@@ -147,6 +151,11 @@ class Product(UUIDPrimaryKeyMixin, OrganizationOwnedMixin, TimestampMixin, Base)
     )
     tax_rate: Mapped[Decimal] = mapped_column(Numeric(5, 2), nullable=False, default=0, server_default="0")
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="true")
+    # Inventory (Pro).
+    track_inventory: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
+    stock_on_hand: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False, default=0, server_default="0")
+    reorder_level: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False, default=0, server_default="0")
+    unit_cost: Mapped[Decimal | None] = mapped_column(Numeric(14, 2), nullable=True)
 
 
 class Quote(UUIDPrimaryKeyMixin, OrganizationOwnedMixin, TimestampMixin, Base):
@@ -279,6 +288,7 @@ class Case(UUIDPrimaryKeyMixin, OrganizationOwnedMixin, TimestampMixin, Base):
     satisfaction_rating: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
     tags: Mapped[list[str]] = mapped_column(JSONB, nullable=False, default=list, server_default="[]")
     linked_article_ids: Mapped[list[str]] = mapped_column(JSONB, nullable=False, default=list, server_default="[]")
+    custom_fields: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict, server_default="{}")
 
 
 class CaseComment(UUIDPrimaryKeyMixin, OrganizationOwnedMixin, TimestampMixin, Base):

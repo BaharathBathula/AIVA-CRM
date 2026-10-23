@@ -11,7 +11,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.dependencies.tenant import (
     get_current_organization_id,
 )
+from app.api.dependencies.auth import Principal, get_current_principal
 from app.db.session import get_db
+from app.services import mailer
 from app.schemas.email import (
     EmailComposeRequest,
     EmailMessageCreate,
@@ -210,6 +212,7 @@ async def get_email_message_endpoint(
 )
 async def compose_email_endpoint(
     payload: EmailComposeRequest,
+    principal: Principal = Depends(get_current_principal),
     organization_id=Depends(
         get_current_organization_id
     ),
@@ -338,6 +341,48 @@ async def compose_email_endpoint(
         organization_id,
         message_payload,
     )
+
+    # Deliver through the sender's connected mailbox (or the server's
+    # SMTP settings). Without either, the email is only logged in AIVA.
+    if not payload.is_draft:
+        config = await mailer.sender_config(
+            db,
+            organization_id,
+            principal.user_id,
+        )
+        delivery: dict = {"delivery": "logged"}
+        if config is not None:
+            try:
+                for recipient in payload.to_recipients:
+                    await mailer.send(
+                        config,
+                        to=str(recipient.get("email")),
+                        to_name=recipient.get("name"),
+                        subject=payload.subject,
+                        text=payload.body_text or "",
+                        html_body=payload.body_html,
+                        reply_to=(
+                            str(payload.reply_to)
+                            if payload.reply_to
+                            else None
+                        ),
+                    )
+                delivery = {
+                    "delivery": "sent",
+                    "via": config.from_email,
+                    "source": config.source,
+                }
+            except mailer.MailError as exc:
+                delivery = {
+                    "delivery": "failed",
+                    "error": str(exc)[:300],
+                }
+        message.message_metadata = {
+            **(message.message_metadata or {}),
+            **delivery,
+        }
+        await db.commit()
+        await db.refresh(message)
 
     return {
         "thread": thread,

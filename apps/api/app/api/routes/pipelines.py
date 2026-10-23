@@ -10,7 +10,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.dependencies.tenant import (
     get_current_organization_id,
 )
+from app.api.dependencies.auth import Principal, get_current_principal
+from app.core.plans import plan_for
 from app.db.session import get_db
+from app.models.pipeline import Pipeline
+from app.services.billing import enforce_limit
 from app.schemas.pipeline import (
     PipelineResponse,
     PipelineStageResponse,
@@ -137,7 +141,9 @@ async def create_pipeline_endpoint(
         get_current_organization_id
     ),
     db: AsyncSession = Depends(get_db),
+    principal: Principal = Depends(get_current_principal),
 ):
+    await enforce_limit(db, organization_id, plan_for(principal.plan), "pipelines", Pipeline)
     return await create_pipeline(
         db=db,
         organization_id=organization_id,

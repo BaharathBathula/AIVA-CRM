@@ -81,6 +81,16 @@ class OrganizationMembership(
         nullable=True,
     )
 
+    # Reporting hierarchy (Enterprise): the person this member reports to.
+    reports_to_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey(
+            "users.id",
+            ondelete="SET NULL",
+        ),
+        nullable=True,
+        index=True,
+    )
+
     organization: Mapped["Organization"] = relationship(
         back_populates="memberships",
     )

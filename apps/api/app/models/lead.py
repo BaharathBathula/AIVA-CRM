@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from sqlalchemy import Boolean
+from sqlalchemy.dialects.postgresql import JSONB
+
 import uuid
 from datetime import datetime
 
@@ -132,4 +135,20 @@ class Lead(
             ondelete="SET NULL",
         ),
         nullable=True,
+    )
+
+    # Values of custom fields defined in Settings → Fields & modules.
+    custom_fields: Mapped[dict] = mapped_column(
+        JSONB,
+        nullable=False,
+        default=dict,
+        server_default="{}",
+    )
+
+    # Set when the person unsubscribes from marketing email.
+    email_opt_out: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=False,
+        server_default="false",
     )

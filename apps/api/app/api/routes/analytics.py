@@ -10,6 +10,8 @@ from pydantic import BaseModel, Field
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.plans import plan_for
+from app.services.billing import enforce_limit
 from app.api.dependencies.auth import Principal, require_permission
 from app.db.session import get_db
 from app.models.activity import Activity
@@ -131,6 +133,7 @@ async def create_report(
     db: AsyncSession = Depends(get_db),
 ):
     _validate_payload(payload)
+    await enforce_limit(db, principal.organization_id, plan_for(principal.plan), "custom_reports", Report)
     await run_report(db, principal, payload)  # validates fields and filters
     data = payload.model_dump()
     data["filters"] = [f.model_dump() for f in payload.filters]
@@ -265,6 +268,7 @@ async def create_dashboard(
     principal: Principal = Depends(require_permission("analytics.dashboards")),
     db: AsyncSession = Depends(get_db),
 ):
+    await enforce_limit(db, principal.organization_id, plan_for(principal.plan), "dashboards", Dashboard)
     dashboard = Dashboard(
         id=uuid.uuid4(),
         organization_id=principal.organization_id,

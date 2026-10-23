@@ -16,7 +16,9 @@ import {
   FilePenLine,
   Handshake,
   Headset,
+  Lock,
   LogOut,
+  Megaphone,
   Moon,
   Plus,
   Search,
@@ -33,7 +35,8 @@ import { useSession, useTheme, useToast } from "@/components/providers";
 import { Avatar } from "@/components/ui";
 import { logout, switchOrganization } from "@/lib/auth";
 import { relativeTime } from "@/lib/format";
-import { SECTIONS, currentLocation, sectionHref, visiblePages } from "@/lib/navigation";
+import { useCustomModules } from "@/lib/modules";
+import { SECTIONS, currentLocation, sectionHref, visiblePages, type NavPage } from "@/lib/navigation";
 import type { NotificationItem, SearchGroup } from "@/lib/platform-types";
 import { api, useDebounced } from "@/lib/use-api";
 
@@ -62,9 +65,17 @@ function useDismiss(open: boolean, close: () => void) {
 
 export function TopBar() {
   const pathname = usePathname();
-  const { can } = useSession();
+  const { can, has, session } = useSession();
   const { section, page } = currentLocation(pathname);
-  const pages = visiblePages(section, can);
+  const modules = useCustomModules();
+  let pages: NavPage[] = visiblePages(section, can);
+  if (section.key === "apps" && session) {
+    pages = [
+      ...pages,
+      ...modules.filter((m) => m.is_active).map((m) => ({ label: m.name, href: `/modules/${m.key}` })),
+    ];
+  }
+  const activeHref = page?.href ?? pages.find((item) => pathname.startsWith(`${item.href}/`) || pathname === item.href)?.href;
   const [searchOpen, setSearchOpen] = useState(false);
 
   useEffect(() => {
@@ -87,10 +98,18 @@ export function TopBar() {
 
       <nav className="shell-pill shell-tabs" aria-label={`${section.label} pages`}>
         {pages.map((item) => {
-          const active = page?.href === item.href;
+          const active = activeHref === item.href;
+          const locked = Boolean(session && item.feature && !has(item.feature));
           return (
-            <Link key={item.href} href={item.href} className={`shell-tab${active ? " active" : ""}`} aria-current={active ? "page" : undefined}>
+            <Link
+              key={item.href}
+              href={item.href}
+              className={`shell-tab${active ? " active" : ""}${locked ? " locked" : ""}`}
+              aria-current={active ? "page" : undefined}
+              title={locked ? "Not included in your plan" : undefined}
+            >
               {item.label}
+              {locked ? <Lock size={12} aria-label="Upgrade required" /> : null}
             </Link>
           );
         })}
@@ -197,7 +216,8 @@ export function Rail() {
                 <li>
                   <kbd>Ctrl</kbd> <kbd>K</kbd> searches records, cases, quotes and articles.
                 </li>
-                <li>The icons on the left switch between Home, Sales, Service, Insights and Settings.</li>
+                <li>The icons on the left switch between Home, Sales, Marketing, Service, Insights, Apps and Settings.</li>
+                <li>Tabs with a lock belong to a higher plan; open one to see what it adds.</li>
                 <li>Pages for the current area are in the bar at the top.</li>
                 <li>
                   Use <Plus size={12} style={{ verticalAlign: -1 }} /> to create a lead, deal, quote or case from anywhere.
@@ -382,7 +402,7 @@ function SearchDialog({ onClose }: { onClose: () => void }) {
 // ======================================================================= Create
 
 function QuickCreate() {
-  const { can } = useSession();
+  const { can, has } = useSession();
   const [open, setOpen] = useState(false);
   const close = useCallback(() => setOpen(false), []);
   const ref = useDismiss(open, close);
@@ -392,9 +412,10 @@ function QuickCreate() {
     { label: "Account", href: "/accounts?new=1", icon: BriefcaseBusiness, show: can("records.write") },
     { label: "Contact", href: "/contacts?new=1", icon: ContactRound, show: can("records.write") },
     { label: "Opportunity", href: "/opportunities?new=1", icon: Handshake, show: can("records.write") },
-    { label: "Quote", href: "/quotes/new", icon: FilePenLine, show: can("sales.quotes") },
+    { label: "Quote", href: "/quotes/new", icon: FilePenLine, show: can("sales.quotes") && has("cpq") },
     { label: "Case", href: "/cases?new=1", icon: Headset, show: can("service.cases") && can("records.write") },
     { label: "Knowledge article", href: "/knowledge/new", icon: BookOpen, show: can("service.knowledge_write") },
+    { label: "Email campaign", href: "/marketing/campaigns?new=1", icon: Megaphone, show: can("marketing.manage") && has("mass_email") },
   ];
   const visible = items.filter((item) => item.show);
   if (!visible.length) return null;
