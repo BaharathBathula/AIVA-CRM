@@ -114,6 +114,7 @@ class CustomerData:
     postal_code: str | None = None
     country: str | None = None
     currency: str | None = None
+    ref: str | None = None  # the AIVA account's id, for providers that keep an external ID (NetSuite)
 
 
 @dataclass

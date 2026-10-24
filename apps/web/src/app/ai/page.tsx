@@ -7,6 +7,7 @@ import { useState, type FormEvent } from "react";
 import { FeaturePage, UpgradeGate } from "@/components/plan";
 import { useSession, useToast } from "@/components/providers";
 import { Alert, Badge, Card, EmptyState, LoadingRows, PageHeader, Tabs } from "@/components/ui";
+import { aiSourceLabel, isAiSource, type AiModelState } from "@/lib/ai-source";
 import { relativeTime, titleCase } from "@/lib/format";
 import { api, errorMessage, query, useApi } from "@/lib/use-api";
 
@@ -57,7 +58,7 @@ export default function AiPage() {
 
 function AiView() {
   const [view, setView] = useState<"inbox" | "agents" | "ask">("inbox");
-  const agents = useApi<{ claude: boolean; agents: Agent[] }>("/ai/agents");
+  const agents = useApi<{ claude: boolean; model?: AiModelState; agents: Agent[] }>("/ai/agents");
   const openCount = agents.data?.agents.reduce((sum, agent) => sum + agent.open_suggestions, 0);
 
   return (
@@ -69,9 +70,14 @@ function AiView() {
       {agents.data && !agents.data.claude ? (
         <div style={{ marginBottom: 14 }}>
           <Alert tone="info">
-            Agents are running on AIVA&apos;s built-in rules. Add an <code>ANTHROPIC_API_KEY</code> on the server to have Claude write summaries, drafts and answers.
+            Agents are running on AIVA&apos;s built-in rules. Connect your own model in <Link href="/integrations?category=AI%20Models">Integrations → AI Models</Link> (OpenAI or Azure
+            OpenAI), or add an <code>ANTHROPIC_API_KEY</code> on the server for Claude, to have a model write summaries, drafts and answers.
           </Alert>
         </div>
+      ) : agents.data?.model && agents.data.model.source !== "claude" && agents.data.model.source !== "rules" ? (
+        <p className="ui-small ui-muted" style={{ margin: "0 0 14px" }}>
+          Agents write with your workspace&apos;s {aiSourceLabel(agents.data.model.source, agents.data.model.model)}.
+        </p>
       ) : null}
       <div style={{ marginBottom: 14 }}>
         <Tabs
@@ -167,7 +173,7 @@ function Inbox({ agents, onChanged }: { agents: Agent[]; onChanged: () => void }
                 <div className="ui-small ui-muted">
                   {row.agent_name} · <Link href={row.link}>{row.record_label}</Link> ({titleCase(row.record_type)}) · {relativeTime(row.created_at)}
                   {row.owner_name ? ` · for ${row.owner_name}` : ""}
-                  {row.source === "claude" ? " · written by Claude" : ""}
+                  {isAiSource(row.source) ? ` · written by ${aiSourceLabel(row.source)}` : ""}
                 </div>
                 {row.body ? <p className="suggestion-text">{row.body}</p> : null}
               </div>
@@ -337,7 +343,7 @@ function AskAiva() {
                 <Sparkles size={14} />
                 <div>
                   <p style={{ margin: 0, whiteSpace: "pre-wrap" }}>{item.a}</p>
-                  <span className="ui-muted ui-small">{item.source === "claude" ? "Answered by Claude from your CRM data" : "Answered from your CRM data"}</span>
+                  <span className="ui-muted ui-small">{isAiSource(item.source) ? `Answered by ${aiSourceLabel(item.source)} from your CRM data` : "Answered from your CRM data"}</span>
                 </div>
               </div>
             </div>

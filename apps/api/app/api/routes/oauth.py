@@ -206,12 +206,22 @@ async def _sso_user(db: AsyncSession, connection: SsoConnection, provider_key: s
                 raise oidc.OAuthError(
                     f"{profile.email} already has an AIVA account outside this workspace. Ask your administrator to invite it, then sign in again."
                 )
+            if user.is_platform_staff:
+                raise oidc.OAuthError("AIVA staff accounts can't be linked to a workspace's single sign-on.")
             others = [org for m, org in await active_memberships(db, user.id) if org.id != connection.organization_id]
             if others:
-                # Never let one workspace's identity provider sign into an account other workspaces trust.
-                raise oidc.OAuthError(
-                    "This account also belongs to other workspaces, so it can't be linked to single sign-on. Sign in with your password, Google or Microsoft."
-                )
+                # An account other workspaces trust is only linked to this workspace's identity
+                # provider when the workspace has proven it owns the email domain (DNS); whoever
+                # owns the domain already controls that mailbox. The session still only opens
+                # this workspace.
+                from app.integrations.providers import _idp_policy
+
+                domain = oidc.email_domain(profile.email)
+                if domain not in (await _idp_policy.load(db, connection.organization_id))["verified"]:
+                    raise oidc.OAuthError(
+                        f"This account also belongs to other workspaces, so it can only use single sign-on once your administrator "
+                        f"verifies @{domain} (Single sign-on → Verified domains). Until then sign in with your password, Google or Microsoft."
+                    )
         elif connection.auto_provision:
             user = User(id=uuid.uuid4(), email=profile.email, full_name=(profile.name or profile.email)[:200], password_hash=None, is_active=True)
             db.add(user)
@@ -320,18 +330,27 @@ async def callback(payload: CallbackRequest, request: Request, db: AsyncSession 
             memberships = await active_memberships(db, user.id)
             if not memberships:
                 raise oidc.OAuthError("Your account isn't part of an active workspace. Ask an administrator to invite you.")
-            organization_id = memberships[0][1].id
+            # Workspaces that require single sign-on for this person can't be opened this way;
+            # the session then stays in the workspace it opens.
+            from app.integrations.providers._idp_policy import blocked_message, sso_required
+
+            required = await sso_required(db, user, memberships)
+            allowed = [org.id for _, org in memberships if org.id not in required]
+            if not allowed:
+                raise oidc.OAuthError(blocked_message(user, list(required.values())))
+            organization_id, bound = allowed[0], bool(required)
 
         await db.flush()
         next_path = _safe_next(str(claims.get("next") or "/"))
         if user.mfa_enabled and user.mfa_secret:
             await db.commit()
-            return {"status": "mfa", "next": next_path, **mfa_challenge(user, organization_id if bound else None)}
+            return {"status": "mfa", "next": next_path, **mfa_challenge(user, organization_id if connection is not None else None)}
 
         session = await issue_session(
-            db, user, organization_id, ip=client_ip(request), user_agent=request.headers.get("user-agent"), bound=bound
+            db, user, organization_id, ip=client_ip(request), user_agent=request.headers.get("user-agent"), bound=bound,
+            via_sso=connection is not None,
         )
-        audit_auth_event(db, organization_id, user, "login", request, {"method": "sso" if bound else p.key})
+        audit_auth_event(db, organization_id, user, "login", request, {"method": "sso" if connection is not None else p.key})
         await db.commit()
         return {"status": "session", "next": next_path, "session": session}
     except oidc.OAuthError as exc:
@@ -457,10 +476,46 @@ async def save_sso(payload: SsoPayload, principal: Principal = Depends(require_p
             raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, f"{domain} is a public email provider and can't use single sign-on.")
         if domain not in domains:
             domains.append(domain)
+    # Domains proved through DNS (Integrations → Entra ID / Okta → Domains) win over plain claims:
+    # a domain verified by another workspace can't be claimed here, and a domain this workspace
+    # has verified is taken over from a workspace that only claimed it.
+    from app.integrations.providers import _idp_policy
+    from app.models.governance import WorkspaceSetting
+
+    verified_by: dict[uuid.UUID, set[str]] = {}
+    for org_id, data in (
+        await db.execute(select(WorkspaceSetting.organization_id, WorkspaceSetting.data).where(WorkspaceSetting.namespace == _idp_policy.NAMESPACE))
+    ).all():
+        verified_by[org_id] = set(_idp_policy.normalize(data)["verified"])
+    mine_verified = verified_by.get(principal.organization_id, set())
+    verified_elsewhere = {d for org_id, found in verified_by.items() if org_id != principal.organization_id for d in found}
+    blocked = next((d for d in domains if d in verified_elsewhere and d not in mine_verified), None)
+    if blocked:
+        raise HTTPException(status.HTTP_409_CONFLICT, f"{blocked} is verified by another AIVA workspace, so it can't sign in here.")
     others = (await db.execute(select(SsoConnection).where(SsoConnection.organization_id != principal.organization_id))).scalars().all()
-    taken = next((d for c in others for d in (c.domains or []) if d in domains), None)
-    if taken:
-        raise HTTPException(status.HTTP_409_CONFLICT, f"{taken} already signs in to another AIVA workspace.")
+    for other in others:
+        for d in other.domains or []:
+            if d not in domains:
+                continue
+            if d not in mine_verified:
+                raise HTTPException(
+                    status.HTTP_409_CONFLICT,
+                    f"{d} already signs in to another AIVA workspace. Verify the domain (Integrations → Microsoft Entra ID or Okta → Domains) to claim it.",
+                )
+            if d in verified_by.get(other.organization_id, set()):
+                # Both workspaces proved the domain: neither takes it from the other silently.
+                raise HTTPException(
+                    status.HTTP_409_CONFLICT,
+                    f"{d} is verified by another AIVA workspace too and signs in there. Remove it from that workspace's single sign-on first.",
+                )
+    for other in others:
+        moved = [d for d in (other.domains or []) if d in domains]
+        if moved:
+            other.domains = [d for d in (other.domains or []) if d not in moved]
+            record_audit(
+                db, organization_id=other.organization_id, action="sso_domain_reclaimed", entity_type="sso_connection", entity_id=other.id,
+                entity_label=other.name, changes={"domains_removed": moved, "verified_by_another_workspace": True},
+            )
     valid_roles = set(SYSTEM_ROLES) - {"owner"}
     valid_roles |= {r for r in (await db.execute(select(Role.key).where(Role.organization_id == principal.organization_id))).scalars()}
     if payload.default_role not in valid_roles:

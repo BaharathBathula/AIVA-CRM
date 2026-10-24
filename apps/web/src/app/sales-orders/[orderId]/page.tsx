@@ -16,6 +16,7 @@ import { api, errorMessage, useApi } from "@/lib/use-api";
 import { SO_STATUS, formatAddress, type Address, type OrderLine, type PriceBook, type SalesOrder } from "@/lib/workspace";
 import type { Account } from "@/types/account";
 import type { Contact } from "@/types/contact";
+import { OrderErp } from "@/components/integrations/record/RecordErp";
 
 export default function SalesOrderPage() {
   return (
@@ -284,6 +285,9 @@ function SalesOrderView() {
               </div>
             </div>
           </Card>
+          <div className="int-slot no-print">
+            <OrderErp recordType="sales_order" recordId={o.id} onChanged={() => void order.reload()} />
+          </div>
           <Card title="Terms">
             <p style={{ margin: 0, fontSize: 13, color: "var(--text-2)", whiteSpace: "pre-wrap" }}>{o.terms || "No terms."}</p>
             {o.notes ? (

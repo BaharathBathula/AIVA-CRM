@@ -44,7 +44,10 @@ async function forward(request: NextRequest, body: ArrayBuffer | undefined, toke
   // picks the workspace, so no organization header is added for them.
   const incoming = request.headers.get("authorization");
   const apiKey = !token && incoming && /^Bearer aiva_sk_[A-Za-z0-9_-]+$/.test(incoming.trim()) ? incoming.trim() : null;
-  if (token) headers.set("Authorization", `Bearer ${token}`);
+  // Identity providers (Entra ID, Okta) call the SCIM service with the workspace's SCIM token.
+  const scimToken = path.startsWith("public/scim/") && incoming && /^Bearer aiva_scim_[A-Za-z0-9_-]+$/.test(incoming.trim()) ? incoming.trim() : null;
+  if (scimToken) headers.set("Authorization", scimToken);
+  else if (token) headers.set("Authorization", `Bearer ${token}`);
   else if (apiKey) headers.set("Authorization", apiKey);
   const org = apiKey ? null : organizationId ?? FALLBACK_ORGANIZATION_ID;
   if (org) headers.set("X-Organization-ID", org);

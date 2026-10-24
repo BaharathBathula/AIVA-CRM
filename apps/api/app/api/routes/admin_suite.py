@@ -454,11 +454,25 @@ async def ai_usage(period: str | None = None, principal: Principal = Depends(get
     licenses = await workspace_settings.get(db, org, "licenses")
     features: dict[str, dict[str, Any]] = {}
     for feature, source, words, count in by_feature:
-        entry = features.setdefault(feature, {"feature": feature, "label": FEATURE_LABELS.get(feature, feature.title()), "words": 0, "requests": 0, "claude": 0, "rules": 0})
+        entry = features.setdefault(
+            feature,
+            # claude / openai / azure_openai / rules: words by where they came from; "ai" is every model together.
+            {"feature": feature, "label": FEATURE_LABELS.get(feature, feature.title()), "words": 0, "requests": 0, "ai": 0, "claude": 0, "openai": 0, "azure_openai": 0, "rules": 0},
+        )
         entry["words"] += int(words or 0)
         entry["requests"] += int(count)
-        entry[source if source in ("claude", "rules") else "rules"] += int(words or 0)
+        bucket = source if source in ("claude", "openai", "azure_openai") else "rules"
+        entry[bucket] += int(words or 0)
+        if bucket != "rules":
+            entry["ai"] += int(words or 0)
+    from app.integrations.providers import ai_models
     from app.services import ai
+
+    model = await ai.model_for(db, org)
+    try:
+        provider_usage = await ai_models.usage(db, org, period, only_user=None if everyone else principal.user_id)
+    except Exception:  # noqa: BLE001 - the word usage page must load even if this can't
+        provider_usage = None
 
     return {
         "period": period,
@@ -483,7 +497,11 @@ async def ai_usage(period: str | None = None, principal: Principal = Depends(get
         "by_feature": sorted(features.values(), key=lambda r: -r["words"]),
         "daily": [{"date": d.isoformat() if hasattr(d, "isoformat") else str(d), "words": int(w or 0)} for d, w in daily],
         "periods": _recent_periods(),
-        "model_source": ai.source_label(),
+        "model_source": model["source"],
+        "model_label": model["label"],
+        "model_name": model["model"],
+        # Tokens and estimated cost on the workspace's own models (OpenAI / Azure OpenAI).
+        "provider_usage": provider_usage if provider_usage and provider_usage["totals"]["requests"] else None,
         "can_see_everyone": everyone,
     }
 

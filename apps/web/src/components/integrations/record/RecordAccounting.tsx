@@ -11,7 +11,7 @@ import { api, errorMessage, useApi } from "@/lib/use-api";
 import { amount, PaymentsList, type AccountingPayment } from "../panels/accounting";
 
 export type AccountingActive = {
-  key: "quickbooks" | "xero" | "freshbooks" | "sage_accounting";
+  key: "quickbooks" | "xero" | "freshbooks" | "sage_accounting" | "netsuite";
   name: string;
   connected: boolean;
   status: string;
@@ -56,7 +56,7 @@ export const REMOTE_STATUS: Record<string, { label: string; tone: Tone }> = {
 
 /**
  * The account's customer in the workspace's accounting system (QuickBooks, Xero,
- * FreshBooks or Sage): open and overdue balance, recent invoices and payments,
+ * FreshBooks, Sage or NetSuite): open and overdue balance, recent invoices and payments,
  * and linking to an existing customer. Renders nothing when no accounting system
  * is on and connected.
  *

@@ -1,6 +1,7 @@
 "use client";
 
 import { KeyRound, Trash2 } from "lucide-react";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { CopyField } from "@/components/copy-field";
@@ -22,6 +23,12 @@ interface Connection {
   is_active: boolean;
   updated_at: string;
 }
+
+/** Starting values for common providers; the integrations fill in the exact issuer for your tenant. */
+const PRESETS = [
+  { key: "entra_id", name: "Microsoft Entra ID", issuer: "https://login.microsoftonline.com/<tenant-id>/v2.0" },
+  { key: "okta", name: "Okta", issuer: "https://<your-org>.okta.com" },
+] as const;
 
 interface SsoSettings {
   connection: Connection | null;
@@ -144,10 +151,36 @@ function SsoSettingsView() {
           ) : null
         }
       />
+      <div style={{ marginBottom: 16 }}>
+        <Alert tone="info">
+          Using Microsoft Entra ID or Okta? Set it up from <Link href="/integrations/entra_id">Integrations → Microsoft Entra ID</Link> or{" "}
+          <Link href="/integrations/okta">Okta</Link>: the exact issuer for your tenant, automatic user provisioning (SCIM), group → role mapping, verified
+          domains and requiring single sign-on.
+        </Alert>
+      </div>
       <div className="ui-split" style={{ alignItems: "start" }}>
         <Card title="Identity provider" icon={<KeyRound size={16} />}>
           <div className="ui-stack">
             {error ? <Alert>{error}</Alert> : null}
+            {!connection ? (
+              <div className="ui-row" style={{ gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                <span className="ui-muted ui-small">Start from:</span>
+                {PRESETS.map((preset) => (
+                  <button
+                    key={preset.key}
+                    type="button"
+                    className="ui-btn ui-btn-sm"
+                    onClick={() => {
+                      setName(preset.name);
+                      setIssuer(preset.issuer);
+                      setTested(null);
+                    }}
+                  >
+                    {preset.name}
+                  </button>
+                ))}
+              </div>
+            ) : null}
             {tested ? (
               <Alert tone="success">{tested}</Alert>
             ) : null}

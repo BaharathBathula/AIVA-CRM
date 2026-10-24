@@ -1,0 +1,62 @@
+/* Integrations: identity panels — Microsoft Entra ID and Okta (classes start with iid-). */
+
+.iid-kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.iid-text { margin: 0; color: var(--text-2); font-size: 13.5px; line-height: 1.55; }
+.iid-summary { margin-bottom: 8px; }
+.iid-steps { margin: 0; }
+.iid-steps code, .iid-record code { padding: 1px 5px; border-radius: 6px; background: var(--surface-muted); font-family: var(--mono); font-size: 12px; overflow-wrap: anywhere; }
+.iid-urls { display: grid; gap: 12px; }
+
+/* Numbered step headings */
+.iid-step-title { display: inline-flex; align-items: center; gap: 8px; }
+.iid-step-n {
+  display: inline-grid; place-items: center; flex: none; width: 20px; height: 20px; border-radius: 999px;
+  background: var(--primary-soft); color: var(--text); font-size: 11.5px; font-weight: 700;
+}
+
+.iid-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.iid-push { margin-left: auto; }
+.iid-inline { display: flex; gap: 8px; align-items: center; }
+.iid-inline .ui-input { flex: 1; min-width: 0; }
+.iid-disabled { pointer-events: none; opacity: 0.55; }
+.iid-test { padding-top: 12px; border-top: 1px solid var(--border); }
+.iid-error { color: var(--danger); }
+.iid-spacer { flex: 1; }
+
+/* SCIM token */
+.iid-token { display: grid; gap: 8px; padding: 12px; border: 1px dashed var(--border); border-radius: 12px; }
+.iid-token-meta { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px; }
+.iid-token-meta code { padding: 2px 8px; border-radius: 8px; background: var(--surface-muted); font-size: 12.5px; }
+
+/* Group mapping */
+.iid-mappings { display: grid; gap: 8px; }
+.iid-map-head, .iid-map-row {
+  display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1fr) 34px; gap: 8px; align-items: center;
+}
+.iid-map-head { color: var(--muted); font-size: 12px; font-weight: 600; }
+.iid-table { margin: 0 -22px -4px; border-top: 1px solid var(--border); }
+
+/* Domains */
+.iid-domains { display: grid; gap: 10px; }
+.iid-domain { display: grid; gap: 6px; padding: 12px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface-muted); }
+.iid-domain-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.iid-domain-head strong { overflow-wrap: anywhere; }
+.iid-record { display: grid; gap: 6px; }
+.iid-require { padding-top: 4px; border-top: 1px solid var(--border); }
+.iid-problems { display: grid; gap: 4px; margin: 4px 0 8px; padding: 8px 10px 8px 28px; border-radius: 10px; background: var(--warning-soft); color: var(--text-2); font-size: 13px; }
+
+@media (max-width: 680px) {
+  .iid-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .iid-map-head { display: none; }
+  .iid-map-row {
+    grid-template-columns: minmax(0, 1fr) 34px; padding: 10px; border: 1px solid var(--border); border-radius: 12px;
+  }
+  .iid-map-row > :nth-child(1) { grid-column: 1; }
+  .iid-map-row > :nth-child(4) { grid-column: 2; grid-row: 1; }
+  .iid-map-row > :nth-child(2), .iid-map-row > :nth-child(3) { grid-column: 1 / -1; }
+  .iid-push { margin-left: 0; width: 100%; justify-content: center; }
+  .iid-inline { flex-wrap: wrap; }
+  .iid-inline .ui-btn { width: 100%; justify-content: center; }
+  .iid-table { margin: 0 -16px; }
+  .iid-domain-head .iid-spacer { display: none; }
+}

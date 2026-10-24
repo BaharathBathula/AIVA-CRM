@@ -145,8 +145,9 @@ class _Collector:
 async def _draft(prompt: str, fallback: str) -> tuple[str, str]:
     from app.services.ai_context import agent_system_prompt
 
-    text = await ai.complete(prompt, system=agent_system_prompt.get() or ai.SYSTEM, max_tokens=500)
-    return (text, "claude") if text else (fallback, "rules")
+    # The workspace and database come from the AI scope set by ``run_agent``.
+    reply = await ai.generate(prompt, system=agent_system_prompt.get() or ai.SYSTEM, max_tokens=500, feature="agents")
+    return (reply.text, reply.source) if reply.text else (fallback, "rules")
 
 
 # ---------------------------------------------------------------------------
@@ -452,11 +453,13 @@ async def run_agent(db: AsyncSession, organization: Organization, agent: str) ->
     previous = info.get("automation_disabled", False)
     info["automation_disabled"] = True
     token = ai_context.agent_system_prompt.set(await ai_context.system_prompt(db, organization.id, "agents"))
+    scope = ai.current_scope.set(ai.AiScope(organization.id, "agents", None, db))
     try:
         created = await RUNNERS[agent](db, organization.id)
     finally:
         info["automation_disabled"] = previous
         ai_context.agent_system_prompt.reset(token)
+        ai.current_scope.reset(scope)
     stored = dict((organization.settings or {}).get("ai_agents") or {})
     stored[agent] = {**(stored.get(agent) or {"enabled": True}), "last_run_at": utcnow().isoformat()}
     organization.settings = {**(organization.settings or {}), "ai_agents": stored}

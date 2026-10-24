@@ -10,6 +10,7 @@ import { CURRENCIES } from "@/lib/constants";
 import { moneyExact, number } from "@/lib/format";
 import type { Product } from "@/lib/platform-types";
 import { api, errorMessage, useApi } from "@/lib/use-api";
+import { ProductErp } from "@/components/integrations/record/RecordErp";
 
 const FREQUENCY: Record<Product["billing_frequency"], string> = {
   one_time: "One-time",
@@ -323,6 +324,7 @@ function ProductModal({
           <input type="checkbox" checked={form.is_active} onChange={(e) => setForm({ ...form, is_active: e.target.checked })} />
           Available on new quotes
         </label>
+        {product && product !== "new" ? <ProductErp productId={product.id} compact /> : null}
       </form>
     </Modal>
   );

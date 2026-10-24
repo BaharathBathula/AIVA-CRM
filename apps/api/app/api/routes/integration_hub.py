@@ -20,7 +20,7 @@ from app.api.dependencies.auth import Principal, get_current_principal, require_
 from app.core.config import get_settings
 from app.db.session import get_db
 from app.integrations import core
-from app.integrations.catalog import CATEGORIES, FAMILIES, INTEGRATIONS, IntegrationDef
+from app.integrations.catalog import APP_ONLY_KEYS, CATEGORIES, FAMILIES, INTEGRATIONS, IntegrationDef
 from app.integrations.core import IntegrationError
 from app.integrations.providers import call, hook
 from app.models.integration_hub import IntegrationConnection, IntegrationLog, IntegrationToggle, WebhookSubscription
@@ -42,6 +42,16 @@ def _item(key: str) -> IntegrationDef:
     if item is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Unknown integration.")
     return item
+
+
+def _app_only(key: str, principal: Principal) -> None:
+    """Single sign-on and provisioning switches can't be changed with an API key or by AIVA support."""
+
+    if key in APP_ONLY_KEYS and (principal.api_key_id is not None or principal.support_grant_id is not None):
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            f"Change {INTEGRATIONS[key].name} in the AIVA app while signed in as yourself (not with an API key or support access).",
+        )
 
 
 # Inbound addresses (and callback URLs) are only shown to people who can manage the
@@ -225,7 +235,11 @@ async def integration_detail(key: str, principal: Principal = Depends(get_curren
         "available": available,
         "status": state,
         "can_manage": manage,
-        "connection": connection_out(connection, {str(principal.user_id): principal.full_name}, show_webhook=manage or bool(connection and connection.user_id)),
+        "connection": connection_out(
+            connection, {str(principal.user_id): principal.full_name},
+            # Only integrations that receive webhooks have an inbound address to show (SCIM tokens reuse the column).
+            show_webhook=(manage or bool(connection and connection.user_id)) and hook(key, "handle_webhook") is not None,
+        ),
         "people": people,
         "workspace_config": dict(toggle.config or {}) if toggle else {},
         "workspace_secrets": core.secrets_set(toggle),
@@ -244,6 +258,7 @@ class TogglePayload(BaseModel):
 @router.put("/{key}/toggle")
 async def set_toggle(key: str, payload: TogglePayload, principal: Principal = Depends(require_permission("admin.settings")), db: AsyncSession = Depends(get_db)):
     item = _item(key)
+    _app_only(key, principal)
     org = principal.organization_id
     if payload.enabled and not principal.has(item.feature):
         raise HTTPException(status.HTTP_402_PAYMENT_REQUIRED, f"{item.name} isn't included in your plan.")
@@ -297,6 +312,7 @@ async def workspace_settings(key: str, payload: SettingsPayload, principal: Prin
     """Workspace-level options for an integration (default channel, events, lead owner...)."""
 
     item = _item(key)
+    _app_only(key, principal)
     org = principal.organization_id
     toggle = await core.toggle_row(db, org, key)
     if toggle is None:
@@ -374,6 +390,7 @@ async def save_credentials(key: str, payload: CredentialsPayload, principal: Pri
     """Connect with keys from the provider's console (WhatsApp, Twilio, a Teams or Slack webhook, a Calendly token)."""
 
     item = _item(key)
+    _app_only(key, principal)
     org = principal.organization_id
     if not item.credential_fields:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, f"{item.name} connects by signing in.")
@@ -430,6 +447,7 @@ async def disconnect(
     db: AsyncSession = Depends(get_db),
 ):
     item = _item(key)
+    _app_only(key, principal)
     org = principal.organization_id
     if item.personal:
         target = user_id or principal.user_id

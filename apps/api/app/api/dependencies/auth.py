@@ -26,7 +26,7 @@ from app.core.context import bind_session_context
 from app.core.crypto import sha256
 from app.core.permissions import SYSTEM_ROLES
 from app.core.plans import ALL_FEATURES, FEATURE_BY_KEY, PLANS
-from app.core.security import AuthenticationError, decode_access_claims
+from app.core.security import AuthenticationError, decode_access_details
 from app.db.session import get_db
 from app.models.editions import ApiKey, Subscription
 from app.models.governance import SupportAccessGrant, WorkspaceSetting
@@ -105,6 +105,7 @@ def _trusted_proxy(peer: str | None) -> bool:
 SUPPORT_BLOCKED_PATHS = (
     "/admin/users", "/admin/roles", "/admin/teams", "/billing", "/api-keys", "/support-access", "/sso", "/auth/sso",
     "/workspace-settings/security", "/workspace-settings/licenses", "/workspace-settings/mcp", "/compliance", "/sandbox",
+    "/identity", "/integration-hub/entra_id", "/integration-hub/okta",
 )
 
 
@@ -177,18 +178,22 @@ async def get_current_principal(
 
     settings = get_settings()
     api_key: ApiKey | None = None
+    bound_organization: uuid.UUID | None = None
+    via_sso = False
     token = credentials.credentials
     if token.startswith(API_KEY_PREFIX):
         user_id, api_key = await _api_key_user(db, token, organization_id)
     else:
         try:
-            user_id, bound_organization = decode_access_claims(token, settings.jwt_secret_key)
+            user_id, bound_organization, via_sso = decode_access_details(token, settings.jwt_secret_key)
         except AuthenticationError as exc:
             raise _unauthorized("Your session expired. Sign in again.") from exc
         if bound_organization is not None and bound_organization != organization_id:
             raise HTTPException(
                 status.HTTP_403_FORBIDDEN,
-                "You signed in with your organization's single sign-on, so this session only opens that workspace.",
+                "You signed in with your organization's single sign-on, so this session only opens that workspace."
+                if via_sso
+                else "That workspace requires single sign-on. Sign out, then choose “Log In with your Organization”.",
             )
 
     result = await db.execute(
@@ -236,6 +241,15 @@ async def get_current_principal(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Your access to this workspace is deactivated.",
         )
+    if api_key is None and grant is None and not via_sso and membership.role != "owner":
+        # "Require single sign-on" (Integrations → Entra ID / Okta): a session that didn't come
+        # through this workspace's SSO stops working here as soon as the policy is on, not only
+        # at the next sign-in. That includes password sessions limited to this workspace because
+        # another one requires SSO. Owners keep their break-glass password; API keys are unaffected.
+        from app.integrations.providers import _idp_policy
+
+        if await _idp_policy.sso_required_for(db, user, organization_id, membership.role):
+            raise HTTPException(status.HTTP_403_FORBIDDEN, _idp_policy.blocked_message(user, [organization.name]))
 
     security = await workspace_security(db, organization_id)
     ip = client_ip(request)

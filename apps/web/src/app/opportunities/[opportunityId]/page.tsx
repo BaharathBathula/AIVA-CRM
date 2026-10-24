@@ -30,6 +30,7 @@ import { RecordDocuments, RecordMeetings, DealProjectButton } from "@/components
 import { PinButton } from "@/components/pins";
 import { RecordCloudFiles } from "@/components/integrations/record/RecordCloudFiles";
 import { RecordSignatures } from "@/components/integrations/record/RecordSignatures";
+import { OrderErp } from "@/components/integrations/record/RecordErp";
 import { ShareToSlackButton } from "@/components/integrations/record/ShareToSlackButton";
 import { ApprovalModal, RecordActions, RecordInsights, approvalFromError, type ApprovalNeeded } from "@/components/record-extras";
 
@@ -1103,6 +1104,7 @@ export default function OpportunityDetailPage() {
               <RecordDocuments recordType="opportunity" recordId={opportunity.id} />
               <RecordCloudFiles recordType="opportunity" recordId={opportunity.id} />
               <RecordSignatures recordType="opportunity" recordId={opportunity.id} />
+              <OrderErp recordType="opportunity" recordId={opportunity.id} />
             </aside>
           </div>
         </div>

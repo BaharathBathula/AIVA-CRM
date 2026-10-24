@@ -46,6 +46,7 @@ from app.api.routes.integration_hub import public_router as integration_public_r
 from app.api.routes.integration_hub import router as integration_hub_router
 from app.api.routes import int_documents, int_leads_automation, int_mail_calendar, int_messaging
 from app.api.routes import int_accounting, int_analytics, int_marketing, int_payments, int_sales, int_support
+from app.api.routes import int_ai, int_erp, int_identity
 
 
 api_router = APIRouter()
@@ -61,6 +62,7 @@ api_router.include_router(integration_public_router)
 for _module in (
     int_mail_calendar, int_messaging, int_documents, int_leads_automation,
     int_marketing, int_accounting, int_payments, int_support, int_sales, int_analytics,
+    int_identity, int_ai, int_erp,
 ):
     api_router.include_router(_module.public_router)
 
@@ -126,5 +128,6 @@ api_router.include_router(integration_hub_router)
 for _module in (
     int_mail_calendar, int_messaging, int_documents, int_leads_automation,
     int_marketing, int_accounting, int_payments, int_support, int_sales, int_analytics,
+    int_identity, int_ai, int_erp,
 ):
     api_router.include_router(_module.router)

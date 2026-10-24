@@ -781,7 +781,7 @@ async def list_prompts(principal: Principal = Depends(require_permission("record
             targets[field.object_type].append({"key": f"cf.{field.key}", "label": field.label, "type": "text"})
     from app.services import ai
 
-    return {"items": [prompt_out(r) for r in rows], "targets": targets, "ai": ai.configured(), "can_edit": principal.can("admin.settings")}
+    return {"items": [prompt_out(r) for r in rows], "targets": targets, "ai": await ai.available(db, principal.organization_id, "field_prompts"), "can_edit": principal.can("admin.settings")}
 
 
 @router.post("/field-prompts", status_code=status.HTTP_201_CREATED, dependencies=FEATURE)

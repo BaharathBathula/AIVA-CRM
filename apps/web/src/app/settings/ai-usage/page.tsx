@@ -1,12 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { PackagePlus, Sparkles } from "lucide-react";
+import { Coins, PackagePlus, Sparkles } from "lucide-react";
 import { useState } from "react";
 
+import { ModelUsageTables, type ModelUsage } from "@/components/integrations/panels/ai";
 import { SettingsShell } from "@/components/settings-shell";
 import { UsageMeter } from "@/components/settings-kit";
 import { Alert, Card, EmptyState, LoadingRows, PageHeader } from "@/components/ui";
+import { AI_SOURCE_LABELS, isAiSource } from "@/lib/ai-source";
 import { useApi } from "@/lib/use-api";
 import { periodLabel } from "@/lib/usage";
 
@@ -17,12 +19,23 @@ type AiUsage = {
   used: number;
   remaining: number | null;
   by_user: { user_id: string | null; name: string; words: number; requests: number; limit: number | null }[];
-  by_feature: { feature: string; label: string; words: number; requests: number; claude: number; rules: number }[];
+  /** Words by where they came from: a model (`ai` = all of them) or built-in rules. */
+  by_feature: { feature: string; label: string; words: number; requests: number; ai: number; claude: number; openai: number; azure_openai: number; rules: number }[];
   daily: { date: string; words: number }[];
   periods: string[];
   model_source: string;
+  model_label: string;
+  model_name: string | null;
+  /** Tokens and estimated cost on the workspace's own models (OpenAI / Azure OpenAI), when used. */
+  provider_usage: ModelUsage | null;
   can_see_everyone: boolean;
 };
+
+function featureTitle(f: AiUsage["by_feature"][number]) {
+  const parts = (["openai", "azure_openai", "claude"] as const).filter((source) => f[source]).map((source) => `${f[source].toLocaleString()} words from ${AI_SOURCE_LABELS[source]}`);
+  if (f.rules) parts.push(`${f.rules.toLocaleString()} built-in`);
+  return `${f.requests} requests · ${parts.join(", ") || "no words"}`;
+}
 
 export default function AiUsagePage() {
   return (
@@ -87,10 +100,24 @@ function AiUsageView() {
             <Card>
               <div className="ui-kpi-label">Writing with</div>
               <div className="ui-kpi-value" style={{ fontSize: 20 }}>
-                {data.model_source}
+                {data.model_label ?? data.model_source}
               </div>
               <p className="ui-muted ui-small" style={{ margin: "6px 0 0" }}>
-                Tune tone and facts in the <Link href="/settings/ai-context">AI Context Center</Link>.
+                {data.model_name ? (
+                  <>
+                    <span className="ui-mono">{data.model_name}</span> ·{" "}
+                  </>
+                ) : null}
+                {isAiSource(data.model_source) && data.model_source !== "claude" ? (
+                  <>
+                    Your workspace&apos;s own model. <Link href={`/integrations/${data.model_source}`}>Change it</Link>
+                  </>
+                ) : (
+                  <>
+                    Use your own OpenAI or Azure OpenAI models in <Link href="/integrations?category=AI%20Models">Integrations</Link>
+                  </>
+                )}
+                . Tune tone and facts in the <Link href="/settings/ai-context">AI Context Center</Link>.
               </p>
             </Card>
           </div>
@@ -117,7 +144,7 @@ function AiUsageView() {
               {data.by_feature.length ? (
                 <div className="settings-bar-chart">
                   {data.by_feature.map((f) => (
-                    <div key={f.feature} className="settings-bar-row" title={`${f.requests} requests · ${f.claude.toLocaleString()} words from Claude, ${f.rules.toLocaleString()} built-in`}>
+                    <div key={f.feature} className="settings-bar-row" title={featureTitle(f)}>
                       <span className="ui-truncate">{f.label}</span>
                       <span className="bar">
                         <div style={{ width: `${(f.words / maxFeature) * 100}%` }} />
@@ -159,6 +186,14 @@ function AiUsageView() {
               )}
             </Card>
           </div>
+          {data.provider_usage ? (
+            <Card title="Your AI models: tokens and cost" icon={<Coins size={17} />}>
+              <ModelUsageTables usage={data.provider_usage} />
+              <p className="ui-small ui-muted" style={{ margin: "10px 0 0" }}>
+                Estimated from the price table on the provider&apos;s integration page. Limits and fallbacks are set there too.
+              </p>
+            </Card>
+          ) : null}
           {data.can_see_everyone ? (
             <p className="ui-muted ui-small" style={{ margin: 0 }}>
               Set a monthly cap for one person in <Link href="/settings/licenses">License settings</Link>.

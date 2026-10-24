@@ -29,6 +29,7 @@ import { bookPrice, type PriceBook } from "@/lib/workspace";
 import { PinButton } from "@/components/pins";
 import { RecordCloudFiles } from "@/components/integrations/record/RecordCloudFiles";
 import { RecordSignatures } from "@/components/integrations/record/RecordSignatures";
+import { OrderErp } from "@/components/integrations/record/RecordErp";
 import { ShareToSlackButton } from "@/components/integrations/record/ShareToSlackButton";
 
 function round(value: number) {
@@ -560,6 +561,9 @@ function QuoteBuilder() {
           </Card>
           <div className="int-slot no-print">
             <RecordSignatures recordType="quote" recordId={q.id} quoteId={q.id} onChanged={() => void quote.reload()} />
+          </div>
+          <div className="int-slot no-print">
+            <OrderErp recordType="quote" recordId={q.id} />
           </div>
           <div className="int-slot no-print">
             <RecordCloudFiles recordType="quote" recordId={q.id} />

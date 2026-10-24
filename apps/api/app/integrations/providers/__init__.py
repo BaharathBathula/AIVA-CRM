@@ -82,6 +82,12 @@ MODULE_FOR: dict[str, str] = {
     "google_analytics": "analytics",
     "power_bi": "analytics",
     "looker_studio": "analytics",
+    # Phase 3
+    "entra_id": "identity",
+    "okta": "identity",
+    "openai": "ai_models",
+    "azure_openai": "ai_models",
+    "netsuite": "netsuite",
 }
 
 ALL_MODULES = tuple(sorted(set(MODULE_FOR.values())))

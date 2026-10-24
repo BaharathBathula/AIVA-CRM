@@ -69,8 +69,11 @@ async def list_agents(
             )
         ).all()
     )
+    model = await ai.model_for(db, principal.organization_id, "agents")
     return {
-        "claude": ai.configured(),
+        # Whether a model writes the suggestions (kept as "claude" for older clients).
+        "claude": model["source"] != "rules",
+        "model": model,
         "agents": [
             {
                 "key": key,
@@ -459,17 +462,18 @@ async def ask_aiva(
 ):
     await metering.ensure_ai_words(db, principal.organization_id, principal.user_id)
     data = await crm_snapshot(db, principal)
-    answer = await ai.complete(
+    reply = await ai.generate(
         "Answer the question using only this CRM data (JSON). Use dollar amounts and names from the data. "
         "Keep it under 150 words. If the data doesn't cover the question, say what you can answer instead.\n\n"
         f"Question: {payload.question}\n\nData:\n{json.dumps(data, default=str)}",
         system=await ai_context.system_prompt(db, principal.organization_id, "ask"),
         max_tokens=500,
+        feature="ask", organization_id=principal.organization_id, user_id=principal.user_id, db=db,
     )
-    if answer:
-        metering.record_ai_words(db, principal.organization_id, principal.user_id, "ask", answer, "claude")
+    if reply.text:
+        metering.record_ai_words(db, principal.organization_id, principal.user_id, "ask", reply.text, reply.source)
         await db.commit()
-        return {"answer": answer, "source": "claude", "data": data}
+        return {"answer": reply.text, "source": reply.source, "model": reply.model, "data": data}
     text, used = rules_answer(payload.question, data)
     metering.record_ai_words(db, principal.organization_id, principal.user_id, "ask", text, "rules")
     await db.commit()
@@ -547,18 +551,19 @@ async def summarize(
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Record not found.")
     await metering.ensure_ai_words(db, principal.organization_id, principal.user_id)
     facts = await _record_facts(db, principal, object_type, record)
-    text = await ai.complete(
+    reply = await ai.generate(
         f"Summarize this CRM {object_type} for a busy {'support agent' if object_type == 'case' else 'sales rep'} in 3-4 sentences, "
         "then give one recommended next action on its own line starting with 'Next:'.\n\n"
         f"{json.dumps(facts, default=str)}",
         system=await ai_context.system_prompt(db, principal.organization_id, "summaries"),
         max_tokens=350,
+        feature="summaries", organization_id=principal.organization_id, user_id=principal.user_id, db=db,
     )
-    source = "claude" if text else "rules"
-    text = text or rules_summary(object_type, record, facts)
+    source = reply.source if reply.text else "rules"
+    text = reply.text or rules_summary(object_type, record, facts)
     metering.record_ai_words(db, principal.organization_id, principal.user_id, "summaries", text, source)
     await db.commit()
-    return {"summary": text, "source": source}
+    return {"summary": text, "source": source, "model": reply.model if reply.text else None}
 
 
 class DraftPayload(BaseModel):
@@ -581,21 +586,23 @@ async def draft(
     await metering.ensure_ai_words(db, principal.organization_id, principal.user_id)
     facts = await _record_facts(db, principal, payload.object_type, record)
     sender = principal.full_name.split(" ")[0]
-    text = await ai.complete(
+    reply = await ai.generate(
         f"Draft a {payload.tone} email (under 150 words) for this purpose: {payload.intent}. "
         f"It's from {principal.full_name}. Use the CRM data below. Return the subject on the first line as 'Subject: …', "
         f"then a blank line, then the body.\n\n{json.dumps(facts, default=str)}",
         system=await ai_context.system_prompt(db, principal.organization_id, "drafts"),
         max_tokens=450,
+        feature="drafts", organization_id=principal.organization_id, user_id=principal.user_id, db=db,
     )
+    text = reply.text
     if text:
-        metering.record_ai_words(db, principal.organization_id, principal.user_id, "drafts", text, "claude")
+        metering.record_ai_words(db, principal.organization_id, principal.user_id, "drafts", text, reply.source)
         await db.commit()
     if text and text.lower().startswith("subject:"):
         subject, _, body = text.partition("\n")
-        return {"subject": subject[8:].strip(), "body": body.strip(), "source": "claude"}
+        return {"subject": subject[8:].strip(), "body": body.strip(), "source": reply.source, "model": reply.model}
     if text:
-        return {"subject": "Following up", "body": text, "source": "claude"}
+        return {"subject": "Following up", "body": text, "source": reply.source, "model": reply.model}
     context = await workspace_settings.get(db, principal.organization_id, "ai_context")
     signature = context.signature.strip() if "drafts" in context.use_for else ""
     if payload.object_type == "case":

@@ -25,6 +25,7 @@ import { useToast } from "@/components/providers";
 import { RecordSearch, type FoundRecord } from "@/components/record-search";
 import { ColorDot } from "@/components/settings-kit";
 import { Alert, Badge, Card, ConfirmDialog, EmptyState, Field, LoadingRows, Modal, PageHeader, Tabs } from "@/components/ui";
+import { aiSourceLabel, isAiSource } from "@/lib/ai-source";
 import { date, dateTime, relativeTime } from "@/lib/format";
 import { api, errorMessage, useApi } from "@/lib/use-api";
 
@@ -50,7 +51,8 @@ type Suggestion = {
   field_label: string;
   value: string;
   evidence: string | null;
-  source: "claude" | "rules";
+  /** openai | azure_openai | claude: a model wrote it; rules: keyword match. */
+  source: string;
   status: "pending" | "applied" | "dismissed";
   apply_mode: "suggest" | "auto";
   decided_by?: string;
@@ -86,7 +88,7 @@ type Conversation = {
   meeting_id: string | null;
   participants: { name: string | null; email?: string | null; user_id?: string | null }[];
   summary: string | null;
-  summary_source: "claude" | "rules" | null;
+  summary_source: string | null;
   action_items: string[];
   talk_time: {
     unit?: "seconds" | "words";
@@ -315,7 +317,7 @@ function ConversationView() {
           <Card
             title="Summary"
             icon={<Sparkles size={16} />}
-            actions={c.summary_source ? <Badge tone={c.summary_source === "claude" ? "info" : "neutral"}>{c.summary_source === "claude" ? "Written by AI" : "Automatic outline"}</Badge> : null}
+            actions={c.summary_source ? <Badge tone={isAiSource(c.summary_source) ? "info" : "neutral"}>{isAiSource(c.summary_source) ? `Written by ${aiSourceLabel(c.summary_source)}` : "Automatic outline"}</Badge> : null}
           >
             {c.summary ? <p className="conv-summary">{c.summary}</p> : <p className="ui-muted" style={{ margin: 0 }}>No summary yet.</p>}
             {c.action_items.length ? (
@@ -622,7 +624,7 @@ function SuggestionRow({
         ) : suggestion.status === "dismissed" ? (
           <Badge>Dismissed{suggestion.decided_by ? ` by ${suggestion.decided_by}` : ""}</Badge>
         ) : (
-          <Badge tone={suggestion.source === "claude" ? "info" : "neutral"}>{suggestion.source === "claude" ? "AI" : "Keyword match"}</Badge>
+          <Badge tone={isAiSource(suggestion.source) ? "info" : "neutral"}>{isAiSource(suggestion.source) ? `AI · ${aiSourceLabel(suggestion.source)}` : "Keyword match"}</Badge>
         )}
       </div>
       {suggestion.status === "pending" && editable ? (

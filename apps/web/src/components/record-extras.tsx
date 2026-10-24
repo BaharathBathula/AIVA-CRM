@@ -20,6 +20,7 @@ import { CallDialog, type CallTarget } from "@/components/call-dialog";
 import { CustomFieldsCard } from "@/components/custom-fields";
 import { useSession, useToast } from "@/components/providers";
 import { Alert, Badge, ConfirmDialog, Field, Modal } from "@/components/ui";
+import { aiSourceLabel, isAiSource } from "@/lib/ai-source";
 import { AivaApiError } from "@/lib/api";
 import { date, relativeTime } from "@/lib/format";
 import { api, errorMessage, useApi } from "@/lib/use-api";
@@ -336,7 +337,7 @@ function SuggestionsPanel({ objectType, recordId, onChanged }: { objectType: str
 }
 
 function SummaryPanel({ objectType, recordId }: { objectType: string; recordId: string }) {
-  const [summary, setSummary] = useState<{ summary: string; source: string } | null>(null);
+  const [summary, setSummary] = useState<{ summary: string; source: string; model?: string | null } | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -355,7 +356,7 @@ function SummaryPanel({ objectType, recordId }: { objectType: string; recordId: 
   return (
     <Panel
       title="AI summary"
-      subtitle={summary ? (summary.source === "claude" ? "Written by Claude from this record." : "From this record's details and activity.") : "A quick briefing on this record."}
+      subtitle={summary ? (isAiSource(summary.source) ? `Written by ${aiSourceLabel(summary.source)} from this record.` : "From this record's details and activity.") : "A quick briefing on this record."}
       icon={<Sparkles size={15} />}
       actions={
         <button type="button" className="ui-btn ui-btn-sm" disabled={busy} onClick={() => void load()}>

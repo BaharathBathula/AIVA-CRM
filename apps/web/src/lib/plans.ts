@@ -51,6 +51,7 @@ export const FEATURE_PLAN: Record<string, { label: string; plan: PaidPlan }> = {
   accounting_sync: { label: "Accounting integration", plan: "pro" },
   online_payments: { label: "Online payments", plan: "pro" },
   bi_connectors: { label: "Analytics and BI connectors", plan: "pro" },
+  ai_models: { label: "Bring your own AI models", plan: "pro" },
   territories: { label: "Territories", plan: "pro" },
   buying_intent: { label: "Personas, intent and signals", plan: "pro" },
   waterfall_enrichment: { label: "Waterfall enrichment", plan: "pro" },
@@ -83,6 +84,7 @@ export const FEATURE_PLAN: Record<string, { label: string; plan: PaidPlan }> = {
   extended_ai: { label: "Extended AI capabilities", plan: "enterprise" },
   quickbooks: { label: "QuickBooks integration", plan: "enterprise" },
   sso: { label: "Single sign-on", plan: "enterprise" },
+  erp_sync: { label: "ERP integration", plan: "enterprise" },
   conversation_intelligence: { label: "Conversation intelligence", plan: "enterprise" },
 };
 

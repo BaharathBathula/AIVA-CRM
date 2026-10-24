@@ -221,23 +221,29 @@ def rules_summary(utterances: list[dict[str, Any]], hits: dict[str, Any]) -> tup
     return " ".join(parts), actions[:10]
 
 
-async def ai_summary(db: AsyncSession, organization_id: uuid.UUID, transcript: str) -> tuple[str, list[str]] | None:
-    if not ai.configured():
+async def ai_summary(
+    db: AsyncSession, organization_id: uuid.UUID, transcript: str, user_id: uuid.UUID | None = None
+) -> tuple[str, list[str], str] | None:
+    """(summary, action items, source) from the workspace's model or AIVA's default; None without one."""
+
+    if not await ai.available(db, organization_id, "conversations"):
         return None
-    text = await ai.complete(
+    reply = await ai.generate(
         "Summarize this sales or customer conversation for the CRM. Reply with JSON only: "
         '{"summary": "3-5 sentences: who, what was discussed, concerns, outcome", "action_items": ["owner: action", ...]}.\n\n'
         f"Transcript:\n{transcript[:14000]}",
         system=await ai_context.system_prompt(db, organization_id, "conversations"),
         max_tokens=700,
+        feature="conversations", organization_id=organization_id, user_id=user_id, db=db,
     )
+    text = reply.text
     if not text:
         return None
     try:
         data = json.loads(text[text.index("{"): text.rindex("}") + 1])
-        return str(data.get("summary") or "").strip(), [str(a) for a in data.get("action_items") or []][:12]
+        return str(data.get("summary") or "").strip(), [str(a) for a in data.get("action_items") or []][:12], reply.source
     except (ValueError, json.JSONDecodeError):
-        return text.strip(), []
+        return text.strip(), [], reply.source
 
 
 def _extract_value(field_type: str, text: str) -> Any:
@@ -269,28 +275,31 @@ def _extract_value(field_type: str, text: str) -> Any:
 async def answer_prompts(db: AsyncSession, conversation: Conversation, utterances: list[dict[str, Any]], prompts: list[FieldPrompt]) -> list[dict[str, Any]]:
     suggestions = []
     transcript = full_text(utterances)
+    use_ai = bool(prompts) and await ai.available(db, conversation.organization_id, "field_prompts")
     for prompt in prompts:
         record_id = {"opportunity": conversation.opportunity_id, "account": conversation.account_id, "contact": conversation.contact_id}.get(prompt.object_type)
         if record_id is None:
             continue
         spec = field_spec(prompt.object_type, prompt.field_key)
         value, evidence, source = None, None, "rules"
-        if ai.configured():
-            answer = await ai.complete(
+        if use_ai:
+            reply = await ai.generate(
                 f"From this conversation, answer: {prompt.prompt}\nReply with JSON only: "
                 '{"value": "the answer, or null if it wasn\'t discussed", "evidence": "the line it came from"}.'
                 f" The answer is for the CRM field “{spec['label']}” ({spec['type']}).\n\nTranscript:\n{transcript[:12000]}",
                 system=await ai_context.system_prompt(db, conversation.organization_id, "conversations"),
                 max_tokens=250,
+                feature="field_prompts", organization_id=conversation.organization_id, user_id=conversation.owner_user_id, db=db,
             )
+            answer = reply.text
             if answer:
                 try:
                     data = json.loads(answer[answer.index("{"): answer.rindex("}") + 1])
                     raw = data.get("value")
                     if raw not in (None, "", "null"):
                         value = _extract_value(spec["type"], str(raw)) if spec["type"] in ("money", "number", "date") else str(raw)[:500]
-                        evidence, source = str(data.get("evidence") or "")[:300], "claude"
-                        metering.record_ai_words(db, conversation.organization_id, conversation.owner_user_id, "field_prompts", str(raw), "claude")
+                        evidence, source = str(data.get("evidence") or "")[:300], reply.source
+                        metering.record_ai_words(db, conversation.organization_id, conversation.owner_user_id, "field_prompts", str(raw), reply.source)
                 except (ValueError, json.JSONDecodeError):
                     pass
         if value is None and prompt.field_key == "competitor":
@@ -453,10 +462,9 @@ async def process(db: AsyncSession, conversation: Conversation, utterances: list
     conversation.tracker_hits = hits
     if recording.auto_summarize:
         available = await metering.ai_words_available(db, org, user_id)
-        result = await ai_summary(db, org, conversation.transcript_text) if available["remaining"] > 0 else None
+        result = await ai_summary(db, org, conversation.transcript_text, user_id) if available["remaining"] > 0 else None
         if result:
-            conversation.summary, conversation.action_items = result
-            conversation.summary_source = "claude"
+            conversation.summary, conversation.action_items, conversation.summary_source = result
         else:
             conversation.summary, conversation.action_items = rules_summary(utterances, hits)
             conversation.summary_source = "rules"

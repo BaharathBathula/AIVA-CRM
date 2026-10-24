@@ -26,6 +26,9 @@ import "./int-payments.css";
 import "./int-support.css";
 import "./int-sales.css";
 import "./int-analytics.css";
+import "./int-identity.css";
+import "./int-ai.css";
+import "./int-erp.css";
 
 export const metadata: Metadata = {
   title: {

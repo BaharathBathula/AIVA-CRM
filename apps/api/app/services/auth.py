@@ -100,13 +100,16 @@ async def issue_session(
     ip: str | None,
     user_agent: str | None,
     bound: bool = False,
+    via_sso: bool = False,
 ) -> dict:
     """Create a refresh session and return tokens plus workspace context.
 
-    ``bound`` limits the session to ``organization_id`` (single sign-on):
-    it can't switch to the person's other workspaces.
+    ``bound`` limits the session to ``organization_id``: it can't switch to the
+    person's other workspaces. ``via_sso`` says the person signed in through that
+    workspace's single sign-on (the only sessions "Require single sign-on" accepts).
     """
 
+    bound = bound or via_sso
     settings = get_settings()
     refresh_token = generate_opaque_token()
     session = UserSession(
@@ -114,6 +117,7 @@ async def issue_session(
         user_id=user.id,
         organization_id=organization_id,
         bound_organization_id=organization_id if bound else None,
+        via_sso=via_sso,
         refresh_token_hash=hash_token(refresh_token),
         user_agent=(user_agent or "")[:300] or None,
         ip_address=ip,
@@ -140,6 +144,7 @@ async def issue_session(
             secret_key=settings.jwt_secret_key,
             expires_minutes=minutes,
             organization_id=organization_id if bound else None,
+            via_sso=via_sso,
         ),
         "token_type": "bearer",
         "expires_in": minutes * 60,
@@ -177,16 +182,37 @@ async def rotate_refresh_session(db: AsyncSession, refresh_token: str, organizat
     if session.revoked_at is not None or session.expires_at <= utcnow() or not user.is_active:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Your session ended. Sign in again.")
 
+    from app.integrations.providers._idp_policy import blocked_message, sso_required
+
     memberships = await active_memberships(db, user.id)
+    required: dict = {}
     if session.bound_organization_id is not None:
-        # A single sign-on session stays in its workspace.
+        # A bound session stays in its workspace.
         memberships = [(m, org) for m, org in memberships if org.id == session.bound_organization_id]
+        if not session.via_sso:
+            # Bound only to keep a password session out of other workspaces: if this one now
+            # requires single sign-on too, the session ends here.
+            required = await sso_required(db, user, memberships)
+            if required:
+                raise HTTPException(status.HTTP_403_FORBIDDEN, blocked_message(user, list(required.values())))
+    else:
+        # Workspaces that require single sign-on for this person can't be opened with
+        # a password (or Google/Microsoft/Apple) session.
+        required = await sso_required(db, user, memberships)
+        if required:
+            memberships = [(m, org) for m, org in memberships if org.id not in required]
+            if not memberships:
+                raise HTTPException(status.HTTP_403_FORBIDDEN, blocked_message(user, list(required.values())))
     allowed = {org.id for _, org in memberships}
     target = organization_id or session.organization_id
     if target not in allowed:
         if not memberships:
             raise HTTPException(status.HTTP_403_FORBIDDEN, "You no longer have access to any workspace.")
         target = memberships[0][1].id
+    if required:
+        # From now on the session (and its access tokens) only opens this workspace.
+        session.bound_organization_id = target
+        memberships = [(m, org) for m, org in memberships if org.id == target]
 
     new_refresh = generate_opaque_token()
     session.refresh_token_hash = hash_token(new_refresh)
@@ -201,6 +227,7 @@ async def rotate_refresh_session(db: AsyncSession, refresh_token: str, organizat
             secret_key=settings.jwt_secret_key,
             expires_minutes=minutes,
             organization_id=session.bound_organization_id,
+            via_sso=bool(session.via_sso and session.bound_organization_id),
         ),
         "token_type": "bearer",
         "expires_in": minutes * 60,
@@ -232,6 +259,26 @@ async def revoke_all_sessions(db: AsyncSession, user_id: uuid.UUID, except_sessi
     if except_session_id is not None:
         statement = statement.where(UserSession.id != except_session_id)
     result = await db.execute(statement)
+    return result.rowcount or 0
+
+
+async def revoke_workspace_sessions(db: AsyncSession, user_id: uuid.UUID, organization_id: uuid.UUID) -> int:
+    """Sign a person out of one workspace (SCIM deprovisioning): sessions opened in it or bound to it.
+
+    Sessions the person uses for their other workspaces are left alone.
+    """
+
+    from sqlalchemy import or_
+
+    result = await db.execute(
+        update(UserSession)
+        .where(
+            UserSession.user_id == user_id,
+            UserSession.revoked_at.is_(None),
+            or_(UserSession.organization_id == organization_id, UserSession.bound_organization_id == organization_id),
+        )
+        .values(revoked_at=utcnow())
+    )
     return result.rowcount or 0
 
 

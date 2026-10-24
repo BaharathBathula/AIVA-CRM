@@ -115,6 +115,11 @@ FAMILIES: dict[str, OAuthFamily] = {
 }
 
 
+# Sign-in and provisioning: changed only by an admin signed in to the AIVA app,
+# never with an API key and never by AIVA support (same rule as /identity).
+APP_ONLY_KEYS = frozenset({"entra_id", "okta"})
+
+
 @dataclass(frozen=True)
 class IntegrationDef:
     key: str
@@ -829,6 +834,100 @@ INTEGRATIONS: dict[str, IntegrationDef] = {
             docs_url="https://developers.google.com/looker-studio/connector", color="#4285f4", monogram="LS",
             setup=("Create a read-only API key for Looker Studio.", "Add the AIVA community connector from this page.", "Pick a dataset and build your report."),
         ),
+        # ------------------------------------------------------------ Identity & access
+        IntegrationDef(
+            "entra_id", "Microsoft Entra ID", "Identity & Access", "Microsoft",
+            "Single sign-on with Entra ID and automatic user provisioning (SCIM).",
+            (
+                "People sign in to AIVA with their Microsoft work account (OpenID Connect)",
+                "Users are created, updated and deactivated from Entra ID through SCIM 2.0",
+                "Entra groups map to AIVA roles and teams",
+                "Optionally require single sign-on for everyone on your verified domains",
+            ),
+            "credentials", "sso",
+            credential_fields=(
+                CredentialField("tenant_id", "Directory (tenant) ID", help="Entra admin center → Overview.", placeholder="00000000-0000-0000-0000-000000000000"),
+                CredentialField("client_id", "Application (client) ID", required=False, help="Optional: an app registration with Microsoft Graph Group.Read.All and User.Read.All (application) so AIVA can list groups for mapping."),
+                CredentialField("client_secret", "Client secret", secret=True, required=False),
+            ),
+            docs_url="https://learn.microsoft.com/entra/identity/app-provisioning/use-scim-to-provision-users-and-groups", color="#0078d4", monogram="E",
+            setup=("Enter your tenant ID.", "Set up single sign-on with the values on this page.", "Create a SCIM token and add AIVA as an enterprise application with provisioning."),
+        ),
+        IntegrationDef(
+            "okta", "Okta", "Identity & Access", "Okta",
+            "Okta single sign-on and lifecycle management (SCIM) for AIVA users.",
+            (
+                "People sign in to AIVA through Okta (OpenID Connect)",
+                "Users are created, updated and deactivated from Okta through SCIM 2.0",
+                "Okta groups map to AIVA roles and teams (group push)",
+                "Optionally require single sign-on for everyone on your verified domains",
+            ),
+            "credentials", "sso",
+            credential_fields=(
+                CredentialField("okta_domain", "Okta domain", help="Your Okta org address, like acme.okta.com.", placeholder="acme.okta.com"),
+                CredentialField("api_token", "API token", secret=True, required=False, help="Optional: Security → API → Tokens (read-only admin), so AIVA can list groups for mapping."),
+            ),
+            docs_url="https://developer.okta.com/docs/guides/scim-provisioning-integration-overview/main/", color="#00297a", monogram="O",
+            setup=("Enter your Okta domain.", "Set up single sign-on with the values on this page.", "Create a SCIM token and turn on provisioning in your Okta app."),
+        ),
+        # ------------------------------------------------------------ AI models
+        IntegrationDef(
+            "openai", "OpenAI API", "AI Models", "OpenAI",
+            "Run AIVA's AI features on your own OpenAI account and models.",
+            (
+                "Summaries, drafts, Ask AIVA, AI agents, call notes and field prompts use the models you choose",
+                "Pick a model per feature; usage and cost per feature and person",
+                "Your own key, organization and project, with spending and data controls",
+            ),
+            "credentials", "ai_models",
+            credential_fields=(
+                CredentialField("api_key", "API key", secret=True, help="platform.openai.com → API keys. A project key is recommended.", placeholder="sk-proj-…"),
+                CredentialField("organization", "Organization ID", required=False, placeholder="org-…"),
+                CredentialField("project", "Project ID", required=False, placeholder="proj_…"),
+            ),
+            docs_url="https://platform.openai.com/docs/api-reference", color="#10a37f", monogram="AI",
+            setup=("Paste an API key.", "Choose the model for each AI feature.", "Set usage limits and data controls, then send a test prompt."),
+        ),
+        IntegrationDef(
+            "azure_openai", "Azure OpenAI", "AI Models", "Microsoft",
+            "Run AIVA's AI features on your Azure OpenAI deployments.",
+            (
+                "Your models in your Azure tenant and region, under your data and compliance commitments",
+                "Map each AI feature to one of your deployments",
+                "API key or Microsoft Entra ID authentication",
+            ),
+            "credentials", "ai_models",
+            credential_fields=(
+                CredentialField("endpoint", "Endpoint", help="Azure portal → your Azure OpenAI resource → Keys and Endpoint.", placeholder="https://your-resource.openai.azure.com"),
+                CredentialField("api_key", "API key", secret=True, required=False, help="Key 1 or Key 2. Leave blank to use Entra ID below."),
+                CredentialField("tenant_id", "Entra tenant ID", required=False, help="For Entra ID authentication instead of a key."),
+                CredentialField("client_id", "Entra client ID", required=False),
+                CredentialField("client_secret", "Entra client secret", secret=True, required=False, help="The app needs the Cognitive Services OpenAI User role on the resource."),
+            ),
+            docs_url="https://learn.microsoft.com/azure/ai-services/openai/reference", color="#0078d4", monogram="Az",
+            setup=("Paste the endpoint and a key (or Entra app details).", "Map each AI feature to a deployment.", "Send a test prompt."),
+        ),
+        # ------------------------------------------------------------ ERP
+        IntegrationDef(
+            "netsuite", "Oracle NetSuite", "ERP", "Oracle",
+            "Customers, items, sales orders, invoices and payments with NetSuite.",
+            (
+                "Accounts become NetSuite customers; contacts follow",
+                "Items and prices come from NetSuite; stock levels on products",
+                "Won deals and accepted quotes become NetSuite sales orders",
+                "Invoices and payments flow back; open balance and overdue amounts on the account",
+            ),
+            "credentials", "erp_sync",
+            credential_fields=(
+                CredentialField("account_id", "Account ID", help="Setup → Company → Company Information → Account ID (sandbox IDs end in _SB1).", placeholder="1234567 or 1234567_SB1"),
+                CredentialField("consumer_key", "Consumer key", secret=True, help="Setup → Integration → Manage Integrations → your integration (token-based authentication)."),
+                CredentialField("consumer_secret", "Consumer secret", secret=True),
+                CredentialField("token_id", "Token ID", secret=True, help="Setup → Users/Roles → Access Tokens → New."),
+                CredentialField("token_secret", "Token secret", secret=True),
+            ),
+            docs_url="https://docs.oracle.com/en/cloud/saas/netsuite/ns-online-help/book_1559132836.html", color="#c74634", monogram="NS",
+            setup=("Create an integration with token-based authentication and an access token for an integration role.", "Paste the account ID, consumer and token credentials.", "Pick the subsidiary, items and what syncs."),
+        ),
         # ------------------------------------------------------------ Automation
         IntegrationDef(
             "zapier", "Zapier", "Automation", "Zapier",
@@ -871,7 +970,8 @@ INTEGRATIONS: dict[str, IntegrationDef] = {
 
 CATEGORIES = (
     "Email", "Calendar", "Communication", "Meetings", "Scheduling", "Email Marketing", "Lead Capture", "Advertising",
-    "Sales Intelligence", "Documents", "E-signature", "Accounting", "Payments", "Customer Support", "Analytics", "Automation",
+    "Sales Intelligence", "Documents", "E-signature", "Accounting", "ERP", "Payments", "Customer Support", "Analytics",
+    "Identity & Access", "AI Models", "Automation",
 )
 
 

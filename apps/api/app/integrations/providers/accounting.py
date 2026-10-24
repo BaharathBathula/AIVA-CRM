@@ -1,7 +1,9 @@
-"""Accounting: QuickBooks Online, Xero, FreshBooks and Sage Accounting.
+"""Accounting: QuickBooks Online, Xero, FreshBooks, Sage Accounting and Oracle NetSuite.
 
 One accounting system is the workspace's *invoice target* at a time: switching
-one on switches the others off (their connections are kept).
+one on switches the others off (their connections are kept). NetSuite is an ERP:
+on top of what's described here it also syncs items, stock, contacts and sales
+orders (``netsuite.py``, run from ``sync_connection``).
 
 What syncs
 ==========
@@ -62,7 +64,7 @@ from sqlalchemy.orm.attributes import set_committed_value
 
 from app.integrations import core
 from app.integrations.core import IntegrationError
-from app.integrations.providers import _acct_freshbooks, _acct_http as http, _acct_quickbooks, _acct_sage, _acct_xero
+from app.integrations.providers import _acct_freshbooks, _acct_http as http, _acct_netsuite, _acct_quickbooks, _acct_sage, _acct_xero
 from app.integrations.providers._acct_types import CustomerData, Ctx, InvoiceData, Line, RemoteInvoice, decimal, money
 from app.models.account import Account
 from app.models.activity import Activity
@@ -73,18 +75,20 @@ from app.models.platform import Notification, Product
 
 logger = logging.getLogger("aiva.integrations.accounting")
 
-KEYS = ("quickbooks", "xero", "freshbooks", "sage_accounting")
+KEYS = ("quickbooks", "xero", "freshbooks", "sage_accounting", "netsuite")
 ADAPTERS: dict[str, ModuleType] = {
     "quickbooks": _acct_quickbooks,
     "xero": _acct_xero,
     "freshbooks": _acct_freshbooks,
     "sage_accounting": _acct_sage,
+    "netsuite": _acct_netsuite,
 }
 FEATURE = "accounting_sync"
 INVOICE = "sales_invoice"  # record_type of AIVA invoices on links and objects
 
-# Calls each company may use per scheduler run (runs are ~30 seconds apart).
-RUN_CALLS = {"quickbooks": 120, "xero": 25, "freshbooks": 40, "sage_accounting": 40}
+# Calls each company may use per scheduler run (runs are ~30 seconds apart). NetSuite
+# counts concurrent requests, not calls; AIVA sends one at a time per account.
+RUN_CALLS = {"quickbooks": 120, "xero": 25, "freshbooks": 40, "sage_accounting": 40, "netsuite": 60}
 RUN_SECONDS = 20.0
 TOTAL_RUN_SECONDS = 45.0
 MAX_CONNECTIONS_PER_RUN = 10
@@ -159,7 +163,8 @@ def _parse_dt(value: Any) -> datetime | None:
 
 async def settings_for(db: AsyncSession, organization_id: uuid.UUID, key: str) -> dict[str, Any]:
     config = await core.workspace_config(db, organization_id, key)
-    merged = {name: config.get(name, default) for name, default in DEFAULTS.items()}
+    defaults = {**DEFAULTS, **getattr(ADAPTERS.get(key), "EXTRA_DEFAULTS", {})}
+    merged = {name: config.get(name, default) for name, default in defaults.items()}
     if not isinstance(merged["item_map"], dict):
         merged["item_map"] = {}
     return merged
@@ -275,8 +280,10 @@ async def company_info(ctx: Ctx, *, refresh: bool = False) -> dict[str, Any]:
     return info
 
 
-async def plan_allows(db: AsyncSession, organization_id: uuid.UUID, cache: dict[uuid.UUID, bool]) -> bool:
-    if organization_id not in cache:
+async def plan_allows(db: AsyncSession, organization_id: uuid.UUID, cache: dict[Any, bool], feature: str = FEATURE) -> bool:
+    """Whether the workspace's plan includes ``feature`` (and isn't read-only). ``cache`` is per run."""
+
+    if (organization_id, feature) not in cache:
         from app.models.editions import Subscription
         from app.services.billing import plan_state
         from app.services.metering import addon_features
@@ -284,8 +291,8 @@ async def plan_allows(db: AsyncSession, organization_id: uuid.UUID, cache: dict[
         subscription = (await db.execute(select(Subscription).where(Subscription.organization_id == organization_id))).scalar_one_or_none()
         plan = plan_state(subscription)
         features = set(plan.features) | set(await addon_features(db, organization_id))
-        cache[organization_id] = FEATURE in features and not plan.read_only
-    return cache[organization_id]
+        cache[(organization_id, feature)] = feature in features and not plan.read_only
+    return cache[(organization_id, feature)]
 
 
 # ===========================================================================
@@ -366,6 +373,7 @@ async def customer_data(db: AsyncSession, account: Account, currency: str | None
         postal_code=account.billing_postal_code,
         country=account.billing_country,
         currency=currency,
+        ref=str(account.id),
     )
 
 
@@ -982,6 +990,11 @@ async def sync_connection(db: AsyncSession, connection: IntegrationConnection, b
 
     if key == "freshbooks":
         await _resend_freshbooks(ctx)
+    if key == "netsuite":
+        # The ERP side: customers, contacts, items and stock, sales orders (same budget and pauses).
+        from app.integrations.providers import netsuite as erp
+
+        counts.update(await erp.sync_extras(ctx, everything=everything))
 
     await patch_state(db, connection, last_run_at=utcnow().isoformat(), last_error=None, last_counts=counts)
     await db.commit()
@@ -1022,7 +1035,7 @@ async def run_due(db: AsyncSession, organization_id: uuid.UUID | None = None) ->
     if organization_id is not None:
         query = query.where(IntegrationConnection.organization_id == organization_id)
     rows = (await db.execute(query)).scalars().all()
-    plans: dict[uuid.UUID, bool] = {}
+    plans: dict[Any, bool] = {}
     handled = 0
     examined: list[uuid.UUID] = []
     try:
@@ -1034,7 +1047,7 @@ async def run_due(db: AsyncSession, organization_id: uuid.UUID | None = None) ->
     return handled
 
 
-async def _run_connections(db: AsyncSession, rows: list[uuid.UUID], started: float, plans: dict[uuid.UUID, bool], examined: list[uuid.UUID]) -> int:
+async def _run_connections(db: AsyncSession, rows: list[uuid.UUID], started: float, plans: dict[Any, bool], examined: list[uuid.UUID]) -> int:
     handled = 0
     done = 0
     for connection_id in rows:
@@ -1045,7 +1058,7 @@ async def _run_connections(db: AsyncSession, rows: list[uuid.UUID], started: flo
         if connection is None or connection.status != "connected":
             continue
         org = connection.organization_id
-        if not await core.is_enabled(db, org, connection.provider) or not await plan_allows(db, org, plans):
+        if not await core.is_enabled(db, org, connection.provider) or not await plan_allows(db, org, plans, core.definition(connection.provider).feature):
             continue
         paused = _parse_dt(state(connection).get("paused_until"))
         if paused and paused > utcnow():
@@ -1166,7 +1179,7 @@ async def test(db: AsyncSession, key: str, connection: IntegrationConnection, pr
     return f"{name_of(key)} answered: {info.get('name') or connection.account_label}" + (f" ({info['currency']})" if info.get("currency") else "") + "."
 
 
-_CHOICES = {"xero": "tenants", "freshbooks": "businesses", "sage_accounting": "businesses"}
+_CHOICES = {"xero": "tenants", "freshbooks": "businesses", "sage_accounting": "businesses", "netsuite": "subsidiaries"}
 
 
 def company_choices(key: str, connection: IntegrationConnection | None) -> list[dict[str, Any]]:
@@ -1183,7 +1196,7 @@ def company_choices(key: str, connection: IntegrationConnection | None) -> list[
 
 
 def webhook_info(key: str, connection: IntegrationConnection | None, toggle: IntegrationToggle | None) -> dict[str, Any]:
-    if key == "sage_accounting":
+    if key in {"sage_accounting", "netsuite"}:
         return {"mode": "polling"}
     if key == "freshbooks":
         url = core.webhook_url(key, connection.webhook_token) if connection is not None else None

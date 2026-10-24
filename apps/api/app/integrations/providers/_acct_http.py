@@ -9,8 +9,11 @@ Unlike ``core.request`` this keeps what accounting sync needs to know:
 * **Call budgets.** Every call made during one scheduler run counts against a
   ``Budget`` (calls and seconds), so one big company can't hold the queue.
 * **Provider error formats.** QuickBooks ``Fault``, Xero ``Elements[].ValidationErrors``,
-  FreshBooks ``response.errors`` and Sage ``[{"$message"}]`` become one readable
-  sentence.
+  FreshBooks ``response.errors``, Sage ``[{"$message"}]`` and NetSuite
+  ``o:errorDetails[].detail`` become one readable sentence.
+* **Signed requests.** Providers that don't use bearer tokens register a signer
+  in ``SIGNERS`` (NetSuite token-based authentication signs every request with
+  OAuth 1.0a HMAC-SHA256); the signer gets the final URL, query included.
 
 Tests swap ``TRANSPORT`` for an ``httpx.MockTransport``.
 """
@@ -20,7 +23,7 @@ from __future__ import annotations
 import logging
 import time
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Callable
 
 import httpx
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -35,6 +38,11 @@ logger = logging.getLogger("aiva.integrations.accounting")
 TRANSPORT: httpx.AsyncBaseTransport | None = None  # tests only
 DEFAULT_RETRY_AFTER = 60
 MAX_RETRY_AFTER = 3600
+# provider -> (connection, method, final url) -> Authorization header. Registered by
+# adapters whose provider signs each request instead of sending a bearer token.
+SIGNERS: dict[str, Callable[[IntegrationConnection, str, str], str]] = {}
+# Error codes that mean "too many requests right now" even when the status isn't 429.
+BUSY_CODES = {"CONCURRENCY_LIMIT_EXCEEDED", "SSS_REQUEST_LIMIT_EXCEEDED", "REQUEST_LIMIT_EXCEEDED"}
 
 
 class RateLimited(IntegrationError):
@@ -106,6 +114,9 @@ def provider_message(response: httpx.Response) -> str:
                     messages.append(str(error["Message"]))
         if not messages and data.get("Message"):  # Xero other errors
             messages.append(str(data["Message"]))
+        for detail in data.get("o:errorDetails") or []:  # NetSuite REST
+            if isinstance(detail, dict) and detail.get("detail"):
+                messages.append(str(detail["detail"]))
         response_part = data.get("response")
         if isinstance(response_part, dict):  # FreshBooks
             for error in response_part.get("errors") or []:
@@ -128,6 +139,18 @@ def provider_message(response: httpx.Response) -> str:
     return (text or f"HTTP {response.status_code}")[:500]
 
 
+def error_codes(response: httpx.Response) -> set[str]:
+    """Machine-readable error codes in a NetSuite error body (``o:errorDetails[].o:errorCode``)."""
+
+    try:
+        data = response.json()
+    except ValueError:
+        return set()
+    if not isinstance(data, dict):
+        return set()
+    return {str(d.get("o:errorCode")) for d in data.get("o:errorDetails") or [] if isinstance(d, dict) and d.get("o:errorCode")}
+
+
 async def call(
     db: AsyncSession,
     connection: IntegrationConnection,
@@ -140,30 +163,38 @@ async def call(
     ok_statuses: tuple[int, ...] = (),
     **kwargs: Any,
 ) -> httpx.Response:
-    """Call a provider as this connection (bearer token, one refresh on 401)."""
+    """Call a provider as this connection (bearer token with one refresh on 401, or a signed request)."""
 
     name = core.definition(connection.provider).name
     vendor = core.definition(connection.provider).vendor
+    signer = SIGNERS.get(connection.provider)
+    if signer is not None and kwargs.get("params"):
+        # The signature covers the query string, so sign exactly the URL that is sent.
+        url = str(httpx.URL(url).copy_merge_params(kwargs.pop("params")))
     attempt = 0
     while True:
         if budget is not None:
             budget.take()
-        token = await core.access_token(db, connection)
-        request_headers = {"Accept": "application/json", **(headers or {}), "Authorization": f"Bearer {token}"}
+        if signer is not None:
+            authorization = signer(connection, method, url)  # fresh nonce and timestamp every attempt
+        else:
+            authorization = f"Bearer {await core.access_token(db, connection)}"
+        request_headers = {"Accept": "application/json", **(headers or {}), "Authorization": authorization}
         try:
             async with client(timeout) as http:
                 response = await http.request(method, url, headers=request_headers, **kwargs)
         except httpx.HTTPError as exc:
             logger.warning("Network error calling %s for %s: %r", url.split("?")[0], connection.provider, exc)
             raise IntegrationError(f"Couldn't reach {vendor}. Try again in a moment.", 502) from exc
-        if response.status_code == 401 and attempt == 0 and connection.refresh_token:
+        if response.status_code == 401 and attempt == 0 and (signer is not None or connection.refresh_token):
             attempt += 1
-            await core.refresh_access_token(db, connection)
+            if signer is None:
+                await core.refresh_access_token(db, connection)
             continue
         break
     if response.status_code in ok_statuses:
         return response
-    if response.status_code == 429:
+    if response.status_code == 429 or (response.status_code >= 400 and error_codes(response) & BUSY_CODES):
         wait = retry_after(response)
         connection.last_error = f"{name} asked AIVA to slow down; trying again in {wait} seconds."[:1000]
         raise RateLimited(f"{name} is busy (too many requests). AIVA will try again in {wait} seconds.", wait)
@@ -171,7 +202,10 @@ async def call(
         message = provider_message(response)
         if response.status_code == 401:
             connection.status = "needs_reauth"
-            connection.last_error = f"{name} needs to be reconnected (the sign-in expired or was revoked)."
+            if signer is not None:
+                connection.last_error = f"{name} refused AIVA's token (it was revoked, expired or its role changed). Reconnect with a new token."
+            else:
+                connection.last_error = f"{name} needs to be reconnected (the sign-in expired or was revoked)."
             raise IntegrationError(connection.last_error, 409)
         if response.status_code == 403:
             raise IntegrationError(f"{name} didn't allow that: {message}", 403)

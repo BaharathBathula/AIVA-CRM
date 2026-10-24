@@ -12,6 +12,9 @@ import { PANELS as PAYMENTS } from "./panels/payments";
 import { PANELS as SUPPORT } from "./panels/support";
 import { PANELS as SALES } from "./panels/sales";
 import { PANELS as ANALYTICS } from "./panels/analytics";
+import { PANELS as IDENTITY } from "./panels/identity";
+import { PANELS as AI } from "./panels/ai";
+import { PANELS as ERP } from "./panels/erp";
 import type { PanelProps } from "./types";
 
 /** Provider-specific panels shown on /integrations/[key], by integration key. */
@@ -26,4 +29,7 @@ export const INTEGRATION_PANELS: Partial<Record<string, ComponentType<PanelProps
   ...SUPPORT,
   ...SALES,
   ...ANALYTICS,
+  ...IDENTITY,
+  ...AI,
+  ...ERP,
 };

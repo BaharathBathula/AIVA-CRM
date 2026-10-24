@@ -79,6 +79,7 @@ FEATURES: tuple[Feature, ...] = (
     Feature("accounting_sync", "Accounting integration", "pro", "Send invoices to QuickBooks Online, Xero, FreshBooks or Sage and see when they're paid."),
     Feature("online_payments", "Online payments", "pro", "Stripe, PayPal and Square payment links on invoices, and Chargebee subscriptions on accounts."),
     Feature("bi_connectors", "Analytics and BI connectors", "pro", "Power BI, Looker Studio and Google Analytics 4 on live CRM data."),
+    Feature("ai_models", "Bring your own AI models", "pro", "Run AIVA's AI features on your own OpenAI or Azure OpenAI account."),
     Feature("territories", "Territories", "pro", "Carve up the market by region, industry or size and route new records to the right people."),
     Feature("buying_intent", "Personas, intent and signals", "pro", "Buyer personas, buying-intent topics and signals that tell reps who to call today."),
     Feature("waterfall_enrichment", "Waterfall enrichment", "pro", "Fill gaps from several data providers in the order you choose, paid with credits."),
@@ -95,6 +96,7 @@ FEATURES: tuple[Feature, ...] = (
     Feature("extended_ai", "Extended AI capabilities", "enterprise", "Ask AIVA questions in plain English, AI summaries and reply drafts."),
     Feature("quickbooks", "QuickBooks integration", "enterprise", "Invoices from quotes, exported in QuickBooks Online format."),
     Feature("conversation_intelligence", "Conversation intelligence", "enterprise", "Call and meeting transcripts with trackers, coaching scorecards and AI field updates."),
+    Feature("erp_sync", "ERP integration", "enterprise", "Customers, items, sales orders, invoices and payments with Oracle NetSuite."),
     Feature("sso", "Single sign-on", "enterprise", "Sign in through your own identity provider (Okta, Microsoft Entra ID, Google Workspace and other OpenID Connect providers)."),
 )
 

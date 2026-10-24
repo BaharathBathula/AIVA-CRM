@@ -25,6 +25,7 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    text,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -106,6 +107,9 @@ class UserSession(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     bound_organization_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("organizations.id", ondelete="CASCADE"), nullable=True
     )
+    # True when the binding comes from signing in through that workspace's single sign-on
+    # (False when it only keeps a password session out of workspaces that require it).
+    via_sso: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=text("false"))
 
 
 class AuditLog(UUIDPrimaryKeyMixin, OrganizationOwnedMixin, TimestampMixin, Base):

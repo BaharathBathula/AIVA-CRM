@@ -1,4 +1,4 @@
-"""Integration endpoints: accounting (QuickBooks Online, Xero, FreshBooks, Sage Accounting).
+"""Integration endpoints: accounting (QuickBooks Online, Xero, FreshBooks, Sage Accounting, Oracle NetSuite).
 
 * ``/accounting/status``: which accounting system the workspace uses.
 * ``/accounting/{key}/...`` (admins): live lists for the settings (products,
@@ -148,7 +148,7 @@ class CompanyChoice(BaseModel):
 
 @router.put("/accounting/{key}/company", dependencies=FEATURE)
 async def choose_company(key: str, payload: CompanyChoice, principal: Principal = Depends(require_permission("admin.settings")), db: AsyncSession = Depends(get_db)):
-    """Pick which Xero organisation / FreshBooks or Sage business AIVA uses."""
+    """Pick which Xero organisation / FreshBooks or Sage business / NetSuite subsidiary AIVA uses."""
 
     key = _key(key)
     try:
@@ -158,13 +158,20 @@ async def choose_company(key: str, payload: CompanyChoice, principal: Principal 
     choice = next((c for c in accounting.company_choices(key, connection) if c["id"] == payload.id), None)
     if choice is None:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "That isn't one of the companies shared with AIVA. Reconnect to share it.")
-    field = {"xero": ("tenant_id", "tenant_name"), "freshbooks": ("account_id", "business_name"), "sage_accounting": ("business_id", "business_name")}[key]
+    fields = {
+        "xero": ("tenant_id", "tenant_name"), "freshbooks": ("account_id", "business_name"), "sage_accounting": ("business_id", "business_name"),
+        "netsuite": ("subsidiary_id", "subsidiary_name"),
+    }
+    if key not in fields:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, f"{accounting.name_of(key)} has one company.")
+    field = fields[key]
     patch: dict[str, Any] = {field[0]: choice["id"], field[1]: choice["name"]}
     if key == "freshbooks":
         business = next((b for b in (connection.config or {}).get("businesses") or [] if str(b.get("account_id")) == choice["id"]), {})
         patch["business_id"] = business.get("id")
     await accounting.patch_config(db, connection, **patch)
-    connection.account_label = choice["name"][:320]
+    if key != "netsuite":  # a NetSuite account keeps its name; the subsidiary is where new customers go
+        connection.account_label = choice["name"][:320]
     await accounting.patch_state(db, connection, cursor=(accounting.utcnow() - timedelta(minutes=5)).isoformat(), company=None, company_checked_at=None,
                                  options=None, options_at=None, callbacks={} if key == "freshbooks" else None)
     core.log(db, principal.organization_id, key, "company_chosen", f"AIVA now uses {choice['name']}.", user_id=principal.user_id, connection=connection)

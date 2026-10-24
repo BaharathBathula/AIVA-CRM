@@ -48,9 +48,10 @@ def create_access_token(
     secret_key: str,
     expires_minutes: int = 30,
     organization_id: uuid.UUID | None = None,
+    via_sso: bool = False,
 ) -> str:
-    """Access token for a user. ``organization_id`` limits it to one workspace
-    (sessions started through a workspace's single sign-on)."""
+    """Access token for a user. ``organization_id`` limits it to one workspace;
+    ``via_sso`` marks sessions started through that workspace's single sign-on."""
     if not secret_key or len(secret_key) < 32:
         raise ValueError(
             "JWT secret must contain at least 32 characters."
@@ -74,6 +75,8 @@ def create_access_token(
     }
     if organization_id is not None:
         payload["org"] = str(organization_id)
+        if via_sso:
+            payload["sso"] = True
 
     return jwt.encode(
         payload,
@@ -102,6 +105,16 @@ def decode_access_claims(
     secret_key: str,
 ) -> tuple[uuid.UUID, uuid.UUID | None]:
     """The user id and, for workspace-bound sessions, the only workspace allowed."""
+    user_id, bound, _via_sso = decode_access_details(token, secret_key)
+    return user_id, bound
+
+
+def decode_access_details(
+    token: str,
+    secret_key: str,
+) -> tuple[uuid.UUID, uuid.UUID | None, bool]:
+    """The user id, the only workspace allowed (bound sessions) and whether the
+    session came through that workspace's single sign-on."""
     if not secret_key or len(secret_key) < 32:
         raise AuthenticationError(
             "Authentication configuration is invalid."
@@ -129,7 +142,7 @@ def decode_access_claims(
             )
 
         bound = payload.get("org")
-        return uuid.UUID(payload["sub"]), uuid.UUID(bound) if bound else None
+        return uuid.UUID(payload["sub"]), uuid.UUID(bound) if bound else None, bool(bound and payload.get("sso") is True)
 
     except (
         InvalidTokenError,

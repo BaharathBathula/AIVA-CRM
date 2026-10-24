@@ -1,0 +1,104 @@
+/* ==========================================================================
+   Integrations: AI model panels (classes start with iai-)
+   OpenAI API and Azure OpenAI: routing, models per feature, limits, data
+   controls, prices, test prompt and token usage. Colours come from theme
+   variables, so light and dark follow the app theme.
+   ========================================================================== */
+
+.iai-panel { min-width: 0; }
+.iai-note { margin: 0; line-height: 1.5; }
+.iai-pad { padding: 14px 18px; margin: 0; }
+
+/* ---------- Save rows ---------- */
+
+.iai-save { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; width: 100%; }
+.ui-card-body > .iai-save:last-child,
+.settings-rows + .iai-save,
+.iai-meter + .iai-save { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border); }
+
+/* ---------- Status ---------- */
+
+.iai-state { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.iai-facts { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 6px 14px; margin: 0; font-size: 13px; }
+.iai-facts dt { color: var(--muted); }
+.iai-facts dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+
+/* ---------- Models per feature ---------- */
+
+.iai-model-input { width: 220px; max-width: 100%; font-family: var(--mono); font-size: 12.5px; }
+.iai-features { display: grid; border: 1px solid var(--border); border-radius: var(--radius-card); overflow: hidden; }
+.iai-feature {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  background: var(--surface);
+}
+.iai-feature + .iai-feature { border-top: 1px solid var(--border); }
+.iai-feature-text { display: grid; gap: 2px; min-width: 0; }
+.iai-feature-text strong { font-size: 13.5px; }
+.iai-feature-control { display: flex; align-items: center; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
+.iai-feature-control .ui-select { width: 230px; max-width: 100%; }
+
+/* ---------- Limits ---------- */
+
+.iai-limit { flex-wrap: wrap; justify-content: flex-end; }
+.iai-money { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 13px; }
+.iai-meter { display: grid; gap: 8px; margin-top: 14px; padding: 12px 14px; border-radius: var(--radius-card); background: var(--surface-muted); }
+.iai-meter-top { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; font-size: 13px; color: var(--text-2); }
+.iai-meter-top strong { color: var(--text); font-variant-numeric: tabular-nums; }
+.iai-meter-bar { height: 8px; border-radius: 999px; background: var(--surface-sunken); overflow: hidden; }
+.iai-meter-bar > div { height: 100%; border-radius: inherit; background: var(--ink); transition: width 0.3s ease; }
+.iai-meter.high .iai-meter-bar > div { background: var(--warning); }
+.iai-meter.full .iai-meter-bar > div { background: var(--danger); }
+
+/* ---------- Data controls ---------- */
+
+.iai-promises { display: grid; gap: 6px; margin: 14px 0 0; padding: 12px 14px 12px 30px; border-radius: var(--radius-card); background: var(--surface-muted); color: var(--text-2); font-size: 13px; line-height: 1.5; }
+.iai-promises code { padding: 1px 5px; border-radius: 5px; background: var(--surface-sunken); font-family: var(--mono); font-size: 12px; }
+
+/* ---------- Prices ---------- */
+
+.iai-prices td { vertical-align: middle; }
+.iai-prices td.ui-mono { overflow-wrap: anywhere; }
+.iai-price { width: 96px; text-align: right; font-variant-numeric: tabular-nums; }
+
+/* ---------- Test prompt ---------- */
+
+.iai-answer { display: grid; gap: 10px; padding: 14px; border: 1px solid var(--border); border-left: 3px solid var(--success); border-radius: var(--radius-card); background: var(--surface-muted); }
+.iai-answer p { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.55; }
+.iai-answer-meta { display: flex; flex-wrap: wrap; gap: 4px 14px; font-variant-numeric: tabular-nums; }
+
+/* ---------- Usage ---------- */
+
+.iai-usage { display: grid; gap: 14px; min-width: 0; }
+.iai-kpis { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.iai-tabs { display: inline-flex; gap: 4px; padding: 3px; border-radius: var(--radius-pill); background: var(--surface-muted); justify-self: start; }
+.iai-tab {
+  height: 30px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--text-2);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.iai-tab:hover { color: var(--text); }
+.iai-tab.on { background: var(--surface); color: var(--text); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08); }
+.iai-tab:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+/* ---------- Phones ---------- */
+
+@media (max-width: 720px) {
+  .iai-feature { grid-template-columns: minmax(0, 1fr); }
+  .iai-feature-control { justify-content: flex-start; }
+  .iai-feature-control .ui-select,
+  .iai-model-input { width: 100%; }
+  .iai-kpis { grid-template-columns: minmax(0, 1fr); }
+  .iai-limit { justify-content: flex-start; }
+  .iai-price { width: 76px; }
+}

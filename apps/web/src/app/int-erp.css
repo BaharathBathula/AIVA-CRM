@@ -1,0 +1,116 @@
+/* ==========================================================================
+   ERP integrations (Oracle NetSuite)
+   Classes start with ierp-.
+   ========================================================================== */
+
+/* ---------- Setup ---------- */
+
+.ierp-steps { margin: 0 0 14px; padding-left: 20px; display: grid; gap: 8px; font-size: 13.5px; line-height: 1.55; color: var(--text-2); }
+.ierp-perms {
+  display: grid;
+  gap: 6px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: var(--surface-muted);
+  margin-bottom: 4px;
+}
+.ierp-perms ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; font-size: 13px; color: var(--text-2); line-height: 1.5; }
+
+/* ---------- Account and status blocks ---------- */
+
+.ierp-account { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.ierp-account > div:first-child { display: grid; gap: 2px; min-width: 0; }
+.ierp-account strong { font-size: 15px; overflow-wrap: anywhere; }
+.ierp-badges { display: flex; gap: 6px; flex-wrap: wrap; }
+.ierp-mono { font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace); font-size: 12.5px; font-weight: 600; color: var(--muted); }
+.ierp-account .ierp-mono { margin-left: 4px; }
+
+.ierp-status { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.ierp-status > div { display: grid; gap: 2px; min-width: 0; }
+.ierp-status strong { font-size: 15px; overflow-wrap: anywhere; }
+
+.ierp-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; }
+.ierp-facts > div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: var(--surface-muted);
+}
+.ierp-facts strong { font-size: 15px; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+
+.ierp-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.ierp-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+.ierp-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--danger-soft);
+  color: var(--danger);
+  font-size: 13px;
+  line-height: 1.45;
+}
+.ierp-error svg { flex: none; margin-top: 2px; }
+
+.ierp-locations { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; border-top: 1px solid var(--border); }
+.ierp-locations li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+.ierp-locations li span { color: var(--text-2); overflow-wrap: anywhere; }
+.ierp-locations li strong { font-variant-numeric: tabular-nums; }
+
+.ierp-compact { padding: 12px 0 0; border-top: 1px solid var(--border); }
+
+/* ---------- Lists (things that didn't go over) ---------- */
+
+.ierp-list { list-style: none; margin: 0; padding: 0; display: grid; }
+.ierp-list > li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 12px 22px;
+  border-bottom: 1px solid var(--border);
+}
+.ierp-list > li:last-child { border-bottom: 0; }
+.ierp-list-main { display: grid; gap: 2px; min-width: 0; flex: 1; }
+.ierp-list-title { font-weight: 650; font-size: 13.5px; color: var(--text); overflow-wrap: anywhere; text-decoration: none; }
+.ierp-list-title:hover { text-decoration: underline; }
+.ierp-list-sub { font-size: 12.5px; color: var(--muted); overflow-wrap: anywhere; }
+
+/* ---------- Settings ---------- */
+
+.ierp-section { padding: 6px 0 10px; border-bottom: 1px solid var(--border); }
+.ierp-section:last-of-type { border-bottom: 0; }
+.ierp-section-title {
+  padding: 12px 0 2px;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.ierp-select { max-width: 280px; width: 100%; }
+.ierp-short { max-width: 140px; }
+.ierp-checks { display: grid; gap: 8px; }
+.ierp-check { display: flex; align-items: flex-start; gap: 8px; font-size: 13.5px; color: var(--text-2); cursor: pointer; }
+.ierp-check input { margin-top: 3px; }
+.ierp-inline { display: flex; align-items: flex-end; gap: 10px; flex-wrap: wrap; }
+.ierp-inline > .ui-select { flex: 1 1 220px; min-width: 0; }
+.ierp-save { display: flex; gap: 10px; padding-top: 16px; flex-wrap: wrap; }
+
+@media (max-width: 680px) {
+  .ierp-list > li { padding-left: 16px; padding-right: 16px; align-items: flex-start; }
+  .ierp-select,
+  .ierp-short { max-width: none; }
+  .ierp-status { align-items: flex-start; flex-direction: column; }
+}

@@ -182,30 +182,62 @@ async def _workspace_password_rule(db: AsyncSession, user_id: uuid.UUID, passwor
 
 
 async def _choose_organization(db: AsyncSession, user: User, requested: uuid.UUID | None) -> uuid.UUID:
+    organization_id, _bound = await _session_organization(db, user, requested)
+    return organization_id
+
+
+async def _session_organization(
+    db: AsyncSession, user: User, requested: uuid.UUID | None, *, sso_organization: uuid.UUID | None = None
+) -> tuple[uuid.UUID, bool]:
+    """The workspace to open, and whether the session must stay in it.
+
+    Workspaces that require single sign-on for this person (Integrations → Microsoft
+    Entra ID / Okta → Require single sign-on) can't be opened with a password; the
+    session is then bound to the workspace chosen so it can't switch into them.
+    ``sso_organization`` is the workspace whose single sign-on the person just used.
+    """
+
     memberships = await active_memberships(db, user.id)
     if not memberships:
         raise HTTPException(
             status.HTTP_403_FORBIDDEN,
             "Your account isn't part of an active workspace. Ask an administrator to invite you.",
         )
+    if sso_organization is not None:
+        if sso_organization not in {org.id for _, org in memberships}:
+            raise HTTPException(status.HTTP_401_UNAUTHORIZED, INVALID, headers={"WWW-Authenticate": "Bearer"})
+        return sso_organization, True
+    from app.integrations.providers._idp_policy import blocked_message, sso_required
+
+    required = await sso_required(db, user, memberships)
+    allowed = [org.id for _, org in memberships if org.id not in required]
+    if not allowed or (requested is not None and requested in required):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, blocked_message(user, list(required.values())))
     if requested is None:
-        return memberships[0][1].id
-    if requested not in {org.id for _, org in memberships}:
+        return allowed[0], bool(required)
+    if requested not in allowed:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, INVALID, headers={"WWW-Authenticate": "Bearer"})
-    return requested
+    return requested, bool(required)
 
 
 @router.post("/login")
 async def login(payload: LoginRequest, request: Request, db: AsyncSession = Depends(get_db)):
     user = await _password_step(db, payload.email, payload.password, request)
-    organization_id = await _choose_organization(db, user, payload.organization_id)
+    try:
+        organization_id, bound = await _session_organization(db, user, payload.organization_id)
+    except HTTPException as exc:
+        if exc.status_code == status.HTTP_403_FORBIDDEN:
+            for _membership, organization in await active_memberships(db, user.id):
+                audit_auth_event(db, organization.id, user, "login_blocked", request, {"method": "password", "reason": "single sign-on required"})
+            await db.commit()
+        raise
 
     if user.mfa_enabled and user.mfa_secret:
         await db.commit()
         return mfa_challenge(user)
 
     session = await issue_session(
-        db, user, organization_id, ip=client_ip(request), user_agent=request.headers.get("user-agent")
+        db, user, organization_id, ip=client_ip(request), user_agent=request.headers.get("user-agent"), bound=bound
     )
     audit_auth_event(db, organization_id, user, "login", request, {"method": "password"})
     await db.commit()
@@ -232,14 +264,15 @@ async def verify_mfa(payload: MfaVerifyRequest, request: Request, db: AsyncSessi
         await db.commit()
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "That code didn't work. Enter the current 6-digit code.")
 
-    organization_id = await _choose_organization(db, user, bound_organization or payload.organization_id)
+    organization_id, bound = await _session_organization(db, user, payload.organization_id, sso_organization=bound_organization)
     session = await issue_session(
         db,
         user,
         organization_id,
         ip=client_ip(request),
         user_agent=request.headers.get("user-agent"),
-        bound=bound_organization is not None,
+        bound=bound,
+        via_sso=bound_organization is not None,
     )
     audit_auth_event(db, organization_id, user, "login", request, {"method": "sso+mfa" if bound_organization else "password+mfa"})
     await db.commit()
@@ -359,7 +392,7 @@ async def reset_password(payload: ResetPasswordRequest, request: Request, db: As
     user.failed_login_count = 0
     user.locked_until = None
     await revoke_all_sessions(db, user.id)
-    for membership, organization in await active_memberships(db, user.id):
+    for _membership, organization in await active_memberships(db, user.id):
         audit_auth_event(db, organization.id, user, "password_reset", request)
     await db.commit()
     return {"message": "Your password is updated. Sign in with your new password."}
@@ -393,6 +426,25 @@ async def accept_invitation(payload: AcceptInviteRequest, request: Request, db: 
     user = await db.get(User, record.user_id)
     if user is None or record.organization_id is None:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "This invitation is no longer valid.")
+
+    invited = (
+        await db.execute(
+            select(OrganizationMembership).where(
+                OrganizationMembership.organization_id == record.organization_id,
+                OrganizationMembership.user_id == user.id,
+            )
+        )
+    ).scalar_one_or_none()
+    from app.integrations.providers._idp_policy import sso_required_for
+
+    if invited is not None and await sso_required_for(db, user, record.organization_id, invited.role):
+        # The workspace requires single sign-on for this domain: signing in through it accepts the invitation.
+        organization = await db.get(Organization, record.organization_id)
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            f"{organization.name if organization else 'This workspace'} uses single sign-on for your email domain. On the sign-in page "
+            "choose “Log In with your Organization” and enter your work email; your invitation is accepted when you sign in.",
+        )
 
     if user.password_hash:
         if not verify_password(payload.password, user.password_hash):

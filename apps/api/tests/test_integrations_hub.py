@@ -49,7 +49,7 @@ def test_catalog_lists_every_integration(client, ws):
     response = client.get(f"{API}/integration-hub/catalog", headers=ws["headers"])
     assert response.status_code == 200, response.text
     items = {i["key"]: i for i in response.json()["items"]}
-    assert len(items) == 47
+    assert len(items) == 52
     assert items["gmail"]["category"] == "Email" and items["gmail"]["personal"] is True
     assert all(i["status"] == "off" for i in items.values())
 
