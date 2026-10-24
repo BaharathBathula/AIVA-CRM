@@ -71,6 +71,15 @@ class User(
         server_default="false",
     )
 
+    # AIVA support staff. Set only from the server command line; such users
+    # can open a workspace only while it has an active support access grant.
+    is_platform_staff: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=False,
+        server_default="false",
+    )
+
     # Sign-in tracking and lockout
     last_login_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True),

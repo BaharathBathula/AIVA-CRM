@@ -259,6 +259,7 @@ def field_out(field: CustomField) -> dict[str, Any]:
         "key": field.key,
         "label": field.label,
         "field_type": field.field_type,
+        "picklist_id": str(field.picklist_id) if getattr(field, "picklist_id", None) else None,
         "type_label": TYPE_LABELS.get(field.field_type, field.field_type),
         "required": field.required,
         "options": list(field.options or []),

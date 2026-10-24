@@ -59,6 +59,11 @@ class ContactCreate(BaseModel):
 
     is_primary: bool = False
 
+    stage: str | None = Field(
+        default=None,
+        max_length=40,
+    )
+
 
 class ContactUpdate(BaseModel):
     account_id: uuid.UUID | None = None
@@ -92,6 +97,10 @@ class ContactUpdate(BaseModel):
 
     is_primary: bool | None = None
     is_active: bool | None = None
+    stage: str | None = Field(
+        default=None,
+        max_length=40,
+    )
 
 
 class ContactResponse(BaseModel):
@@ -120,6 +129,8 @@ class ContactResponse(BaseModel):
 
     is_primary: bool
     is_active: bool
+    stage: str = "cold"
+    score: int = 0
 
     is_archived: bool
     archived_at: datetime | None

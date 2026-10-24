@@ -387,16 +387,23 @@ function InviteModal({
   const [teamId, setTeamId] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const licenses = useApi<{ data: { default_role: string } }>(open ? "/workspace-settings/licenses" : null);
+  const defaultRole = licenses.data?.data.default_role ?? "member";
 
   useEffect(() => {
     if (open) {
       setEmail("");
       setFullName("");
-      setRole("member");
+      setRole(defaultRole);
       setTeamId("");
       setError(null);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
+
+  useEffect(() => {
+    if (open) setRole(defaultRole);
+  }, [open, defaultRole]);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

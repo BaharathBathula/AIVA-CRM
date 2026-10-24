@@ -49,6 +49,12 @@ async def create_lead_endpoint(
         get_db
     ),
 ):
+    from app.services import prospecting
+
+    await prospecting.check_new_person(
+        db, organization_id, "lead", email=payload.email, first_name=payload.first_name,
+        last_name=payload.last_name, company=payload.company_name,
+    )
     return await create_lead(
         db,
         organization_id,

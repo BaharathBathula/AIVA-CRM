@@ -9,6 +9,12 @@ import "./theme.css";
 import "./platform.css";
 import "./editions.css";
 import "./workspace.css";
+import "./settings.css";
+import "./outbound.css";
+import "./sequences.css";
+import "./conversations.css";
+import "./data-icp.css";
+import "./admin-suite.css";
 
 export const metadata: Metadata = {
   title: {

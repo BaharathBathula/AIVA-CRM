@@ -15,6 +15,7 @@ from app.api.dependencies.auth import Principal, client_ip, require_permission
 from app.core.config import get_settings
 from app.core.permissions import SYSTEM_ROLES, normalize_permissions, permission_catalog
 from app.db.session import get_db
+from app.models.editions import Subscription
 from app.models.membership import OrganizationMembership
 from app.models.organization import Organization
 from app.models.platform import AuditLog, Role, Team, UserSession
@@ -142,6 +143,32 @@ async def invite_user(
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Only an owner can invite another owner.")
 
     email = payload.email.strip().lower()
+    from app.services import workspace_settings
+
+    security = await workspace_settings.get(db, principal.organization_id, "security")
+    domain = email.split("@")[-1]
+    if security.allowed_email_domains and domain not in security.allowed_email_domains:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_CONTENT,
+            f"This workspace only invites people with {', '.join('@' + d for d in security.allowed_email_domains)} addresses (Settings → Security).",
+        )
+    licenses = await workspace_settings.get(db, principal.organization_id, "licenses")
+    if not licenses.auto_add_seats:
+        subscription = (await db.execute(select(Subscription).where(Subscription.organization_id == principal.organization_id))).scalar_one_or_none()
+        taken = (
+            await db.execute(
+                select(func.count()).select_from(OrganizationMembership).where(
+                    OrganizationMembership.organization_id == principal.organization_id,
+                    OrganizationMembership.status.in_(("active", "invited")),
+                )
+            )
+        ).scalar_one()
+        if subscription is not None and subscription.plan != "trial" and subscription.seats and taken >= subscription.seats:
+            raise HTTPException(
+                status.HTTP_409_CONFLICT,
+                f"All {subscription.seats} seats are taken. Add seats in Plan overview, or turn on automatic seats in License settings.",
+            )
+
     user = (await db.execute(select(User).where(User.email == email))).scalar_one_or_none()
     if user is None:
         user = User(id=uuid.uuid4(), email=email, full_name=payload.full_name.strip(), password_hash=None, is_active=True)

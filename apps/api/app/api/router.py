@@ -35,6 +35,13 @@ from app.api.routes.work import router as work_router
 from app.api.routes.engagement import public_router as tracking_router
 from app.api.routes.engagement import router as engagement_router
 from app.api.routes.collab import router as collab_router
+from app.api.routes.admin_suite import router as admin_suite_router
+from app.api.routes.data_mgmt import router as data_mgmt_router
+from app.api.routes.outbound import public_router as outbound_public_router
+from app.api.routes.outbound import router as outbound_router
+from app.api.routes.icp import router as icp_router
+from app.api.routes.conversations import router as conversations_router
+from app.api.routes.mcp import router as mcp_router
 
 
 api_router = APIRouter()
@@ -45,6 +52,7 @@ api_router.include_router(auth_router)
 api_router.include_router(oauth_router)
 api_router.include_router(public_router)
 api_router.include_router(tracking_router)
+api_router.include_router(outbound_public_router)
 
 # Core CRM records: every request needs a signed-in member whose role
 # allows reading (GET), writing (POST/PATCH/PUT) or deleting (DELETE).
@@ -90,3 +98,13 @@ api_router.include_router(documents_router)
 api_router.include_router(work_router)
 api_router.include_router(engagement_router)
 api_router.include_router(collab_router)
+
+# Settings suite: billing add-ons, credits and AI words, territories, licenses,
+# security and support access; data management; outbound and sequences;
+# ideal customer profile and signals; conversation intelligence; MCP.
+api_router.include_router(admin_suite_router)
+api_router.include_router(data_mgmt_router)
+api_router.include_router(outbound_router)
+api_router.include_router(icp_router)
+api_router.include_router(conversations_router)
+api_router.include_router(mcp_router)

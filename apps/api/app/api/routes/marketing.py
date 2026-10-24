@@ -63,7 +63,8 @@ class TemplatePayload(BaseModel):
     subject: str = Field(min_length=1, max_length=300)
     body: str = Field(default="", max_length=50000)
     category: str | None = Field(default=None, max_length=80)
-    is_shared: bool = True
+    # Left out, new templates follow Settings → Team sharing & defaults.
+    is_shared: bool | None = None
 
 
 def template_out(template: EmailTemplate, owners: dict[str, str] | None = None) -> dict:
@@ -111,11 +112,16 @@ async def create_template(
     principal: Principal = Depends(require_permission("records.write")),
     db: AsyncSession = Depends(get_db),
 ):
+    from app.services import workspace_settings
+
+    data = payload.model_dump()
+    if data["is_shared"] is None:
+        data["is_shared"] = (await workspace_settings.get(db, principal.organization_id, "sharing")).templates_shared
     template = EmailTemplate(
         id=uuid.uuid4(),
         organization_id=principal.organization_id,
         owner_user_id=principal.user_id,
-        **payload.model_dump(),
+        **data,
     )
     db.add(template)
     await db.commit()
@@ -141,7 +147,9 @@ async def update_template(
     db: AsyncSession = Depends(get_db),
 ):
     template = await _template(db, principal, template_id, editing=True)
-    for key, value in payload.model_dump().items():
+    for key, value in payload.model_dump(exclude_none=False).items():
+        if key == "is_shared" and value is None:
+            continue
         setattr(template, key, value)
     await db.commit()
     return template_out(template)

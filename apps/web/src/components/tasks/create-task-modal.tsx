@@ -2,8 +2,11 @@
 
 import {
   FormEvent,
+  useEffect,
   useState,
 } from "react";
+
+import { useApi } from "@/lib/use-api";
 
 import {
   ListTodo,
@@ -63,6 +66,18 @@ export function CreateTaskModal({
 
   const [dueAt, setDueAt] =
     useState("");
+
+  // New tasks are due N days out by default (Settings → Team sharing & defaults).
+  const sharing = useApi<{ data: { task_due_days: number } }>(open ? "/workspace-settings/sharing" : null);
+  const dueDays = sharing.data?.data.task_due_days;
+  useEffect(() => {
+    if (!open || dueDays === undefined) return;
+    const due = new Date();
+    due.setDate(due.getDate() + dueDays);
+    due.setHours(17, 0, 0, 0);
+    const pad = (n: number) => String(n).padStart(2, "0");
+    setDueAt((current) => current || `${due.getFullYear()}-${pad(due.getMonth() + 1)}-${pad(due.getDate())}T17:00`);
+  }, [open, dueDays]);
 
   const [remind, setRemind] =
     useState("");

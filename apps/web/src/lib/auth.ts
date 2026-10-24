@@ -36,6 +36,8 @@ export interface SubscriptionState {
   trial_ends_at: string | null;
   days_left: number | null;
   features: string[];
+  /** Active product add-ons (credit_pack, ai_words, conversation_intelligence, advanced_data). */
+  addons?: string[];
   limits: Record<string, number | null>;
   provider: string;
 }
@@ -44,6 +46,10 @@ export interface CurrentSession {
   subscription: SubscriptionState;
   is_sandbox: boolean;
   hipaa_mode: boolean;
+  /** The workspace requires two-step verification (Settings → Security or HIPAA). */
+  mfa_enforced?: boolean;
+  /** Signed in as AIVA support through a support-access grant. */
+  support_access?: boolean;
   user: SessionUser;
   organization: { id: string; name: string; slug: string; settings: Record<string, unknown> };
   role: string;

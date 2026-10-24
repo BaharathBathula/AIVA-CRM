@@ -244,6 +244,33 @@ async def run_import(
     created = updated = skipped = 0
     errors: list[dict[str, Any]] = []
     seen_keys: set[str] = set()
+    from app.services import workspace_settings as _ws
+
+    # Settings → Team sharing & defaults: imported accounts and leads can be routed by territory instead of going to the importer.
+    route_by_territory = object_type in {"account", "lead"} and (await _ws.get(db, principal.organization_id, "sharing")).import_owner == "territory"
+    blocked: set[str] = set()
+    if object_type in {"lead", "contact"}:
+        from app.services import prospecting, workspace_settings
+
+        rules = await workspace_settings.get(db, principal.organization_id, "prospecting")
+        email_header = next((h for h, t in mapping.items() if t == "email"), None)
+        if email_header is not None:
+            emails = [row[index[email_header]].strip().lower() for row in rows if index[email_header] < len(row)]
+            blocked = await prospecting.suppressed_emails(db, principal.organization_id, emails) if rules.check_suppression_on_import else set()
+            # Removal requests are always honoured, whatever the setting.
+            if not rules.check_suppression_on_import:
+                from app.models.governance import SuppressionEntry
+
+                erased = set(
+                    (
+                        await db.execute(
+                            select(SuppressionEntry.value).where(
+                                SuppressionEntry.organization_id == principal.organization_id, SuppressionEntry.reason == "removal_request"
+                            )
+                        )
+                    ).scalars()
+                )
+                blocked = {e for e in emails if e in erased}
 
     for row_number, row in enumerate(rows, start=2):
         values: dict[str, Any] = {}
@@ -283,6 +310,10 @@ async def run_import(
                     raise ValueError("Last name is empty")
             if object_type == "account" and not values.get("name"):
                 raise ValueError("Account name is empty")
+            if values.get("email") and values["email"] in blocked:
+                skipped += 1
+                errors.append({"row": row_number, "message": f"{values['email']} is on the do-not-contact list"})
+                continue
             key = (values.get("email") or "") if object_type != "account" else values["name"].strip().lower()
             if key and key in seen_keys and payload.duplicate_action != "create":
                 skipped += 1
@@ -294,7 +325,8 @@ async def run_import(
                 skipped += 1
                 continue
 
-            owner = values.pop("owner", None) or payload.default_owner_user_id or principal.user_id
+            explicit_owner = values.pop("owner", None) or payload.default_owner_user_id
+            owner = explicit_owner or principal.user_id
             account_name = values.pop("account", None)
             record = match if (match is not None and payload.duplicate_action == "update") else None
             if record is None:
@@ -314,7 +346,8 @@ async def run_import(
                     record.lifecycle_stage = "prospect"
                     record.is_archived = False
                 record.custom_fields = {}
-                record.owner_user_id = owner
+                # Left empty, the save hook gives it to the territory's next rep (or the importer when nothing matches).
+                record.owner_user_id = None if (route_by_territory and not explicit_owner) else owner
                 db.add(record)
                 created += 1
             else:
@@ -571,8 +604,17 @@ async def log_call(
     principal: Principal = Depends(require_permission("records.write")),
     db: AsyncSession = Depends(get_db),
 ):
-    if payload.outcome not in OUTCOMES:
+    from app.services import workspace_settings
+
+    dialer = await workspace_settings.get(db, principal.organization_id, "dialer")
+    outcomes = {o.key: o for o in dialer.outcomes}
+    if payload.outcome not in outcomes:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "Choose how the call went.")
+    outcome = outcomes[payload.outcome]
+    if dialer.require_notes and not (payload.notes or "").strip():
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "Your workspace asks for call notes. Add a line about the call.")
+    if payload.follow_up_in_days is None and dialer.auto_follow_up and outcome.follow_up:
+        payload.follow_up_in_days = dialer.follow_up_days
     links = {}
     who = None
     for key, model in (("lead_id", Lead), ("contact_id", Contact), ("account_id", Account)):
@@ -590,7 +632,7 @@ async def log_call(
     if payload.opportunity_id:
         links["opportunity_id"] = payload.opportunity_id
     minutes, seconds = divmod(payload.duration_seconds, 60)
-    outcome_label = payload.outcome.replace("_", " ")
+    outcome_label = outcome.label.lower()
     activity = Activity(
         id=uuid.uuid4(),
         organization_id=principal.organization_id,
@@ -603,6 +645,7 @@ async def log_call(
         activity_metadata={
             "phone": payload.phone,
             "outcome": payload.outcome,
+            "connected": outcome.connected,
             "duration_seconds": payload.duration_seconds,
             "duration": f"{minutes}:{seconds:02d}",
             "source": "dialer",
@@ -616,7 +659,7 @@ async def log_call(
             id=uuid.uuid4(),
             organization_id=principal.organization_id,
             title=(payload.follow_up_title or f"Follow up with {who or payload.phone or 'caller'}")[:250],
-            task_type="call" if payload.outcome in {"no_answer", "left_voicemail", "busy", "scheduled_callback"} else "follow_up",
+            task_type="call" if outcome.follow_up else "follow_up",
             status="open",
             priority="medium",
             source="manual",
@@ -646,6 +689,9 @@ async def list_calls(
     principal: Principal = Depends(require_permission("records.read")),
     db: AsyncSession = Depends(get_db),
 ):
+    from app.services import workspace_settings
+
+    dialer = await workspace_settings.get(db, principal.organization_id, "dialer")
     since = utcnow() - timedelta(days=days)
     query = select(Activity).where(
         Activity.organization_id == principal.organization_id, Activity.activity_type == "call", Activity.occurred_at >= since
@@ -664,7 +710,7 @@ async def list_calls(
         meta = call.activity_metadata or {}
         duration = int(meta.get("duration_seconds") or 0)
         durations.append(duration)
-        if meta.get("outcome", "connected") == "connected":
+        if meta.get("connected", meta.get("outcome", "connected") == "connected"):
             connected += 1
         link = (
             f"/contacts/{call.contact_id}" if call.contact_id else f"/leads/{call.lead_id}" if call.lead_id else f"/accounts/{call.account_id}" if call.account_id else None
@@ -695,5 +741,7 @@ async def list_calls(
             "average_duration_seconds": round(sum(durations) / len([d for d in durations if d])) if any(durations) else 0,
             "talk_time_seconds": sum(durations),
         },
-        "outcomes": list(OUTCOMES),
+        "outcomes": [o.key for o in dialer.outcomes],
+        "outcome_options": [o.model_dump() for o in dialer.outcomes],
+        "dialer": {"calling_method": dialer.calling_method, "require_notes": dialer.require_notes, "auto_follow_up": dialer.auto_follow_up},
     }

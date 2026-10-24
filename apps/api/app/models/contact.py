@@ -7,6 +7,7 @@ from datetime import datetime
 
 from sqlalchemy import (
     Index,
+    Integer,
     Boolean,
     DateTime,
     ForeignKey,
@@ -159,6 +160,22 @@ class Contact(
         nullable=False,
         default=dict,
         server_default="{}",
+    )
+
+    # Prospecting stage (Settings → Data management → Contact stages).
+    stage: Mapped[str] = mapped_column(
+        String(40),
+        nullable=False,
+        default="cold",
+        server_default="cold",
+        index=True,
+    )
+
+    score: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+        default=0,
+        server_default="0",
     )
 
     # Set when the person unsubscribes from marketing email.

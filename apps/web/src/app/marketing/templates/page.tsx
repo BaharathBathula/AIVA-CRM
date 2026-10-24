@@ -152,6 +152,8 @@ function TemplateModal({ template, onClose, onSaved }: { template: Template | "n
   const [shared, setShared] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const sharing = useApi<{ data: { templates_shared: boolean } }>(template === "new" ? "/workspace-settings/sharing" : null);
+  const sharedByDefault = sharing.data?.data.templates_shared ?? true;
 
   useEffect(() => {
     if (!template) return;
@@ -160,9 +162,9 @@ function TemplateModal({ template, onClose, onSaved }: { template: Template | "n
     setCategory(t?.category ?? "");
     setSubject(t?.subject ?? "Hi {{first_name}}");
     setBody(t?.body ?? "Hi {{first_name|there}},\n\n\n\nBest,\n{{sender_name}}");
-    setShared(t?.is_shared ?? true);
+    setShared(t?.is_shared ?? sharedByDefault);
     setError(null);
-  }, [template]);
+  }, [template, sharedByDefault]);
 
   async function save() {
     setBusy(true);

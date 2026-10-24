@@ -146,6 +146,12 @@ class Lead(
     )
 
     # Set when the person unsubscribes from marketing email.
+    territory_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("territories.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+
     email_opt_out: Mapped[bool] = mapped_column(
         Boolean,
         nullable=False,

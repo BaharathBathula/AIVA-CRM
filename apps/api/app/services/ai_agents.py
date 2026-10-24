@@ -137,10 +137,15 @@ class _Collector:
             )
         )
         self.created += 1
+        from app.services import metering
+
+        metering.record_ai_words(self.db, self.organization_id, None, "agents", f"{title} {body}", source)
 
 
 async def _draft(prompt: str, fallback: str) -> tuple[str, str]:
-    text = await ai.complete(prompt, max_tokens=500)
+    from app.services.ai_context import agent_system_prompt
+
+    text = await ai.complete(prompt, system=agent_system_prompt.get() or ai.SYSTEM, max_tokens=500)
     return (text, "claude") if text else (fallback, "rules")
 
 
@@ -435,13 +440,23 @@ RUNNERS = {
 async def run_agent(db: AsyncSession, organization: Organization, agent: str) -> int:
     if agent not in RUNNERS:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Unknown agent.")
+    from app.services import ai_context, metering
+
+    available = await metering.ai_words_available(db, organization.id, None)
+    if available["remaining"] <= 0:
+        raise HTTPException(
+            status.HTTP_402_PAYMENT_REQUIRED,
+            "Your workspace has used all of this month's AI words. Add an AI words pack in Settings → Product add-ons.",
+        )
     info = db.sync_session.info
     previous = info.get("automation_disabled", False)
     info["automation_disabled"] = True
+    token = ai_context.agent_system_prompt.set(await ai_context.system_prompt(db, organization.id, "agents"))
     try:
         created = await RUNNERS[agent](db, organization.id)
     finally:
         info["automation_disabled"] = previous
+        ai_context.agent_system_prompt.reset(token)
     stored = dict((organization.settings or {}).get("ai_agents") or {})
     stored[agent] = {**(stored.get(agent) or {"enabled": True}), "last_run_at": utcnow().isoformat()}
     organization.settings = {**(organization.settings or {}), "ai_agents": stored}
@@ -469,6 +484,15 @@ async def run_scheduled(db: AsyncSession) -> int:
             try:
                 total += await run_agent(db, organization, agent)
                 await db.commit()
+            except HTTPException as exc:
+                if exc.status_code != status.HTTP_402_PAYMENT_REQUIRED:
+                    raise
+                # Out of AI words this month: try again tomorrow instead of every tick.
+                stored = dict((organization.settings or {}).get("ai_agents") or {})
+                stored[agent] = {**(stored.get(agent) or {"enabled": True}), "last_run_at": utcnow().isoformat()}
+                organization.settings = {**(organization.settings or {}), "ai_agents": stored}
+                await db.commit()
+                continue
             except Exception:  # noqa: BLE001
                 logger.exception("Agent %s failed for %s", agent, organization.id)
                 await db.rollback()

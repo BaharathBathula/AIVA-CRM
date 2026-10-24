@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 from decimal import Decimal
-from typing import Literal
+from typing import Annotated, Literal
 
 from pydantic import (
     BaseModel,
@@ -10,14 +10,10 @@ from pydantic import (
 )
 
 
-LifecycleStage = Literal[
-    "prospect",
-    "lead",
-    "customer",
-    "partner",
-    "inactive",
-    "churned",
-]
+# Stages are configurable per workspace (Settings → Account fields & stages)
+# and validated in the route; these are the defaults.
+DEFAULT_LIFECYCLE_STAGES = ("prospect", "lead", "customer", "partner", "inactive", "churned")
+LifecycleStage = Annotated[str, Field(min_length=1, max_length=40, pattern=r"^[a-z0-9_]+$")]
 
 
 class AccountCreate(BaseModel):
@@ -125,6 +121,8 @@ class AccountResponse(BaseModel):
     phone: str | None
 
     lifecycle_stage: str
+    score: int = 0
+    territory_id: uuid.UUID | None = None
 
     employee_count: int | None
     annual_revenue: Decimal | None

@@ -81,6 +81,108 @@ async def create_checkout_session(
     return session["url"]
 
 
+async def create_addon_checkout(
+    *,
+    subscription: Subscription,
+    addon: Any,
+    quantity: int,
+    customer_email: str | None,
+    success_url: str,
+    cancel_url: str,
+) -> str:
+    """A separate monthly Stripe subscription for one add-on."""
+
+    data: dict[str, Any] = {
+        "mode": "subscription",
+        "success_url": success_url,
+        "cancel_url": cancel_url,
+        "client_reference_id": str(subscription.organization_id),
+        "line_items[0][quantity]": str(max(1, quantity)),
+        "line_items[0][price_data][currency]": "usd",
+        "line_items[0][price_data][unit_amount]": str(int(addon.price * 100)),
+        "line_items[0][price_data][recurring][interval]": "month",
+        "line_items[0][price_data][product_data][name]": f"AIVA add-on: {addon.name}",
+        "metadata[organization_id]": str(subscription.organization_id),
+        "metadata[addon_key]": addon.key,
+        "metadata[quantity]": str(max(1, quantity)),
+        "subscription_data[metadata][organization_id]": str(subscription.organization_id),
+        "subscription_data[metadata][addon_key]": addon.key,
+    }
+    if subscription.stripe_customer_id:
+        data["customer"] = subscription.stripe_customer_id
+    elif customer_email:
+        data["customer_email"] = customer_email
+    session = await _post("/checkout/sessions", data)
+    return session["url"]
+
+
+async def cancel_subscription_at_period_end(subscription_id: str | None) -> None:
+    if not subscription_id:
+        return
+    await _post(f"/subscriptions/{subscription_id}", {"cancel_at_period_end": "true"})
+
+
+async def _handle_addon_event(db: AsyncSession, kind: str, obj: dict, metadata: dict) -> str | None:
+    """Add-on subscriptions carry ``addon_key`` metadata and never touch the main plan."""
+
+    import uuid as _uuid
+
+    from app.core.plans import ADDONS
+    from app.models.governance import OrgAddon
+
+    addon_key = metadata.get("addon_key")
+    if kind == "invoice.paid":
+        sub_id = obj.get("subscription") or ((obj.get("parent") or {}).get("subscription_details") or {}).get("subscription")
+        row = (await db.execute(select(OrgAddon).where(OrgAddon.stripe_subscription_id == sub_id))).scalar_one_or_none() if sub_id else None
+        if row is None:
+            return None
+        subscription = (await db.execute(select(Subscription).where(Subscription.organization_id == row.organization_id))).scalar_one_or_none()
+        existing = (await db.execute(select(BillingInvoice).where(BillingInvoice.provider_ref == obj.get("id")))).scalar_one_or_none()
+        if subscription is None or existing is not None:
+            return "duplicate invoice"
+        lines = (obj.get("lines") or {}).get("data") or [{}]
+        period = lines[0].get("period") or {}
+        addon = ADDONS.get(row.addon_key)
+        await record_invoice(
+            db, subscription, plan=PLANS.get(subscription.plan, PLANS["starter"]), seats=subscription.seats,
+            period_start=_ts(period.get("start")) or datetime.now(timezone.utc), period_end=_ts(period.get("end")) or datetime.now(timezone.utc),
+            provider="stripe", provider_ref=obj.get("id"), amount=Decimal(obj.get("amount_paid") or 0) / 100, number=obj.get("number"),
+            description=f"{addon.name if addon else row.addon_key} add-on",
+        )
+        return "add-on invoice recorded"
+    if not addon_key or addon_key not in ADDONS:
+        return None
+    organization_id = metadata.get("organization_id") or obj.get("client_reference_id")
+    try:
+        org_uuid = _uuid.UUID(str(organization_id))
+    except ValueError:
+        return "ignored: unknown workspace"
+    row = (
+        await db.execute(select(OrgAddon).where(OrgAddon.organization_id == org_uuid, OrgAddon.addon_key == addon_key))
+    ).scalar_one_or_none()
+    if row is None:
+        row = OrgAddon(id=_uuid.uuid4(), organization_id=org_uuid, addon_key=addon_key, started_at=datetime.now(timezone.utc))
+        db.add(row)
+    row.provider = "stripe"
+    row.unit_price = ADDONS[addon_key].price
+    if kind == "checkout.session.completed":
+        row.status = "active"
+        row.cancelled_at = None
+        row.quantity = int(metadata.get("quantity") or 1) if not ADDONS[addon_key].per_seat else 1
+        row.stripe_subscription_id = obj.get("subscription") or row.stripe_subscription_id
+        return "add-on activated"
+    row.stripe_subscription_id = obj.get("id") or row.stripe_subscription_id
+    row.renews_at = _ts(obj.get("current_period_end")) or row.renews_at
+    if kind.endswith("deleted") or obj.get("status") in {"canceled", "incomplete_expired", "unpaid"}:
+        row.status = "ended"
+    elif obj.get("cancel_at_period_end"):
+        row.status = "cancelled"
+        row.cancelled_at = row.cancelled_at or datetime.now(timezone.utc)
+    else:
+        row.status = "active"
+    return f"add-on {row.status}"
+
+
 async def create_portal_session(customer_id: str, return_url: str) -> str:
     session = await _post("/billing_portal/sessions", {"customer": customer_id, "return_url": return_url})
     return session["url"]
@@ -158,6 +260,11 @@ async def handle_event(db: AsyncSession, event: dict) -> str:
     kind = event.get("type", "")
     obj = (event.get("data") or {}).get("object") or {}
     metadata = obj.get("metadata") or {}
+
+    if metadata.get("addon_key") or kind == "invoice.paid":
+        handled = await _handle_addon_event(db, kind, obj, metadata)
+        if handled is not None:
+            return handled
 
     if kind == "checkout.session.completed":
         subscription = await _subscription_for(db, obj.get("client_reference_id") or metadata.get("organization_id"), None)

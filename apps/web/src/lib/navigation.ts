@@ -1,3 +1,4 @@
+import { SETTINGS_PATHS } from "@/lib/settings-menu";
 import {
   Boxes,
   ChartPie,
@@ -35,26 +36,8 @@ export type NavSection = {
   pages: NavPage[];
 };
 
-/** Settings pages reached from the "All settings" hub. */
-export const SETTINGS_PAGES = [
-  "/settings/organization",
-  "/settings/roles",
-  "/settings/teams",
-  "/settings/hierarchy",
-  "/settings/audit",
-  "/settings/lead-scoring",
-  "/settings/sla",
-  "/settings/fields",
-  "/settings/processes",
-  "/settings/approvals",
-  "/settings/buttons",
-  "/settings/api-keys",
-  "/settings/data",
-  "/settings/compliance",
-  "/settings/sso",
-  "/settings/sandbox",
-  "/settings/mobile",
-];
+/** Every settings page lives under the "Settings" tab; the settings menu on the left moves between them. */
+export const SETTINGS_PAGES = [...SETTINGS_PATHS];
 
 export const SECTIONS: NavSection[] = [
   {
@@ -67,6 +50,7 @@ export const SECTIONS: NavSection[] = [
       { label: "Tasks", href: "/tasks" },
       { label: "Meetings", href: "/meetings", feature: "tasks_meetings_calls" },
       { label: "Calls", href: "/calls", feature: "calling" },
+      { label: "Conversations", href: "/conversations", feature: "conversation_intelligence" },
       { label: "SalesInbox", href: "/salesinbox" },
       { label: "Email", href: "/email" },
       { label: "Chat", href: "/chat", feature: "team_chat" },
@@ -84,6 +68,7 @@ export const SECTIONS: NavSection[] = [
       { label: "Contacts", href: "/contacts" },
       { label: "Opportunities", href: "/opportunities" },
       { label: "Pipeline", href: "/pipeline" },
+      { label: "Sequences", href: "/sequences", feature: "sequences" },
       { label: "Forecast", href: "/forecast", permission: "sales.forecast_view" },
       { label: "Predictions", href: "/predictions", feature: "predictive_intelligence" },
       { label: "Documents", href: "/documents", feature: "documents" },
@@ -112,6 +97,7 @@ export const SECTIONS: NavSection[] = [
       { label: "Campaigns", href: "/marketing/campaigns", feature: "mass_email" },
       { label: "Social", href: "/social", feature: "social" },
       { label: "Visits", href: "/visits", feature: "website_visits" },
+      { label: "Signals", href: "/signals", feature: "buying_intent" },
       { label: "Templates", href: "/marketing/templates", feature: "email_templates" },
       { label: "Web forms", href: "/marketing/forms", feature: "web_forms" },
       { label: "Journeys", href: "/marketing/journeys", feature: "customer_journeys" },
@@ -154,27 +140,33 @@ export const SECTIONS: NavSection[] = [
     label: "Settings",
     icon: Settings,
     pages: [
-      { label: "All settings", href: "/settings", exact: true, match: SETTINGS_PAGES },
+      { label: "Settings", href: "/settings", exact: true, match: SETTINGS_PAGES },
       { label: "Profile", href: "/settings/profile" },
-      { label: "Security", href: "/settings/security" },
-      { label: "Billing", href: "/settings/billing" },
       { label: "Users", href: "/settings/users", permission: "admin.users" },
+      { label: "Billing", href: "/settings/billing", match: ["/settings/billing/add-ons", "/settings/billing/invoices"] },
+      { label: "Outbound", href: "/settings/outbound" },
       { label: "Integrations", href: "/settings/integrations" },
     ],
   },
 ];
 
-function pageMatches(page: NavPage, pathname: string) {
-  if (page.href === "/") return pathname === "/";
+/** How specifically a page claims a path: the length of its longest matching prefix, or -1. */
+function matchLength(page: NavPage, pathname: string) {
+  if (page.href === "/") return pathname === "/" ? 1 : -1;
   const under = (prefix: string) => pathname === prefix || pathname.startsWith(`${prefix}/`);
-  if (page.exact) return pathname === page.href || (page.match ?? []).some(under);
-  return [page.href, ...(page.match ?? [])].some(under);
+  const prefixes = page.exact ? (page.match ?? []) : [page.href, ...(page.match ?? [])];
+  if (page.exact && pathname === page.href) return page.href.length;
+  return Math.max(-1, ...prefixes.filter(under).map((prefix) => prefix.length));
 }
 
 export function currentLocation(pathname: string) {
   for (const section of SECTIONS) {
-    const page = section.pages.find((item) => pageMatches(item, pathname));
-    if (page) return { section, page };
+    let best: { page: NavPage; length: number } | null = null;
+    for (const item of section.pages) {
+      const length = matchLength(item, pathname);
+      if (length >= 0 && (!best || length > best.length)) best = { page: item, length };
+    }
+    if (best) return { section, page: best.page };
   }
   if (pathname.startsWith("/modules")) return { section: SECTIONS.find((s) => s.key === "apps")!, page: null };
   if (pathname.startsWith("/settings")) return { section: SECTIONS[SECTIONS.length - 1], page: null };

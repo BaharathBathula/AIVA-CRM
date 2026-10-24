@@ -151,6 +151,7 @@ class LeadResponse(BaseModel):
     source: str
     status: LeadStatus
     score: int
+    territory_id: uuid.UUID | None = None
 
     notes: str | None
 

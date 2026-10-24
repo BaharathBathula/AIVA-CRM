@@ -42,7 +42,12 @@ export const FEATURE_PLAN: Record<string, { label: string; plan: PaidPlan }> = {
   team_chat: { label: "Team chat", plan: "starter" },
   service_desk: { label: "Cases, SLAs and knowledge base", plan: "starter" },
   lead_scoring: { label: "Lead scoring", plan: "starter" },
+  sequences: { label: "Sales sequences", plan: "starter" },
+  goals: { label: "Goals", plan: "starter" },
   ai_agents: { label: "AI agents", plan: "pro" },
+  territories: { label: "Territories", plan: "pro" },
+  buying_intent: { label: "Personas, intent and signals", plan: "pro" },
+  waterfall_enrichment: { label: "Waterfall enrichment", plan: "pro" },
   process_management: { label: "Process management", plan: "pro" },
   inventory: { label: "Inventory management", plan: "pro" },
   price_books: { label: "Price books", plan: "pro" },
@@ -72,8 +77,16 @@ export const FEATURE_PLAN: Record<string, { label: string; plan: PaidPlan }> = {
   extended_ai: { label: "Extended AI capabilities", plan: "enterprise" },
   quickbooks: { label: "QuickBooks integration", plan: "enterprise" },
   sso: { label: "Single sign-on", plan: "enterprise" },
+  conversation_intelligence: { label: "Conversation intelligence", plan: "enterprise" },
 };
 
 export function featurePlan(feature: string) {
   return FEATURE_PLAN[feature] ?? { label: feature, plan: "enterprise" as PaidPlan };
 }
+
+/** Features a workspace can also get as a product add-on (Settings → Product add-ons). */
+export const ADDON_FOR_FEATURE: Record<string, string> = {
+  conversation_intelligence: "Conversation intelligence",
+  waterfall_enrichment: "Advanced data",
+  buying_intent: "Advanced data",
+};

@@ -1,5 +1,7 @@
 "use client";
 
+import { useStages } from "@/components/stage-options";
+
 import {
   useEffect,
   useMemo,
@@ -54,16 +56,7 @@ type SortOption =
   | "updated_desc";
 
 
-const lifecycleFilters:
-  LifecycleFilter[] = [
-    "all",
-    "prospect",
-    "lead",
-    "customer",
-    "partner",
-    "inactive",
-    "churned",
-  ];
+
 
 
 const PAGE_SIZE = 10;
@@ -154,6 +147,10 @@ function accountOwnerLabel(
 
 
 export default function AccountsPage() {
+  // Stage chips follow Settings → Account fields & stages.
+  const { stages: accountStages, labels: stageLabels } = useStages("account");
+  const lifecycleFilters: LifecycleFilter[] = ["all", ...accountStages.map((stage) => stage.key)];
+
   const [
     accounts,
     setAccounts,
@@ -780,7 +777,7 @@ export default function AccountsPage() {
                       )
                     }
                   >
-                    {displayLabel(item)}
+                    {item === "all" ? "All" : stageLabels[item] ?? displayLabel(item)}
                   </button>
                 )
               )}
@@ -964,9 +961,8 @@ export default function AccountsPage() {
                                   }
                                 >
                                   {
-                                    displayLabel(
-                                      account.lifecycle_stage
-                                    )
+                                    stageLabels[account.lifecycle_stage]
+                                      ?? displayLabel(account.lifecycle_stage)
                                   }
                                 </span>
                               </td>

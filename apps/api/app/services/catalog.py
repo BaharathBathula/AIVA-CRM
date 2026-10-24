@@ -161,6 +161,8 @@ OBJECTS: dict[str, ObjectDef] = {
             F("job_title", "Job title", "string"),
             F("department", "Department", "string"),
             F("segment", "Segment", "string", updatable=True),
+            F("stage", "Stage", "string", updatable=True),
+            F("score", "Score", "number"),
             F("account_id", "Account", "ref", ref="account"),
             F("owner_user_id", "Owner", "user", updatable=True),
             F("is_primary", "Primary contact", "bool"),

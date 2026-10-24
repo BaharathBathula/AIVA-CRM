@@ -47,6 +47,13 @@ async def names_for(
             )
         )
         return {str(i): f"{f} {l}".strip() for i, f, l in result.all()}
+    elif kind == "lead":
+        from app.models.lead import Lead
+
+        result = await db.execute(
+            select(Lead.id, Lead.first_name, Lead.last_name).where(Lead.id.in_(keys), Lead.organization_id == organization_id)
+        )
+        return {str(i): f"{f or ''} {l or ''}".strip() or "Unnamed lead" for i, f, l in result.all()}
     elif kind == "opportunity":
         rows = await db.execute(
             select(Opportunity.id, Opportunity.name).where(

@@ -29,9 +29,18 @@ async function forward(request: NextRequest, body: ArrayBuffer | undefined, toke
   const contentType = request.headers.get("content-type");
   if (contentType) headers.set("Content-Type", contentType);
 
+  // API keys (REST API and MCP clients) pass straight through; the key itself
+  // picks the workspace, so no organization header is added for them.
+  const incoming = request.headers.get("authorization");
+  const apiKey = !token && incoming && /^Bearer aiva_sk_[A-Za-z0-9_-]+$/.test(incoming.trim()) ? incoming.trim() : null;
   if (token) headers.set("Authorization", `Bearer ${token}`);
-  const org = organizationId ?? FALLBACK_ORGANIZATION_ID;
+  else if (apiKey) headers.set("Authorization", apiKey);
+  const org = apiKey ? null : organizationId ?? FALLBACK_ORGANIZATION_ID;
   if (org) headers.set("X-Organization-ID", org);
+  for (const name of ["accept", "mcp-protocol-version", "mcp-session-id"]) {
+    const value = request.headers.get(name);
+    if (value) headers.set(name, value);
+  }
 
   const sessionId = request.cookies.get(COOKIE.session)?.value;
   if (sessionId) headers.set("X-Session-ID", sessionId);
@@ -49,6 +58,8 @@ async function forward(request: NextRequest, body: ArrayBuffer | undefined, toke
     headers,
     body,
     cache: "no-store",
+    // Redirects (tracked email links, sign-in flows) go back to the browser.
+    redirect: "manual",
   });
 }
 
@@ -58,7 +69,7 @@ function responseHeaders(upstream: Response) {
   const disposition = upstream.headers.get("content-disposition");
   if (disposition) headers.set("Content-Disposition", disposition);
   // Keep the download safety headers set by the backend (file previews).
-  for (const name of ["content-security-policy", "x-content-type-options", "cache-control"]) {
+  for (const name of ["content-security-policy", "x-content-type-options", "cache-control", "mcp-session-id", "www-authenticate", "location"]) {
     const value = upstream.headers.get(name);
     if (value) headers.set(name, value);
   }

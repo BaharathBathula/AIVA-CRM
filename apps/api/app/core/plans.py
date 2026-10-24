@@ -52,6 +52,8 @@ FEATURES: tuple[Feature, ...] = (
     Feature("lead_scoring", "Lead scoring", "starter", "Automatic A–D grades from rules you control."),
     Feature("documents", "Documents", "starter", "Folders and file uploads with versions, linked to any record."),
     Feature("team_chat", "Team chat", "starter", "Channels and direct messages with @mentions and links to records."),
+    Feature("sequences", "Sales sequences", "starter", "Multi-step outreach with automatic emails, calls and tasks that stop when people reply."),
+    Feature("goals", "Goals", "starter", "Weekly, monthly and quarterly targets for people and teams with live progress."),
     # ---------------------------------------------------------------- Pro
     Feature("ai_agents", "AI agents", "pro", "Agents that qualify leads, coach deals, triage cases and draft follow-ups."),
     Feature("process_management", "Process management", "pro", "Stage playbooks with required fields and checklists."),
@@ -71,6 +73,9 @@ FEATURES: tuple[Feature, ...] = (
     Feature("projects", "Projects", "pro", "Delivery projects with milestones, tasks and progress, started from won deals."),
     Feature("social", "Social publishing", "pro", "Publish and schedule posts to LinkedIn, X, Facebook and Instagram."),
     Feature("website_visits", "Website visits", "pro", "See who visits your website, which pages they read, and link visits to leads and contacts."),
+    Feature("territories", "Territories", "pro", "Carve up the market by region, industry or size and route new records to the right people."),
+    Feature("buying_intent", "Personas, intent and signals", "pro", "Buyer personas, buying-intent topics and signals that tell reps who to call today."),
+    Feature("waterfall_enrichment", "Waterfall enrichment", "pro", "Fill gaps from several data providers in the order you choose, paid with credits."),
     # ---------------------------------------------------------------- Enterprise
     Feature("multi_team", "Multi-team management", "enterprise", "Nested teams, people on several teams and team-based record visibility."),
     Feature("reporting_hierarchy", "Reporting hierarchy", "enterprise", "Who-reports-to-whom, with managers seeing their reports' records."),
@@ -83,6 +88,7 @@ FEATURES: tuple[Feature, ...] = (
     Feature("field_encryption", "Field-level encryption", "enterprise", "Encrypt sensitive custom fields at rest and mask them by role."),
     Feature("extended_ai", "Extended AI capabilities", "enterprise", "Ask AIVA questions in plain English, AI summaries and reply drafts."),
     Feature("quickbooks", "QuickBooks integration", "enterprise", "Invoices from quotes, exported in QuickBooks Online format."),
+    Feature("conversation_intelligence", "Conversation intelligence", "enterprise", "Call and meeting transcripts with trackers, coaching scorecards and AI field updates."),
     Feature("sso", "Single sign-on", "enterprise", "Sign in through your own identity provider (Okta, Microsoft Entra ID, Google Workspace and other OpenID Connect providers)."),
 )
 
@@ -158,6 +164,65 @@ PLANS: dict[str, Plan] = {
     ),
 }
 
+# ---------------------------------------------------------------------------
+# Monthly allowances (per paid seat) and add-ons
+# ---------------------------------------------------------------------------
+
+CREDITS_PER_SEAT: dict[str, int] = {"trial": 100, "starter": 500, "pro": 1500, "enterprise": 5000}
+AI_WORDS_PER_SEAT: dict[str, int] = {"trial": 5000, "starter": 2500, "pro": 10000, "enterprise": 25000}
+
+
+@dataclass(frozen=True)
+class Addon:
+    key: str
+    name: str
+    description: str
+    price: Decimal  # per month (per seat when per_seat)
+    per_seat: bool = False
+    credits: int = 0  # extra credits per month, per unit
+    ai_words: int = 0  # extra AI words per month, per unit
+    features: frozenset[str] = frozenset()
+    max_quantity: int = 1
+
+    def to_dict(self) -> dict:
+        return {
+            "key": self.key,
+            "name": self.name,
+            "description": self.description,
+            "price": float(self.price),
+            "per_seat": self.per_seat,
+            "credits": self.credits,
+            "ai_words": self.ai_words,
+            "features": sorted(self.features),
+            "max_quantity": self.max_quantity,
+        }
+
+
+ADDONS: dict[str, Addon] = {
+    addon.key: addon
+    for addon in (
+        Addon("credit_pack", "Extra credits", "5,000 more credits every month for waterfall enrichment and data requests.", Decimal("49"), credits=5000, max_quantity=20),
+        Addon("ai_words", "AI words", "100,000 more AI-written words every month for drafts, summaries and agents.", Decimal("19"), ai_words=100000, max_quantity=20),
+        Addon(
+            "conversation_intelligence",
+            "Conversation intelligence",
+            "Transcripts, keyword trackers, coaching scorecards and AI field updates for every call and meeting.",
+            Decimal("15"),
+            per_seat=True,
+            features=frozenset({"conversation_intelligence"}),
+        ),
+        Addon(
+            "advanced_data",
+            "Advanced data",
+            "Waterfall enrichment from outside data providers, buyer personas, buying intent and signals.",
+            Decimal("12"),
+            per_seat=True,
+            features=frozenset({"waterfall_enrichment", "buying_intent"}),
+        ),
+    )
+}
+
+
 LIMIT_LABELS = {
     "custom_reports": "saved reports",
     "dashboards": "dashboards",
@@ -198,4 +263,7 @@ def catalog() -> dict:
         "plans": [PLANS[key].to_dict() for key in PLAN_ORDER],
         "feature_groups": groups,
         "limit_labels": LIMIT_LABELS,
+        "addons": [addon.to_dict() for addon in ADDONS.values()],
+        "credits_per_seat": CREDITS_PER_SEAT,
+        "ai_words_per_seat": AI_WORDS_PER_SEAT,
     }

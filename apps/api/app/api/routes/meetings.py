@@ -395,6 +395,9 @@ async def _notify(db: AsyncSession, meeting: Meeting, actor: uuid.UUID, kind: st
             lines += [f"Where: {meeting.location}", ""]
         if meeting.description and kind != "cancel":
             lines += [meeting.description, ""]
+        consent = (meeting.meeting_metadata or {}).get("consent_notice")
+        if consent and kind != "cancel" and attendee.get("type") != "user":
+            lines += [consent, ""]
         lines.append(f"— {organizer_name}")
         try:
             await mailer.send(
@@ -477,9 +480,20 @@ async def create_meeting(
     if meeting.contact_id and not meeting.account_id:
         contact = await db.get(Contact, meeting.contact_id)
         meeting.account_id = contact.account_id if contact else None
+    from app.services import outbound, workspace_settings
+
+    recording = await workspace_settings.get(db, org, "recording")
+    external = [a for a in meeting.attendees or [] if a.get("type") != "user"]
+    if (
+        principal.has("conversation_intelligence")
+        and recording.add_consent_to_invites
+        and (recording.record_mode == "all" or (recording.record_mode == "external" and external))
+    ):
+        meeting.meeting_metadata = {**meeting.meeting_metadata, "consent_notice": recording.consent_notice}
     db.add(meeting)
     await db.flush()
     conflicts = await _conflicts(db, meeting)
+    await outbound.meeting_booked(db, org, {a.get("email") for a in external if a.get("email")})
     sent = await _notify(db, meeting, principal.user_id, "invite") if payload.send_invites else 0
     meeting.meeting_metadata = {**meeting.meeting_metadata, "invites_sent": sent}
     record_audit(db, organization_id=org, action="create", entity_type="meeting", entity_id=meeting.id, entity_label=meeting.title)

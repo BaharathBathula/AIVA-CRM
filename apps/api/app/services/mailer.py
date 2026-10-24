@@ -166,7 +166,8 @@ def build_message(
     message["From"] = email.utils.formataddr((from_name or config.from_name or "", config.from_email))
     message["To"] = email.utils.formataddr((to_name or "", to))
     message["Date"] = email.utils.formatdate(localtime=True)
-    message["Message-ID"] = email.utils.make_msgid(domain=config.from_email.split("@")[-1])
+    if "Message-ID" not in (headers or {}):
+        message["Message-ID"] = email.utils.make_msgid(domain=config.from_email.split("@")[-1])
     if reply_to:
         message["Reply-To"] = reply_to
     for key, value in (headers or {}).items():

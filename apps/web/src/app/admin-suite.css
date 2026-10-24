@@ -1,0 +1,53 @@
+/* admin-suite: styles for this area (settings pages and modules). */
+
+/* ---------- Product add-ons ---------- */
+
+.addon-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.addon-card { display: flex; flex-direction: column; gap: 12px; padding: 20px 22px; }
+.addon-card.active { box-shadow: var(--shadow-float), inset 0 0 0 2px var(--success-soft); }
+.addon-head { display: flex; align-items: flex-start; gap: 12px; }
+.addon-head h2 { margin: 0; font-size: 16px; font-weight: 750; }
+.addon-icon { display: grid; place-items: center; width: 40px; height: 40px; flex: none; border-radius: 13px; background: var(--surface-muted); color: var(--text); }
+.addon-price { margin-top: 2px; }
+.addon-price strong { font-size: 15px; }
+.addon-desc { margin: 0; color: var(--text-2); font-size: 13.5px; line-height: 1.55; }
+.addon-features { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; font-size: 13px; }
+.addon-features li { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.addon-features svg { color: var(--success); }
+.addon-foot { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: auto; padding-top: 4px; }
+
+@media (max-width: 1100px) {
+  .addon-grid { grid-template-columns: minmax(0, 1fr); }
+}
+
+.link-button { padding: 0; border: 0; background: none; color: var(--text); font: inherit; font-weight: 650; text-decoration: underline; text-decoration-color: var(--border-strong); text-underline-offset: 3px; cursor: pointer; }
+.link-button:hover { text-decoration-color: currentColor; }
+.text-danger { color: var(--danger); }
+.text-success { color: var(--success); }
+.admin-two { align-items: start; }
+@media (max-width: 1100px) { .admin-two { grid-template-columns: minmax(0, 1fr); } }
+
+.admin-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 14px 18px; border-bottom: 1px solid var(--border); }
+.admin-toolbar .ui-tabs { margin: 0; }
+
+/* ---------- Territories ---------- */
+
+.territory-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.territory-card { display: grid; gap: 12px; padding: 18px 20px; align-content: start; }
+.territory-card.paused { opacity: 0.72; }
+.territory-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.territory-head h2 { margin: 0; font-size: 16px; font-weight: 750; }
+.territory-rules ul { margin: 6px 0 0; padding-left: 18px; font-size: 13px; line-height: 1.6; }
+.territory-foot { display: grid; gap: 4px; font-size: 12.5px; padding-top: 10px; border-top: 1px solid var(--border); }
+.territory-rule-box { display: grid; gap: 10px; padding: 14px; border-radius: 18px; background: var(--surface-muted); }
+.territory-rule { display: grid; grid-template-columns: minmax(130px, 0.8fr) minmax(130px, 0.8fr) minmax(0, 1.6fr) auto; gap: 8px; align-items: start; }
+.territory-rule .settings-tags { min-height: 38px; padding: 3px 6px; }
+
+@media (max-width: 1100px) { .territory-list { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 680px) { .territory-rule { grid-template-columns: minmax(0, 1fr) auto; } .territory-rule > select:first-child { grid-column: 1 / -1; } }
+.admin-gap { margin-bottom: 18px; }
+
+.support-active { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; flex-wrap: wrap; }
+.support-active p { margin: 8px 0 0; font-size: 13.5px; line-height: 1.55; }
+
+.mcp-steps { margin: 0; padding-left: 20px; display: grid; gap: 6px; font-size: 13.5px; line-height: 1.55; color: var(--text-2); }

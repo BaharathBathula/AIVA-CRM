@@ -56,6 +56,9 @@ async def create_account_endpoint(
             get_db
         ),
 ):
+    from app.services import prospecting
+
+    await prospecting.validate_stage(db, organization_id, "account", payload.lifecycle_stage)
     return await create_account(
         db,
         organization_id,
@@ -255,6 +258,10 @@ async def update_account_endpoint(
             get_db
         ),
 ):
+    if payload.lifecycle_stage is not None:
+        from app.services import prospecting
+
+        await prospecting.validate_stage(db, organization_id, "account", payload.lifecycle_stage)
     return await update_account(
         db,
         organization_id,

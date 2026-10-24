@@ -27,6 +27,8 @@ PERMISSIONS: tuple[PermissionDef, ...] = (
     PermissionDef("records.view_all", "View all records", "Records", "See records owned by anyone, not only your own team."),
     PermissionDef("data.import", "Import data", "Records", "Import leads, contacts and accounts from CSV files."),
     PermissionDef("data.view_encrypted", "View encrypted fields", "Records", "See the values of encrypted fields instead of a masked value."),
+    PermissionDef("data.requests", "Work data requests", "Records", "Research and fill in requested emails and phone numbers."),
+    PermissionDef("data.privacy", "Handle privacy requests", "Records", "Process removal (right to be forgotten) requests and manage the do-not-contact list."),
     # Sales
     PermissionDef("sales.products", "Manage products", "Sales", "Create and edit the product catalog and prices."),
     PermissionDef("sales.quotes", "Create quotes", "Sales", "Create, send and update quotes."),
@@ -41,6 +43,10 @@ PERMISSIONS: tuple[PermissionDef, ...] = (
     # Marketing
     PermissionDef("marketing.manage", "Run marketing", "Marketing", "Create email templates, web forms, campaigns, journeys and target accounts."),
     PermissionDef("marketing.social", "Publish to social media", "Marketing", "Connect company social accounts and publish or schedule posts."),
+    PermissionDef("marketing.icp", "Manage ideal customer profile", "Marketing", "Edit personas, buying-intent topics and signal rules."),
+    # Outbound
+    PermissionDef("sequences.manage", "Build sequences", "Outbound", "Create and edit sequences and enroll people in them."),
+    PermissionDef("outbound.manage", "Manage outbound settings", "Outbound", "Sending domains, mailbox limits, sending protection, tracking, dialer and prospecting rules."),
     # Service
     PermissionDef("service.cases", "Work cases", "Service", "View, create and update support cases."),
     PermissionDef("service.knowledge_write", "Write knowledge articles", "Service", "Create and edit knowledge base drafts."),
@@ -55,6 +61,8 @@ PERMISSIONS: tuple[PermissionDef, ...] = (
     # Automation
     PermissionDef("automation.workflows", "Manage workflows", "Automation", "Create, edit and turn workflow rules on and off."),
     PermissionDef("automation.ai", "Use AI agents", "Automation", "Run AI agents and accept their suggestions."),
+    # Conversations
+    PermissionDef("conversations.coach", "Coach conversations", "Conversations", "Score calls and meetings with scorecards and see everyone's conversations."),
     # Administration
     PermissionDef("admin.users", "Manage users", "Administration", "Invite, deactivate and change roles of users."),
     PermissionDef("admin.roles", "Manage roles", "Administration", "Create custom roles and edit their permissions."),
@@ -97,6 +105,7 @@ SYSTEM_ROLES: dict[str, SystemRole] = {
                 "records.read", "records.write", "records.export", "records.view_all",
                 "sales.quotes", "sales.forecast_view", "sales.invoices", "sales.orders",
                 "service.cases", "analytics.reports", "analytics.dashboards", "automation.ai", "projects.manage",
+                "sequences.manage",
             }),
         ),
         SystemRole(

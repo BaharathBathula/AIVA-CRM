@@ -79,6 +79,12 @@ export function MeetingModal({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const contacts = useApi<Contact[]>(open && accountId ? `/contacts?account_id=${accountId}&limit=100` : null);
+  // Default length for new meetings comes from Settings → Team sharing & defaults.
+  const sharing = useApi<{ data: { meeting_minutes: number } }>(open && !meeting ? "/workspace-settings/sharing" : null);
+  const defaultMinutes = sharing.data?.data.meeting_minutes ?? 30;
+  useEffect(() => {
+    if (open && !meeting) setDuration(defaultMinutes);
+  }, [open, meeting, defaultMinutes]);
 
   useEffect(() => {
     if (!open) return;

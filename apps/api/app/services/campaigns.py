@@ -184,6 +184,12 @@ async def deliver(db: AsyncSession, *, campaign_id: uuid.UUID | None = None, lim
             recipient.status = "skipped"
             recipient.error = "Unsubscribed before sending."
             continue
+        from app.services.prospecting import suppression_for
+
+        if await suppression_for(db, recipient.organization_id, recipient.email):
+            recipient.status = "skipped"
+            recipient.error = "On the do-not-contact list."
+            continue
         footer = (
             f'You received this email because you\'re in touch with us. <a href="{unsubscribe_url(recipient.token)}">Unsubscribe</a>.'
         )

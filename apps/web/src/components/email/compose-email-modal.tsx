@@ -2,6 +2,7 @@
 
 import {
   FormEvent,
+  useEffect,
   useState,
 } from "react";
 
@@ -11,8 +12,25 @@ import {
 } from "lucide-react";
 
 import {
+  useSession,
+} from "@/components/providers";
+
+import {
+  SnippetPicker,
+} from "@/components/snippet-picker";
+
+import {
   composeEmail,
 } from "@/lib/emails";
+
+import {
+  api,
+  useDebounced,
+} from "@/lib/use-api";
+
+import type {
+  SearchGroup,
+} from "@/lib/platform-types";
 
 import type {
   EmailSendResult,
@@ -31,6 +49,133 @@ type Props = {
     result: EmailSendResult
   ) => void;
 };
+
+
+const MERGE_TOKEN =
+  /\{\{\s*([a-zA-Z_][a-zA-Z0-9_.]*)\s*(?:\|\s*([^}]*?)\s*)?\}\}/g;
+
+
+/**
+ * Fills a snippet's merge fields when there's no CRM record to fill them
+ * from: your own name, company and today's date are known; anything else
+ * uses the field's fallback (``{{first_name|there}}``) or is left out.
+ */
+export function fillSnippetWithoutRecord(
+  text: string,
+  known: {
+    senderName?: string | null;
+    organizationName?: string | null;
+  }
+): string {
+  const values: Record<string, string> = {
+    sender_name:
+      known.senderName ?? "",
+
+    organization_name:
+      known.organizationName ?? "",
+
+    today:
+      new Date().toLocaleDateString(
+        "en-US",
+        {
+          month: "short",
+          day: "2-digit",
+          year: "numeric",
+        }
+      ),
+  };
+
+  return text.replace(
+    MERGE_TOKEN,
+    (_match, key: string, fallback?: string) =>
+      values[key] || fallback || ""
+  );
+}
+
+
+/** Adds inserted text after what's already in a message box. */
+export function appendText(
+  current: string,
+  addition: string
+): string {
+  if (!current.trim()) {
+    return addition;
+  }
+
+  return `${current.replace(/\s+$/, "")}\n\n${addition}`;
+}
+
+
+/** The contact whose email is the only "To" address, so snippets can fill in their details. */
+function useContactForAddress(
+  to: string
+): string | null {
+  const address =
+    useDebounced(
+      to.trim().toLowerCase(),
+      400
+    );
+
+  const [
+    contactId,
+    setContactId,
+  ] = useState<string | null>(
+    null
+  );
+
+  useEffect(() => {
+    const single =
+      /^[^\s,@]+@[^\s,@]+\.[^\s,@]+$/.test(
+        address
+      );
+
+    if (!single) {
+      setContactId(null);
+
+      return;
+    }
+
+    let active = true;
+
+    api
+      .get<{ groups: SearchGroup[] }>(
+        `/search?q=${encodeURIComponent(address)}`
+      )
+      .then((result) => {
+        if (!active) {
+          return;
+        }
+
+        const contacts =
+          result.groups.find(
+            (group) =>
+              group.type === "contact"
+          );
+
+        const match =
+          contacts?.items.find(
+            (item) =>
+              (item.subtitle ?? "").toLowerCase()
+              === address
+          );
+
+        setContactId(
+          match?.id ?? null
+        );
+      })
+      .catch(() => {
+        if (active) {
+          setContactId(null);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [address]);
+
+  return contactId;
+}
 
 
 function parseRecipients(
@@ -97,9 +242,45 @@ export function ComposeEmailModal({
     null
   );
 
+  const {
+    session,
+  } = useSession();
+
+  const contactId =
+    useContactForAddress(
+      open ? to : ""
+    );
+
 
   if (!open) {
     return null;
+  }
+
+
+  function insertSnippet(
+    text: string
+  ) {
+    const filled =
+      contactId
+        ? text
+        : fillSnippetWithoutRecord(
+            text,
+            {
+              senderName:
+                fromName
+                || session?.user.full_name,
+
+              organizationName:
+                session?.organization.name,
+            }
+          );
+
+    setBody((current) =>
+      appendText(
+        current,
+        filled
+      )
+    );
   }
 
 
@@ -346,6 +527,24 @@ export function ComposeEmailModal({
               placeholder="Enter subject"
             />
           </label>
+
+          <div className="composer-tools">
+            <SnippetPicker
+              onInsert={
+                insertSnippet
+              }
+              recordType={
+                contactId
+                  ? "contact"
+                  : undefined
+              }
+              recordId={
+                contactId
+                ?? undefined
+              }
+              disabled={saving}
+            />
+          </div>
 
           <label>
             Message

@@ -27,6 +27,7 @@ from app.core.plans import ALL_FEATURES, FEATURE_BY_KEY, PLANS
 from app.core.security import AuthenticationError, decode_access_claims
 from app.db.session import get_db
 from app.models.editions import ApiKey, Subscription
+from app.models.governance import SupportAccessGrant, WorkspaceSetting
 from app.models.membership import OrganizationMembership
 from app.models.organization import Organization
 from app.models.platform import AuditLog, Role
@@ -50,6 +51,7 @@ class Principal:
     features: frozenset[str] = ALL_FEATURES
     read_only: bool = False
     api_key_id: uuid.UUID | None = None
+    support_grant_id: uuid.UUID | None = None
 
     def can(self, permission: str) -> bool:
         return permission in self.permissions
@@ -167,28 +169,46 @@ async def get_current_principal(
         )
     )
     row = result.first()
+    method = request.method.upper()
+    path = _api_path(request)
+    writing = method not in {"GET", "HEAD", "OPTIONS"}
 
+    grant: SupportAccessGrant | None = None
     if row is None:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="You don't have access to this workspace.",
+        # AIVA support staff may open a workspace while an admin has granted access.
+        support = await _support_access(db, user_id, organization_id) if api_key is None else None
+        if support is None:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You don't have access to this workspace.",
+            )
+        user, organization, subscription, grant = support
+        if grant.access_level == "read_only" and writing and not path.startswith("/auth/"):
+            raise HTTPException(status.HTTP_403_FORBIDDEN, "Support access to this workspace is read-only.")
+        membership = OrganizationMembership(
+            organization_id=organization_id, user_id=user.id, role="admin" if grant.access_level == "full" else "viewer", status="active"
         )
-
-    user, membership, organization, subscription = row
+    else:
+        user, membership, organization, subscription = row
     if membership.status != "active":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Your access to this workspace is deactivated.",
         )
 
-    method = request.method.upper()
-    path = _api_path(request)
-    writing = method not in {"GET", "HEAD", "OPTIONS"}
+    security = await workspace_security(db, organization_id)
+    ip = client_ip(request)
+    if security.get("ip_allowlist") and grant is None and not _ip_allowed(ip, security["ip_allowlist"]):
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            f"This workspace only allows access from approved networks, and {ip or 'your address'} isn't one of them. Ask an admin to add it in Settings → Security.",
+        )
 
     if api_key is not None:
         if not principal_api_allowed(subscription):
             raise HTTPException(status.HTTP_402_PAYMENT_REQUIRED, "API access isn't included in this workspace's plan.")
-        if api_key.scope == "read" and writing:
+        # MCP requests are POSTs even when they only read; write tools check the key's scope themselves.
+        if api_key.scope == "read" and writing and path != "/mcp":
             raise HTTPException(status.HTTP_403_FORBIDDEN, "This API key is read-only.")
 
     state = plan_state(subscription)
@@ -202,17 +222,27 @@ async def get_current_principal(
 
     org_settings = organization.settings or {}
     hipaa = bool(org_settings.get("hipaa_mode")) and "hipaa" in state.features
-    if hipaa and not user.mfa_enabled and api_key is None and not path.startswith(("/auth/", "/billing")):
+    mfa_enforced = hipaa or bool(security.get("require_mfa"))
+    if mfa_enforced and not user.mfa_enabled and api_key is None and grant is None and not path.startswith(("/auth/", "/billing")):
         raise HTTPException(
             status.HTTP_403_FORBIDDEN,
-            "This workspace requires two-step verification. Set it up in Settings → Security to continue.",
+            "This workspace requires two-step verification. Set it up in Settings → Password & security to continue.",
         )
+    if api_key is not None and security.get("allow_api_keys") is False:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "API keys are turned off for this workspace (Settings → Security).")
+
+    from app.services.metering import addon_features
+
+    features = frozenset(state.features | await addon_features(db, organization_id))
 
     permissions = await resolve_role_permissions(db, organization_id, membership.role)
+    if grant is not None and grant.access_level == "read_only":
+        permissions = frozenset(p for p in permissions if p in {"records.read", "records.view_all", "sales.forecast_view", "service.cases", "admin.audit"})
+        permissions = permissions | {"admin.audit"}
 
     visibility = org_settings.get("record_visibility", "all")
     needed_feature = {"team": "multi_team", "hierarchy": "reporting_hierarchy"}.get(visibility)
-    if needed_feature and needed_feature in state.features and "records.view_all" not in permissions:
+    if needed_feature and needed_feature in features and "records.view_all" not in permissions:
         restrict_session(db, await visible_owner_ids(db, organization_id, user.id, visibility))
 
     bind_session_context(
@@ -227,7 +257,7 @@ async def get_current_principal(
     # which cannot run queries, so load them for this organization now.
     from app.services.automation import load_automation_context
 
-    await load_automation_context(db, organization_id, features=state.features)
+    await load_automation_context(db, organization_id, features=features)
 
     if hipaa and method == "GET":
         parts = [part for part in path.split("/") if part]
@@ -248,6 +278,21 @@ async def get_current_principal(
             await db.commit()
     elif api_key is not None and db.is_modified(api_key):
         await db.commit()
+    if grant is not None:
+        now = datetime.now(timezone.utc)
+        if grant.last_used_at is None or (now - grant.last_used_at).total_seconds() > 300:
+            if grant.last_used_at is None or (now - grant.last_used_at).total_seconds() > 3600:
+                db.add(
+                    AuditLog(
+                        id=uuid.uuid4(), organization_id=organization_id, actor_user_id=user.id, action="support_access",
+                        entity_type="support_access", entity_id=grant.id, entity_label=f"Support access by {user.full_name}",
+                        changes={"level": grant.access_level, "path": path}, ip_address=ip,
+                        user_agent=(request.headers.get("user-agent") or "")[:300] or None,
+                    )
+                )
+            grant.last_used_at = now
+            grant.use_count = (grant.use_count or 0) + 1
+            await db.commit()
 
     return Principal(
         user_id=user.id,
@@ -258,10 +303,80 @@ async def get_current_principal(
         full_name=user.full_name,
         team_id=membership.team_id,
         plan=state.plan.key,
-        features=state.features,
+        features=features,
         read_only=state.read_only,
         api_key_id=api_key.id if api_key else None,
+        support_grant_id=grant.id if grant else None,
     )
+
+
+_SECURITY_CACHE: dict[uuid.UUID, tuple[float, dict]] = {}
+
+
+def invalidate_security_cache(organization_id: uuid.UUID) -> None:
+    _SECURITY_CACHE.pop(organization_id, None)
+
+
+async def workspace_security(db: AsyncSession, organization_id: uuid.UUID) -> dict:
+    """The workspace's security policy, cached briefly (it's checked on every request)."""
+
+    import time
+
+    entry = _SECURITY_CACHE.get(organization_id)
+    if entry and time.monotonic() - entry[0] < 30:
+        return entry[1]
+    row = (
+        await db.execute(
+            select(WorkspaceSetting.data).where(WorkspaceSetting.organization_id == organization_id, WorkspaceSetting.namespace == "security")
+        )
+    ).scalar_one_or_none()
+    data = dict(row or {})
+    _SECURITY_CACHE[organization_id] = (time.monotonic(), data)
+    return data
+
+
+def _ip_allowed(ip: str | None, networks: list[str]) -> bool:
+    import ipaddress
+
+    if not ip:
+        return False
+    try:
+        address = ipaddress.ip_address(ip)
+    except ValueError:
+        return False
+    for network in networks:
+        try:
+            if address in ipaddress.ip_network(network, strict=False):
+                return True
+        except ValueError:
+            continue
+    return False
+
+
+async def _support_access(db: AsyncSession, user_id: uuid.UUID, organization_id: uuid.UUID):
+    user = await db.get(User, user_id)
+    if user is None or not user.is_active or not user.is_platform_staff:
+        return None
+    now = datetime.now(timezone.utc)
+    grant = (
+        await db.execute(
+            select(SupportAccessGrant)
+            .where(
+                SupportAccessGrant.organization_id == organization_id,
+                SupportAccessGrant.revoked_at.is_(None),
+                SupportAccessGrant.expires_at > now,
+            )
+            .order_by(SupportAccessGrant.expires_at.desc())
+            .limit(1)
+        )
+    ).scalar_one_or_none()
+    if grant is None:
+        return None
+    organization = await db.get(Organization, organization_id)
+    subscription = (await db.execute(select(Subscription).where(Subscription.organization_id == organization_id))).scalar_one_or_none()
+    if organization is None:
+        return None
+    return user, organization, subscription, grant
 
 
 def principal_api_allowed(subscription: Subscription | None) -> bool:

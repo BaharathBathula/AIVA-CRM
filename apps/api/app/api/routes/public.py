@@ -116,8 +116,27 @@ async def _recipient(db: AsyncSession, token: str) -> CampaignRecipient:
     return recipient
 
 
+async def _sequence_message(db: AsyncSession, token: str):
+    from app.models.outbound import SequenceEnrollment, SequenceMessage
+
+    message = (await db.execute(select(SequenceMessage).where(SequenceMessage.token == token))).scalar_one_or_none()
+    if message is None:
+        return None, None
+    return message, await db.get(SequenceEnrollment, message.enrollment_id)
+
+
 @router.get("/unsubscribe/{token}")
 async def unsubscribe_info(token: str, db: AsyncSession = Depends(get_db)):
+    message, enrollment = await _sequence_message(db, token)
+    if message is not None:
+        organization = await db.get(Organization, message.organization_id)
+        model = Lead if enrollment is not None and enrollment.record_type == "lead" else Contact
+        record = await db.get(model, enrollment.record_id) if enrollment is not None else None
+        return {
+            "email": message.to_email,
+            "organization_name": organization.name if organization else "",
+            "unsubscribed": bool(record and record.email_opt_out),
+        }
     recipient = await _recipient(db, token)
     organization = await db.get(Organization, recipient.organization_id)
     model = Lead if recipient.record_type == "lead" else Contact
@@ -131,19 +150,34 @@ async def unsubscribe_info(token: str, db: AsyncSession = Depends(get_db)):
 
 @router.post("/unsubscribe/{token}")
 async def unsubscribe(token: str, db: AsyncSession = Depends(get_db)):
-    recipient = await _recipient(db, token)
     db.sync_session.info["automation_disabled"] = True
-    now = utcnow()
-    recipient.unsubscribed_at = recipient.unsubscribed_at or now
-    email = recipient.email.lower()
+    message, _enrollment = await _sequence_message(db, token)
+    if message is not None:
+        from app.services import outbound
+
+        await outbound.unsubscribed(db, message)
+        organization_id, email = message.organization_id, (message.to_email or "").lower()
+    else:
+        recipient = await _recipient(db, token)
+        recipient.unsubscribed_at = recipient.unsubscribed_at or utcnow()
+        organization_id, email = recipient.organization_id, recipient.email.lower()
+    from app.models.governance import SuppressionEntry
+
+    exists = (
+        await db.execute(
+            select(SuppressionEntry.id).where(SuppressionEntry.organization_id == organization_id, SuppressionEntry.kind == "email", SuppressionEntry.value == email)
+        )
+    ).first()
+    if email and not exists:
+        db.add(SuppressionEntry(id=uuid.uuid4(), organization_id=organization_id, kind="email", value=email, reason="unsubscribed"))
     # Opt the address out everywhere in this workspace, not just this record.
     for model in (Lead, Contact):
         for record in (
-            await db.execute(select(model).where(model.organization_id == recipient.organization_id, model.email.ilike(email)))
+            await db.execute(select(model).where(model.organization_id == organization_id, model.email.ilike(email)))
         ).scalars():
             record.email_opt_out = True
     await db.commit()
-    return {"unsubscribed": True, "email": recipient.email}
+    return {"unsubscribed": True, "email": email}
 
 
 @router.get("/email/open/{token}.gif")
@@ -153,6 +187,12 @@ async def email_open(token: str, db: AsyncSession = Depends(get_db)):
         recipient.opened_at = recipient.opened_at or utcnow()
         recipient.open_count = (recipient.open_count or 0) + 1
         await db.commit()
+    else:
+        message, _enrollment = await _sequence_message(db, token)
+        if message is not None:
+            message.opened_at = message.opened_at or utcnow()
+            message.open_count = (message.open_count or 0) + 1
+            await db.commit()
     return Response(content=PIXEL, media_type="image/gif", headers={"Cache-Control": "no-store, max-age=0"})
 
 

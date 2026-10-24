@@ -36,7 +36,8 @@ class ReportPayload(ReportSpec):
     name: str = Field(min_length=1, max_length=200)
     description: str | None = None
     folder: str | None = Field(default=None, max_length=80)
-    is_shared: bool = True
+    # Left out, new reports follow Settings → Team sharing & defaults.
+    is_shared: bool | None = None
 
 
 def report_out(report: Report, owners: dict[str, str] | None = None) -> dict:
@@ -137,6 +138,10 @@ async def create_report(
     await run_report(db, principal, payload)  # validates fields and filters
     data = payload.model_dump()
     data["filters"] = [f.model_dump() for f in payload.filters]
+    if data["is_shared"] is None:
+        from app.services import workspace_settings
+
+        data["is_shared"] = (await workspace_settings.get(db, principal.organization_id, "sharing")).reports_shared
     report = Report(id=uuid.uuid4(), organization_id=principal.organization_id, owner_user_id=principal.user_id, **data)
     db.add(report)
     await db.commit()
@@ -176,6 +181,8 @@ async def update_report(
     await run_report(db, principal, payload)
     data = payload.model_dump()
     data["filters"] = [f.model_dump() for f in payload.filters]
+    if data["is_shared"] is None:
+        data.pop("is_shared")
     for key, value in data.items():
         setattr(report, key, value)
     await db.commit()

@@ -8,6 +8,8 @@ import {
 
 import Link from "next/link";
 
+import { BulkSequenceBar, SelectAllBox, useCanEnroll } from "@/components/bulk-sequence";
+
 import {
   Building2,
   Filter,
@@ -108,6 +110,9 @@ export default function ContactsPage() {
     contacts,
     setContacts,
   ] = useState<Contact[]>([]);
+
+  const canEnroll = useCanEnroll();
+  const [selected, setSelected] = useState<string[]>([]);
 
   const [
     accounts,
@@ -842,6 +847,11 @@ export default function ContactsPage() {
                   <table className="accountTable">
                     <thead>
                       <tr>
+                        {canEnroll ? (
+                          <th className="select-col">
+                            <SelectAllBox ids={filteredContacts.map((contact) => contact.id)} selected={selected} onChange={setSelected} />
+                          </th>
+                        ) : null}
                         <th>
                           Contact
                         </th>
@@ -898,6 +908,18 @@ export default function ContactsPage() {
                                 contact.id
                               }
                             >
+                              {canEnroll ? (
+                                <td className="select-col">
+                                  <input
+                                    type="checkbox"
+                                    aria-label={`Select ${contact.first_name} ${contact.last_name}`}
+                                    checked={selected.includes(contact.id)}
+                                    onChange={(event) =>
+                                      setSelected((current) => (event.target.checked ? [...current, contact.id] : current.filter((id) => id !== contact.id)))
+                                    }
+                                  />
+                                </td>
+                              ) : null}
                               <td>
                                 <Link
                                   href={
@@ -1135,6 +1157,7 @@ export default function ContactsPage() {
                   </table>
                 </div>
               )}
+            {canEnroll ? <BulkSequenceBar recordType="contact" selected={selected} onClear={() => setSelected([])} /> : null}
           </section>
         </div>
       </main>

@@ -160,6 +160,27 @@ async def _password_step(db: AsyncSession, email: str, password: str, request: R
     return user
 
 
+async def _workspace_password_rule(db: AsyncSession, user_id: uuid.UUID, password: str, extra: uuid.UUID | None = None) -> str | None:
+    """The longest minimum password length among the person's workspaces (Settings → Security)."""
+
+    from app.models.governance import WorkspaceSetting
+
+    org_ids = {org.id for _, org in await active_memberships(db, user_id)}
+    if extra:
+        org_ids.add(extra)
+    if not org_ids:
+        return None
+    rows = (
+        await db.execute(
+            select(WorkspaceSetting.data).where(WorkspaceSetting.organization_id.in_(org_ids), WorkspaceSetting.namespace == "security")
+        )
+    ).scalars().all()
+    required = max([int((row or {}).get("password_min_length") or 10) for row in rows] or [10])
+    if len(password or "") < required:
+        return f"Your workspace requires passwords of at least {required} characters."
+    return None
+
+
 async def _choose_organization(db: AsyncSession, user: User, requested: uuid.UUID | None) -> uuid.UUID:
     memberships = await active_memberships(db, user.id)
     if not memberships:
@@ -329,7 +350,7 @@ async def reset_password(payload: ResetPasswordRequest, request: Request, db: As
     if user is None or not user.is_active:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "This link is invalid or has expired.")
 
-    problem = password_policy_error(payload.password, user.email)
+    problem = password_policy_error(payload.password, user.email) or await _workspace_password_rule(db, user.id, payload.password)
     if problem:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, problem)
 
@@ -377,7 +398,9 @@ async def accept_invitation(payload: AcceptInviteRequest, request: Request, db: 
         if not verify_password(payload.password, user.password_hash):
             raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Enter the password for your existing AIVA account.")
     else:
-        problem = password_policy_error(payload.password, user.email)
+        problem = password_policy_error(payload.password, user.email) or await _workspace_password_rule(
+            db, user.id, payload.password, extra=record.organization_id
+        )
         if problem:
             raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, problem)
         user.password_hash = hash_password(payload.password)
@@ -421,13 +444,22 @@ async def me(principal: Principal = Depends(get_current_principal), db: AsyncSes
     subscription = await get_subscription(db, principal.organization_id)
     state = plan_state(subscription)
     org_settings = organization.settings or {}
+    from app.api.dependencies.auth import workspace_security
+    from app.services.metering import active_addons
+
+    security = await workspace_security(db, principal.organization_id)
+    hipaa = bool(org_settings.get("hipaa_mode")) and "hipaa" in state.features
     return {
         "subscription": {
             **state.to_dict(),
+            "features": sorted(principal.features),
+            "addons": [a.addon_key for a in await active_addons(db, principal.organization_id)],
             "provider": subscription.provider if subscription else "demo",
         },
         "is_sandbox": bool(org_settings.get("sandbox_of")),
-        "hipaa_mode": bool(org_settings.get("hipaa_mode")) and "hipaa" in state.features,
+        "hipaa_mode": hipaa,
+        "mfa_enforced": hipaa or bool(security.get("require_mfa")),
+        "support_access": principal.support_grant_id is not None,
         "user": {
             "id": str(user.id),
             "email": user.email,
@@ -479,7 +511,7 @@ async def change_password(
     user = await db.get(User, principal.user_id)
     if not verify_password(payload.current_password, user.password_hash or ""):
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Your current password is incorrect.")
-    problem = password_policy_error(payload.new_password, user.email)
+    problem = password_policy_error(payload.new_password, user.email) or await _workspace_password_rule(db, user.id, payload.new_password)
     if problem:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, problem)
     user.password_hash = hash_password(payload.new_password)

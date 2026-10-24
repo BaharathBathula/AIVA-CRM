@@ -1,5 +1,7 @@
 "use client";
 
+import { AccountStageOptions } from "@/components/stage-options";
+
 import {
   FormEvent,
   useEffect,
@@ -375,52 +377,6 @@ export function EditAccountModal({
   }
 
 
-  function handleLifecycleStageChange(
-    value: string
-  ) {
-    switch (value) {
-      case "prospect":
-        setLifecycleStage(
-          "prospect"
-        );
-        break;
-
-      case "lead":
-        setLifecycleStage(
-          "lead"
-        );
-        break;
-
-      case "customer":
-        setLifecycleStage(
-          "customer"
-        );
-        break;
-
-      case "partner":
-        setLifecycleStage(
-          "partner"
-        );
-        break;
-
-      case "inactive":
-        setLifecycleStage(
-          "inactive"
-        );
-        break;
-
-      case "churned":
-        setLifecycleStage(
-          "churned"
-        );
-        break;
-
-      default:
-        setLifecycleStage(
-          "prospect"
-        );
-    }
-  }
 
 
   function handleClose() {
@@ -686,34 +642,10 @@ export function EditAccountModal({
                   lifecycleStage
                 }
                 onChange={(event) =>
-                  handleLifecycleStageChange(
-                    event.target.value
-                  )
+                  setLifecycleStage(event.target.value)
                 }
               >
-                <option value="prospect">
-                  Prospect
-                </option>
-
-                <option value="lead">
-                  Lead
-                </option>
-
-                <option value="customer">
-                  Customer
-                </option>
-
-                <option value="partner">
-                  Partner
-                </option>
-
-                <option value="inactive">
-                  Inactive
-                </option>
-
-                <option value="churned">
-                  Churned
-                </option>
+                <AccountStageOptions current={lifecycleStage} />
               </select>
             </label>
 

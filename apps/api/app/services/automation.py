@@ -170,6 +170,25 @@ async def load_automation_context(
                 )
             )
         ).scalars().all()
+        from app.models.governance import Territory, WorkspaceSetting
+        from app.services.territories import as_context
+
+        territories = (
+            await db.execute(
+                select(Territory).where(Territory.organization_id == organization_id, Territory.is_active.is_(True), Territory.auto_assign.is_(True))
+            )
+        ).scalars().all()
+        workspace = {
+            row.namespace: row.data or {}
+            for row in (
+                await db.execute(
+                    select(WorkspaceSetting).where(
+                        WorkspaceSetting.organization_id == organization_id, WorkspaceSetting.namespace.in_(("prospecting", "enrichment"))
+                    )
+                )
+            ).scalars()
+        }
+        prospecting = workspace.get("prospecting") or {}
         chats = (
             await db.execute(
                 select(Integration).where(
@@ -226,9 +245,14 @@ async def load_automation_context(
                     "operator": rule.operator,
                     "value": rule.value,
                     "points": rule.points,
+                    "object_type": rule.object_type or "lead",
                 }
                 for rule in scoring
             ],
+            "territories": [as_context(t) for t in territories],
+            "default_contact_stage": prospecting.get("default_contact_stage") or "cold",
+            # Settings → Waterfall enrichment owns this switch.
+            "auto_enrich_new": bool((workspace.get("enrichment") or {}).get("auto_enrich_new", False)),
         }
         _CACHE[organization_id] = (time.monotonic(), context)
 
@@ -671,6 +695,8 @@ def _before_flush(session: Session, flush_context: Any, instances: Any) -> None:
 
     events: list[tuple[str, str, Any, dict[str, Any]]] = []
 
+    features_now = session.info.get("features")
+    territories = context.get("territories") or []
     for obj in list(session.new):
         entity_type = _entity_type(obj)
         if entity_type is None:
@@ -679,6 +705,35 @@ def _before_flush(session: Session, flush_context: Any, instances: Any) -> None:
             obj.id = uuid.uuid4()
         created_ids.add(obj.id)
         definition = OBJECTS.get(entity_type)
+        if entity_type == "contact" and not getattr(obj, "stage", None):
+            obj.stage = context.get("default_contact_stage") or "cold"
+        if (
+            entity_type in {"lead", "contact", "account"}
+            and context.get("auto_enrich_new")
+            and (features_now is None or "data_enrichment" in features_now)
+            and not session.info.get("skip_auto_enrich")
+        ):
+            from app.services.enrichment import enrich
+
+            try:
+                enrich(obj)
+            except Exception:  # noqa: BLE001 - enrichment must never block a save
+                logger.warning("Auto-enrichment failed for a new %s", entity_type)
+        if (
+            entity_type in {"account", "lead"}
+            and territories
+            and (features_now is None or "territories" in features_now)
+            and getattr(obj, "territory_id", None) is None
+        ):
+            from app.services.territories import find_territory, next_member
+
+            territory = find_territory(obj, entity_type, territories)
+            if territory is not None:
+                obj.territory_id = uuid.UUID(territory["id"])
+                if territory.get("assignment") == "round_robin" and definition is not None and definition.owner_field and getattr(obj, definition.owner_field, None) is None:
+                    member = next_member(territory)
+                    if member is not None:
+                        setattr(obj, definition.owner_field, member)
         if (
             actor is not None
             and entity_type in AUTO_OWNER_TYPES
@@ -767,11 +822,12 @@ def _before_flush(session: Session, flush_context: Any, instances: Any) -> None:
                         )
                     )
 
-        # Lead scoring runs before auditing so the score change is recorded.
-        if entity_type == "lead" and kind != "deleted" and scoring_rules:
-            if kind == "created" or set(changes) - {"score"}:
-                new_score, _ = score_lead(obj, scoring_rules)
-                if new_score != obj.score:
+        # Scoring runs before auditing so the score change is recorded.
+        if entity_type in {"lead", "contact", "account"} and kind != "deleted" and scoring_rules:
+            rules_for = [r for r in scoring_rules if (r.get("object_type") or "lead") == entity_type]
+            if rules_for and (kind == "created" or set(changes) - {"score"}):
+                new_score, _ = score_lead(obj, rules_for)
+                if new_score != (obj.score or 0):
                     if kind == "updated":
                         changes["score"] = {"from": obj.score, "to": new_score}
                     obj.score = new_score

@@ -59,6 +59,11 @@ export function ReportBuilder({ reportId }: { reportId?: string }) {
   const saved = useApi<ReportDef>(reportId ? `/reports/${reportId}` : null);
   const [spec, setSpec] = useState<ReportSpec | null>(reportId ? null : DEFAULT_SPEC);
   const [meta, setMeta] = useState({ name: "", description: "", folder: "", is_shared: true });
+  // New reports start shared or private as set in Settings → Team sharing & defaults.
+  const sharing = useApi<{ data: { reports_shared: boolean } }>(reportId ? null : "/workspace-settings/sharing");
+  useEffect(() => {
+    if (!reportId && sharing.data) setMeta((current) => ({ ...current, is_shared: sharing.data!.data.reports_shared }));
+  }, [reportId, sharing.data]);
   const [result, setResult] = useState<ReportResult | null>(null);
   const [running, setRunning] = useState(false);
   const [runError, setRunError] = useState<string | null>(null);

@@ -129,8 +129,50 @@ async def _job_social(db) -> int:
     return await publish_due_posts(db)
 
 
+async def _job_sequences(db) -> int:
+    from app.services.outbound import process_due
+
+    return await process_due(db)
+
+
+async def _job_signals(db) -> int:
+    from app.services.icp import evaluate_due
+
+    return await evaluate_due(db)
+
+
+async def _job_conversations(db) -> int:
+    from app.api.routes.conversations import poll_transcriptions
+
+    return await poll_transcriptions(db)
+
+
+async def _job_retention(db) -> int:
+    """Delete website visit history older than each workspace's retention setting."""
+
+    from sqlalchemy import delete
+
+    from app.models.engagement import WebVisitor
+    from app.models.governance import WorkspaceSetting
+
+    removed = 0
+    rows = (await db.execute(select(WorkspaceSetting).where(WorkspaceSetting.namespace == "website"))).scalars().all()
+    for row in rows:
+        days = int((row.data or {}).get("retention_days") or 395)
+        result = await db.execute(
+            delete(WebVisitor).where(WebVisitor.organization_id == row.organization_id, WebVisitor.last_seen_at < utcnow() - timedelta(days=days))
+        )
+        removed += result.rowcount or 0
+    await db.commit()
+    return removed
+
+
 JOBS = (
     ("reminders", send_due_reminders),
+    ("sequences", _job_sequences),
+    ("signals", _job_signals),
+    ("conversations", _job_conversations),
+    ("retention", _job_retention),
     ("meeting_reminders", _job_meeting_reminders),
     ("social_posts", _job_social),
     ("campaigns", _job_campaigns),

@@ -186,6 +186,25 @@ class FieldPayload(BaseModel):
     is_encrypted: bool = False
     is_active: bool = True
     config: dict[str, Any] = Field(default_factory=dict)
+    picklist_id: uuid.UUID | None = None
+
+
+async def _picklist_options(db: AsyncSession, principal: Principal, payload: FieldPayload) -> list[str] | None:
+    """A field that uses a global picklist takes its options from it."""
+
+    if payload.picklist_id is None:
+        return None
+    if payload.field_type not in {"picklist", "multiselect"}:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "Only picklist and multi-select fields can use a global picklist.")
+    from app.models.governance import GlobalPicklist
+
+    picklist = await db.get(GlobalPicklist, payload.picklist_id)
+    if picklist is None or picklist.organization_id != principal.organization_id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Picklist not found.")
+    options = [str(v.get("value")) for v in picklist.values or [] if v.get("is_active", True) and str(v.get("value") or "").strip()]
+    if not options:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "That picklist has no active values yet.")
+    return options
 
 
 async def _check_object(db: AsyncSession, principal: Principal, object_type: str) -> None:
@@ -225,6 +244,9 @@ async def create_field(
     db: AsyncSession = Depends(get_db),
 ):
     await _check_object(db, principal, payload.object_type)
+    shared = await _picklist_options(db, principal, payload)
+    if shared is not None:
+        payload.options = shared
     await validate_definition(
         db,
         principal.organization_id,
@@ -263,6 +285,7 @@ async def create_field(
         is_encrypted=payload.is_encrypted,
         is_active=payload.is_active,
         config=payload.config,
+        picklist_id=payload.picklist_id,
     )
     db.add(field)
     record_audit(db, organization_id=principal.organization_id, action="create", entity_type="custom_field", entity_id=field.id, entity_label=f"{payload.object_type}.{field.label}")
@@ -289,6 +312,10 @@ async def update_field(
         raise HTTPException(status.HTTP_409_CONFLICT, "A field's type can't change. Create a new field instead.")
     if payload.is_encrypted != field.is_encrypted:
         raise HTTPException(status.HTTP_409_CONFLICT, "Encryption is chosen when a field is created.")
+    shared = await _picklist_options(db, principal, payload)
+    if shared is not None:
+        payload.options = shared
+    field.picklist_id = payload.picklist_id
     await validate_definition(
         db,
         principal.organization_id,

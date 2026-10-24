@@ -303,7 +303,7 @@ async def upload_document(
     folder_id: uuid.UUID | None = Form(default=None),
     name: str | None = Form(default=None, max_length=255),
     description: str | None = Form(default=None, max_length=5000),
-    visibility: str = Form(default="organization", pattern="^(organization|private)$"),
+    visibility: str | None = Form(default=None, pattern="^(organization|private)$"),
     tags: str | None = Form(default=None, max_length=500),
     record_type: str | None = Form(default=None, max_length=40),
     record_id: uuid.UUID | None = Form(default=None),
@@ -317,6 +317,10 @@ async def upload_document(
         if record_type not in LINKABLE:
             raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "Files can't be attached to that kind of record.")
         link = await resolve(db, org, record_type, record_id)
+    if visibility is None:
+        from app.services import workspace_settings
+
+        visibility = (await workspace_settings.get(db, org, "sharing")).document_visibility
     data, file_name, content_type = await _read_upload(file)
     checksum = hashlib.sha256(data).hexdigest()
     document = Document(

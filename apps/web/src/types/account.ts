@@ -4,7 +4,9 @@ export type LifecycleStage =
   | "customer"
   | "partner"
   | "inactive"
-  | "churned";
+  | "churned"
+  // Workspaces can add their own stages (Settings → Account fields & stages).
+  | (string & {});
 
 
 export interface Account {

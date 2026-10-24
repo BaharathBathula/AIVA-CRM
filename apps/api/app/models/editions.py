@@ -297,6 +297,7 @@ class CustomField(UUIDPrimaryKeyMixin, OrganizationOwnedMixin, TimestampMixin, B
     is_active: Mapped[bool] = _bool(True)
     # lookup target, formula expression, default value, currency …
     config: Mapped[dict] = _json_dict()
+    picklist_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("global_picklists.id", ondelete="SET NULL"), nullable=True, index=True)
 
 
 class CustomRecord(UUIDPrimaryKeyMixin, OrganizationOwnedMixin, TimestampMixin, Base):

@@ -13,14 +13,16 @@ Prices are per user per month. Every new workspace starts a **7-day free trial w
 | | Starter — $19 | Pro — $29 | Enterprise — $59 |
 |---|---|---|---|
 | Core CRM | Leads, contacts, accounts, deals, tasks, meetings and calls, follow-up reminders, standard reports, data import/export, mobile app (PWA), REST API | Everything in Starter | Everything in Pro |
-| Sales | Multiple pipelines, sales forecasting, lead scoring, data enrichment | CPQ (quotes, products, invoices), inventory, predictive intelligence, unlimited reports | Approvals, QuickBooks export |
+| Sales | Multiple pipelines, sales forecasting, lead scoring, data enrichment, sales sequences, goals | CPQ (quotes, products, invoices), inventory, predictive intelligence, unlimited reports, territories, personas, buying intent and signals, waterfall enrichment | Approvals, QuickBooks export, conversation intelligence |
 | Marketing | Mass email, email templates, web forms, calendar sync | Customer journeys, Google Ads integration | Account-based marketing (ABM) |
 | Service | Service desk, mailbox sync (Gmail, Outlook, SMTP/IMAP) | Customer portal, web-to-case, custom (partner) portals | — |
 | Automation and AI | Workflow automation | AI agents, process management (stage playbooks) | Extended AI (summaries, reply drafts, Ask AIVA) |
 | Customization | Custom modules, Slack/Teams/Zoom, HIPAA mode | — | Extended field types, sequential (multi-step) forms, custom buttons and functions, field-level encryption, sandbox, multiple teams, reporting hierarchy, single sign-on |
 | Limits | 5 pipelines, 3 custom modules, 25 saved reports, 5 dashboards, 5 web forms | 20 custom modules; everything else unlimited | Unlimited |
 
-Plan changes are made in **Settings → Billing and plan** (owners and admins). Without Stripe keys the server runs *demo billing*: switching plans applies instantly and records an invoice with no charge. With `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` set, upgrades go through Stripe Checkout and the Stripe customer portal. The public price list is at `/pricing`.
+Every user also adds credits (for waterfall enrichment and data requests) and AI words (for drafts, summaries, call notes and agents) to a shared monthly pool: 500 credits and 2,500 words on Starter, 1,500 and 10,000 on Pro, 5,000 and 25,000 on Enterprise. **Product add-ons** top these up or add single features without changing plan: extra credits ($49 for 5,000), AI words ($19 for 100,000), conversation intelligence ($15 per user) and advanced data ($12 per user: waterfall enrichment, personas, intent and signals).
+
+Plan changes are made in **Settings → Plan & billing** (owners and admins). Without Stripe keys the server runs *demo billing*: switching plans applies instantly and records an invoice with no charge. With `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` set, upgrades go through Stripe Checkout and the Stripe customer portal. The public price list is at `/pricing`.
 
 Features outside a workspace's plan show a lock in the navigation and an upgrade card instead of the page; the API returns `402 Payment Required` for them.
 
@@ -117,6 +119,31 @@ Features outside a workspace's plan show a lock in the navigation and an upgrade
 | AI agents | Lead qualifier, deal coach, case triage, follow-up writer and data hygiene agents leave suggestions you accept or dismiss | Available |
 | Extended AI | Record summaries, email and case-reply drafts, and "Ask AIVA" questions about your CRM — Claude when `ANTHROPIC_API_KEY` is set, built-in rules otherwise | Available |
 | Mobile app | Installable on iPhone, Android and desktop (PWA) with offline fallback | Available |
+
+### Settings suite
+
+Settings open with a collapsible menu on the left, grouped the way Apollo groups them; every page is also reachable from **Settings → All settings** and the menu has its own search.
+
+| Group | Pages |
+|---|---|
+| Personal | Profile, password and two-step verification, mobile app |
+| Plan & billing | Plan overview, product add-ons (buy, change packs, cancel — runs to the end of the paid month), billing (invoices, payment method, billing email) |
+| Credits & activity | Credit usage by person and feature with a six-month trend and CSV export; data requests (ask for a missing email, phone or title; the data team fills it in or runs waterfall enrichment, and only found data is charged); AI word usage by day, feature and person |
+| Users & teams | Users, teams, permission profiles, **territories** (rules on country, state, city, industry, size, revenue or custom fields; round-robin routing of new accounts and leads; apply to existing records), **license settings** (seat rules, default role for invites, per-person credit and AI word limits), workspace details, **team sharing & defaults** (shared or private by default for templates, sequences, snippets, reports and documents; default meeting length and task due date; route imports by territory), system activity log, **workspace security** (require two-step verification, IP allowlist, allowed invite domains, minimum password length, turn API keys off), single sign-on, hierarchy, HIPAA, **support access** (time-limited read-only or full access for AIVA support, every page they open is logged) |
+| Integrations | All integrations, **MCP** (connect Claude and other MCP clients over Streamable HTTP with an API key; read tools always, write tools only when allowed and with a read & write key; per-tool switches and a call log), API keys, sandbox |
+| Outbound | Overview, sending **domains** (SPF, DKIM, DMARC, MX and tracking-domain checks with fixes), **mailboxes** (daily limits, health, bounce rate), **diagnose**, **sending protection** (sending days and hours, time zone, holidays, daily/hourly caps, spacing, bounce pause, skip shared inboxes), **sequence rules**, **tracking** (opens, clicks, unsubscribe link, tracking domain), **dialer** (your own call outcomes, required notes, automatic follow-ups, Twilio calling), **prospecting configuration** (duplicate rules, the contact stages people move through), **snippets** |
+| Data management | **Waterfall enrichment** (built-in, website, Hunter.io and People Data Labs in your order, paid with credits), contact, account and deal fields & stages (your own contact and account stages), fields & modules, **global picklists** shared by fields, **goals** with live progress and pace, imports & exports, **removal requests** (GDPR and CCPA erasure with the 30- or 45-day deadline, shows everything stored about the person, erases it and adds them to the do-not-contact list) |
+| Automation | Workflows, stage playbooks, approval rules, custom buttons, SLA policies |
+| Ideal customer profile | **Personas** (matched by job title), **buying intent** topics and account intent scores, website visitor settings (exclusions, Do Not Track, retention), **signals** (pricing-page visits, intent surges, repeated opens, form fills, stalled deals, job changes, sequence replies, new persona matches) with notifications and tasks, scoring for leads, contacts and accounts, the **AI Context Center** (company facts, tone, words to avoid, competitors and FAQs used by every AI feature) |
+| Meetings & conversations | Recording configuration (what's captured, consent notice on invites, Deepgram or AssemblyAI transcription, retention, number redaction), team permissions, keyword **trackers**, coaching **scorecards**, **custom field prompts** (AI answers a question from each call and suggests or applies the CRM update), team meetings |
+
+### Sequences, conversations and signals
+
+| Module | Capabilities | Status |
+|---|---|---|
+| Sequences | Multi-step outreach: automatic emails (sent inside the sending window with per-mailbox caps, threaded follow-ups, open/click tracking and one-click unsubscribe), plus call, LinkedIn and task steps that land on the rep's task list. People leave automatically when they reply, book a meeting, bounce or unsubscribe; per-step stats; add people from a record or many at once from the contact and lead lists | Starter |
+| Conversations | Paste or upload call transcripts (.vtt, .srt, text) or recordings; speaker talk time, tracker hits, a summary with next steps, suggested CRM updates you apply in one click, and scorecard reviews | Enterprise or add-on |
+| Signals | A feed of moments worth acting on, from the signal rules, with links to the record and done/dismiss | Pro |
 
 ## Technology stack
 
@@ -224,7 +251,8 @@ The demo workspace is on the Enterprise plan with sample data for every feature:
 |---|---|
 | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` | Real card billing through Stripe Checkout (otherwise demo billing). Point the Stripe webhook at `/api/aiva/public/stripe/webhook`. |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_FROM_EMAIL`, `SMTP_SECURITY` | Server email for invitations, reminders, campaigns and portal sign-in links. People can also connect their own mailbox in Settings → Integrations. |
-| `ANTHROPIC_API_KEY`, `AI_MODEL` | Claude for summaries, drafts and Ask AIVA. Without it, AI features use built-in rules. |
+| `ANTHROPIC_API_KEY`, `AI_MODEL` | Claude for summaries, drafts, Ask AIVA, call notes and field prompts. Without it, AI features use built-in rules. |
+| Workspace keys (entered in Settings, stored encrypted) | Hunter.io and People Data Labs for waterfall enrichment; Twilio for dialer calls; Deepgram or AssemblyAI to transcribe call recordings. Sequences send through each rep's connected mailbox (or the server SMTP settings). |
 | `FIELD_ENCRYPTION_KEY` | Key for encrypted fields and stored secrets. Defaults to one derived from `JWT_SECRET_KEY`; set it explicitly in production and keep it safe — changing it makes encrypted values unreadable. |
 | `APP_BASE_URL` | Public URL used in emails, portal links, calendar feeds and webhooks (Render sets it automatically). |
 | `SCHEDULER_ENABLED` | Background jobs for reminders, campaigns, journeys and mailbox sync (default on). |
@@ -319,12 +347,14 @@ npx tsc --noEmit  # type check
 npm run build     # production build
 ```
 
-The integration suite signs up a brand-new workspace per run and exercises sign-in, MFA, lockout, invitations, permissions, tenant isolation, quotes, forecasting, cases and SLAs, workflows, reports and dashboards — plus plans and trial expiry, custom modules and fields, campaigns, forms, imports, calls, API keys, HIPAA mode, AI agents and predictions, inventory and invoices, approvals, journeys, portals, custom buttons, record visibility, ABM, Google Ads and sandboxes.
+The integration suite signs up a brand-new workspace per run and exercises sign-in, MFA, lockout, invitations, permissions, tenant isolation, quotes, forecasting, cases and SLAs, workflows, reports and dashboards — plus plans and trial expiry, custom modules and fields, campaigns, forms, imports, calls, API keys, HIPAA mode, AI agents and predictions, inventory and invoices, approvals, journeys, portals, custom buttons, record visibility, ABM, Google Ads and sandboxes — and the settings suite: workspace security (IP allowlist, required MFA, API-key switch), add-ons and credits, data requests, territories and round-robin routing, support access, the MCP server, sending domains, snippets, sequences end to end (sending, click tracking, replies, bounces, meetings, unsubscribes), picklists, goals, removal requests, personas, signals and conversation intelligence.
 
 ## Security notes
 
 - Passwords are hashed with Argon2; refresh, reset, API-key and portal tokens are stored only as SHA-256 hashes.
-- Mailbox passwords, webhook URLs and encrypted fields are encrypted at rest (Fernet).
+- Mailbox passwords, webhook URLs, encrypted fields and workspace integration keys (enrichment, Twilio, transcription) are encrypted at rest (Fernet) and never sent back to the browser.
+- Workspaces can require two-step verification, restrict access to an IP allowlist and switch API keys off; AIVA support can only enter a workspace with a time-limited grant from an admin, and every page they open is logged.
+- Sequence click links are HMAC-signed, so the tracking redirect can't be used as an open redirect.
 - Browser sessions use httpOnly, SameSite cookies; the frontend never sees tokens.
 - Every API route checks the caller's permissions, and every query is scoped to the caller's organization.
 - Production deployments still need: a real email provider for invitations and resets, HTTPS everywhere, secret management, and rate limiting at the edge.

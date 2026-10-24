@@ -31,6 +31,8 @@ interface Calls {
   items: CallRow[];
   stats: { total: number; today: number; connected: number; connect_rate: number; average_duration_seconds: number; talk_time_seconds: number };
   outcomes: string[];
+  /** The workspace's call outcomes (Settings → Dialer). */
+  outcome_options?: { key: string; label: string; connected: boolean; follow_up: boolean }[];
 }
 
 const OUTCOME_TONE: Record<string, Tone> = {
@@ -41,6 +43,14 @@ const OUTCOME_TONE: Record<string, Tone> = {
   wrong_number: "danger",
   scheduled_callback: "primary",
 };
+
+/** Label and color for an outcome, using the workspace's own outcomes when known. */
+function outcomeBadge(key: string, options: Calls["outcome_options"]) {
+  const option = options?.find((item) => item.key === key);
+  const label = option?.label ?? titleCase(key.replace(/_/g, " "));
+  const tone: Tone = OUTCOME_TONE[key] ?? (option ? (option.connected ? "success" : option.follow_up ? "warning" : "neutral") : "neutral");
+  return { label, tone };
+}
 
 function clock(seconds: number) {
   if (!seconds) return "—";
@@ -141,7 +151,7 @@ function CallsView() {
                       </div>
                     </td>
                     <td>
-                      <Badge tone={OUTCOME_TONE[call.outcome] ?? "neutral"}>{titleCase(call.outcome.replace(/_/g, " "))}</Badge>
+                      <Badge tone={outcomeBadge(call.outcome, calls.data?.outcome_options).tone}>{outcomeBadge(call.outcome, calls.data?.outcome_options).label}</Badge>
                     </td>
                     <td className="ui-num">{clock(call.duration_seconds)}</td>
                     <td>{call.by ?? "—"}</td>

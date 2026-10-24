@@ -8,6 +8,8 @@ import {
 
 import Link from "next/link";
 
+import { BulkSequenceBar, SelectAllBox, useCanEnroll } from "@/components/bulk-sequence";
+
 import {
   Filter,
   Plus,
@@ -68,6 +70,9 @@ function displayLabel(
 export default function LeadsPage() {
   const [leads, setLeads] =
     useState<Lead[]>([]);
+
+  const canEnroll = useCanEnroll();
+  const [selected, setSelected] = useState<string[]>([]);
 
   const [loading, setLoading] =
     useState(true);
@@ -361,6 +366,11 @@ export default function LeadsPage() {
                   <table className="accountTable">
                     <thead>
                       <tr>
+                        {canEnroll ? (
+                          <th className="select-col">
+                            <SelectAllBox ids={filteredLeads.map((lead) => lead.id)} selected={selected} onChange={setSelected} />
+                          </th>
+                        ) : null}
                         <th>
                           Lead
                         </th>
@@ -393,6 +403,18 @@ export default function LeadsPage() {
                           <tr
                             key={lead.id}
                           >
+                            {canEnroll ? (
+                              <td className="select-col">
+                                <input
+                                  type="checkbox"
+                                  aria-label={`Select ${lead.first_name} ${lead.last_name}`}
+                                  checked={selected.includes(lead.id)}
+                                  onChange={(event) =>
+                                    setSelected((current) => (event.target.checked ? [...current, lead.id] : current.filter((id) => id !== lead.id)))
+                                  }
+                                />
+                              </td>
+                            ) : null}
                             <td>
                               <Link
                                 href={
@@ -477,6 +499,7 @@ export default function LeadsPage() {
                   </table>
                 </div>
               )}
+            {canEnroll ? <BulkSequenceBar recordType="lead" selected={selected} onClear={() => setSelected([])} /> : null}
           </section>
         </div>
       </main>

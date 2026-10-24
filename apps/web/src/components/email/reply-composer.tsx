@@ -11,6 +11,19 @@ import {
 } from "lucide-react";
 
 import {
+  appendText,
+  fillSnippetWithoutRecord,
+} from "@/components/email/compose-email-modal";
+
+import {
+  useSession,
+} from "@/components/providers";
+
+import {
+  SnippetPicker,
+} from "@/components/snippet-picker";
+
+import {
   replyToEmailThread,
 } from "@/lib/emails";
 
@@ -26,6 +39,10 @@ type Props = {
   fromName?: string;
 
   disabled?: boolean;
+
+  /** The lead or contact the thread is with, so snippets fill in their details. */
+  recordType?: "lead" | "contact";
+  recordId?: string;
 
   onReplied?: (
     result: EmailSendResult
@@ -53,8 +70,14 @@ export function ReplyComposer({
   fromAddress,
   fromName,
   disabled = false,
+  recordType,
+  recordId,
   onReplied,
 }: Props) {
+  const {
+    session,
+  } = useSession();
+
   const [
     body,
     setBody,
@@ -86,6 +109,33 @@ export function ReplyComposer({
   ] = useState<string | null>(
     null
   );
+
+
+  function insertSnippet(
+    text: string
+  ) {
+    const filled =
+      recordType && recordId
+        ? text
+        : fillSnippetWithoutRecord(
+            text,
+            {
+              senderName:
+                fromName
+                || session?.user.full_name,
+
+              organizationName:
+                session?.organization.name,
+            }
+          );
+
+    setBody((current) =>
+      appendText(
+        current,
+        filled
+      )
+    );
+  }
 
 
   function resetComposer() {
@@ -273,6 +323,20 @@ export function ReplyComposer({
           }
           placeholder="Write your reply..."
         />
+
+        <div className="composer-tools">
+          <SnippetPicker
+            onInsert={
+              insertSnippet
+            }
+            recordType={recordType}
+            recordId={recordId}
+            disabled={
+              sending
+              || disabled
+            }
+          />
+        </div>
 
         {error && (
           <div className="formError">

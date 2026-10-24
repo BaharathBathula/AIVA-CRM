@@ -34,6 +34,8 @@ import {
 import { RecordDocuments, RecordMeetings, RecordVisits } from "@/components/record-panels";
 import { PinButton } from "@/components/pins";
 import { RecordActions, RecordInsights } from "@/components/record-extras";
+import { RecordProfilePanel } from "@/components/record-profile";
+import { RecordSequences } from "@/components/sequence-enroll";
 
 import {
   Sidebar,
@@ -2350,6 +2352,8 @@ export default function ContactDetailPage() {
 
 
             <aside className="accountSideColumn">
+              <RecordProfilePanel objectType="contact" recordId={contact.id} version={extrasVersion} onChanged={() => setExtrasVersion((v) => v + 1)} />
+              <RecordSequences recordType="contact" recordId={contact.id} />
 
               <section className="detailPanel">
                 <div className="detailPanelHeader">

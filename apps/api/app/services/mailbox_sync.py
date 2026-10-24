@@ -61,6 +61,14 @@ async def sync_connection(db: AsyncSession, connection: MailboxConnection, limit
             if exists:
                 skipped += 1
                 continue
+            try:
+                from app.services import outbound
+
+                await outbound.handle_inbound(db, connection.organization_id, message)
+            except Exception:  # noqa: BLE001 - reply detection must not stop the sync
+                import logging
+
+                logging.getLogger("aiva.mailbox").exception("Reply detection failed")
             contact = (
                 await db.execute(
                     select(Contact).where(

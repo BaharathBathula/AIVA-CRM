@@ -49,6 +49,23 @@ from app.models.collaboration import (
 )
 from app.models.work import Appointment, Project, ProjectMilestone, Service
 from app.models.engagement import SocialChannel, SocialPost, TrackingSite, WebPageView, WebSession, WebVisitor
+from app.models.governance import (
+    AiUsageEvent,
+    CreditTransaction,
+    DataRequest,
+    GlobalPicklist,
+    Goal,
+    McpCall,
+    OrgAddon,
+    RemovalRequest,
+    SupportAccessGrant,
+    SuppressionEntry,
+    Territory,
+    WorkspaceSetting,
+)
+from app.models.outbound import SendingDomain, Sequence, SequenceEnrollment, SequenceMessage, SequenceStep, Snippet
+from app.models.icp import IntentTopic, Persona, SignalEvent, SignalRule
+from app.models.conversation import Conversation, ConversationTracker, FieldPrompt, Scorecard, ScorecardReview
 from app.models.editions import (
     Subscription,
     BillingInvoice,
@@ -173,4 +190,31 @@ __all__ = [
     "JourneyEnrollment",
     "TeamMember",
     "TargetAccount",
+    "AiUsageEvent",
+    "CreditTransaction",
+    "DataRequest",
+    "GlobalPicklist",
+    "Goal",
+    "McpCall",
+    "OrgAddon",
+    "RemovalRequest",
+    "SupportAccessGrant",
+    "SuppressionEntry",
+    "Territory",
+    "WorkspaceSetting",
+    "SendingDomain",
+    "Sequence",
+    "SequenceEnrollment",
+    "SequenceMessage",
+    "SequenceStep",
+    "Snippet",
+    "IntentTopic",
+    "Persona",
+    "SignalEvent",
+    "SignalRule",
+    "Conversation",
+    "ConversationTracker",
+    "FieldPrompt",
+    "Scorecard",
+    "ScorecardReview",
 ]

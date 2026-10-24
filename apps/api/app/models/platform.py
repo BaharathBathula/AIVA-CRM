@@ -230,6 +230,8 @@ class LeadScoringRule(UUIDPrimaryKeyMixin, OrganizationOwnedMixin, TimestampMixi
     value: Mapped[str | None] = mapped_column(String(200), nullable=True)
     points: Mapped[int] = mapped_column(Integer, nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="true")
+    # lead | contact | account
+    object_type: Mapped[str] = mapped_column(String(20), nullable=False, default="lead", server_default="lead", index=True)
 
 
 class ForecastQuota(UUIDPrimaryKeyMixin, OrganizationOwnedMixin, TimestampMixin, Base):

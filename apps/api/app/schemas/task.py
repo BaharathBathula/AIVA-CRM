@@ -43,6 +43,9 @@ TaskSource = Literal[
     "email",
     "meeting",
     "workflow",
+    "sequence",
+    "signal",
+    "conversation",
 ]
 
 

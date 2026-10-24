@@ -1,0 +1,170 @@
+/* outbound: styles for this area (settings pages and modules). */
+
+/* ---------- Overview ---------- */
+
+.outbound-two { align-items: stretch; }
+.outbound-two > .ui-card { height: 100%; }
+
+.outbound-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 18px;
+}
+.outbound-facts > div { display: grid; gap: 4px; align-content: start; font-size: 13.5px; }
+.outbound-facts strong { font-size: 18px; font-variant-numeric: tabular-nums; }
+
+.outbound-health { display: grid; gap: 4px; }
+.outbound-health-line {
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 10px;
+  margin: 0 -10px;
+  border-radius: 12px;
+  color: inherit;
+  text-decoration: none;
+}
+.outbound-health-line:hover { background: var(--surface-muted); }
+.outbound-health-text { display: grid; gap: 2px; min-width: 0; font-size: 13.5px; }
+.outbound-health-dot { width: 10px; height: 10px; border-radius: 999px; }
+.outbound-health-dot.ok { background: var(--success); }
+.outbound-health-dot.bad { background: var(--warning); }
+
+.outbound-checklist { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.outbound-checklist li { display: flex; align-items: center; gap: 10px; font-size: 13.5px; }
+.outbound-checklist li svg { flex: none; color: var(--muted); }
+.outbound-checklist li.done { color: var(--muted); }
+.outbound-checklist li.done svg { color: var(--success); }
+.outbound-checklist li.done span { text-decoration: line-through; }
+.outbound-checklist a { display: inline-flex; align-items: center; gap: 6px; font-weight: 650; color: var(--text); }
+
+.outbound-daily {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 160px;
+}
+.outbound-daily-col {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) 16px;
+  gap: 6px;
+  align-items: end;
+}
+.outbound-daily-col .bar {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  width: 100%;
+  border-radius: 5px 5px 2px 2px;
+  background: var(--series-1);
+  overflow: hidden;
+}
+.outbound-daily-col .bar .replied { width: 100%; background: var(--series-3); }
+.outbound-daily-col span {
+  font-size: 10.5px;
+  color: var(--muted);
+  white-space: nowrap;
+  text-align: center;
+  overflow: visible;
+}
+
+/* ---------- Domains, mailboxes ---------- */
+
+.outbound-linkbtn {
+  display: inline;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.outbound-issues {
+  margin: 6px 0 0;
+  padding-left: 16px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-2);
+  white-space: normal;
+}
+
+/* ---------- Diagnose ---------- */
+
+.outbound-score {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+.outbound-score-ring {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  width: 112px;
+  height: 112px;
+  flex: none;
+  border-radius: 999px;
+  border: 8px solid var(--surface-sunken);
+}
+.outbound-score-ring.good { border-color: var(--success-soft); box-shadow: inset 0 0 0 3px var(--success); }
+.outbound-score-ring.ok { border-color: var(--warning-soft); box-shadow: inset 0 0 0 3px var(--warning); }
+.outbound-score-ring.bad { border-color: var(--danger-soft); box-shadow: inset 0 0 0 3px var(--danger); }
+.outbound-score-ring strong { font-size: 32px; letter-spacing: -0.03em; line-height: 1; font-variant-numeric: tabular-nums; }
+.outbound-score-ring span { font-size: 11.5px; color: var(--muted); }
+.outbound-score-text { display: grid; gap: 10px; min-width: 0; flex: 1; }
+.outbound-score-text h2 { margin: 0; font-size: 19px; letter-spacing: -0.02em; }
+.outbound-score-counts { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 13px; }
+.outbound-score-counts > span { display: inline-flex; align-items: center; gap: 7px; }
+.outbound-score-counts .settings-check-icon { width: 20px; height: 20px; }
+
+.outbound-fix { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+
+/* ---------- Dialer ---------- */
+
+.outbound-segment {
+  display: inline-flex;
+  padding: 3px;
+  border-radius: 12px;
+  background: var(--surface-sunken);
+}
+.outbound-segment button {
+  height: 32px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--text-2);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.outbound-segment button.on { background: var(--surface); color: var(--text); box-shadow: var(--shadow-float); }
+.outbound-segment button:disabled { cursor: default; }
+
+/* ---------- Call dialog ---------- */
+
+.call-dialog-actions { display: flex; justify-content: center; flex-wrap: wrap; gap: 10px; }
+.call-dialog-note { margin: 0; text-align: center; font-size: 12.5px; color: var(--muted); }
+
+/* ---------- Email composers ---------- */
+
+.composer-tools { display: flex; align-items: center; justify-content: flex-end; gap: 8px; margin: -4px 0 4px; }
+.emailReplyComposer .composer-tools { margin: 6px 0 0; justify-content: flex-start; }
+
+@media (max-width: 680px) {
+  .outbound-facts { grid-template-columns: minmax(0, 1fr); }
+  .outbound-daily { gap: 1px; height: 120px; }
+  .outbound-daily-col span { font-size: 0; }
+  .outbound-score { gap: 16px; }
+  .outbound-score-ring { width: 92px; height: 92px; }
+  .outbound-score-ring strong { font-size: 26px; }
+}

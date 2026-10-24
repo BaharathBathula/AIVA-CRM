@@ -24,7 +24,7 @@ from app.models.organization import Organization
 from app.models.pipeline_stage import PipelineStage
 from app.models.platform import Case, CaseComment
 from app.models.task import Task
-from app.services import ai, ai_agents
+from app.services import ai, ai_agents, ai_context, metering, workspace_settings
 from app.services.lookups import names_for
 from app.services.predictions import last_activities, predict, predict_open, train
 
@@ -457,16 +457,22 @@ async def ask_aiva(
     principal: Principal = Depends(require_permission("records.read")),
     db: AsyncSession = Depends(get_db),
 ):
+    await metering.ensure_ai_words(db, principal.organization_id, principal.user_id)
     data = await crm_snapshot(db, principal)
     answer = await ai.complete(
         "Answer the question using only this CRM data (JSON). Use dollar amounts and names from the data. "
         "Keep it under 150 words. If the data doesn't cover the question, say what you can answer instead.\n\n"
         f"Question: {payload.question}\n\nData:\n{json.dumps(data, default=str)}",
+        system=await ai_context.system_prompt(db, principal.organization_id, "ask"),
         max_tokens=500,
     )
     if answer:
+        metering.record_ai_words(db, principal.organization_id, principal.user_id, "ask", answer, "claude")
+        await db.commit()
         return {"answer": answer, "source": "claude", "data": data}
     text, used = rules_answer(payload.question, data)
+    metering.record_ai_words(db, principal.organization_id, principal.user_id, "ask", text, "rules")
+    await db.commit()
     return {"answer": text, "source": "rules", "used": used, "data": data}
 
 
@@ -539,16 +545,20 @@ async def summarize(
     record = await db.get(model, record_id)
     if record is None or record.organization_id != principal.organization_id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Record not found.")
+    await metering.ensure_ai_words(db, principal.organization_id, principal.user_id)
     facts = await _record_facts(db, principal, object_type, record)
     text = await ai.complete(
         f"Summarize this CRM {object_type} for a busy {'support agent' if object_type == 'case' else 'sales rep'} in 3-4 sentences, "
         "then give one recommended next action on its own line starting with 'Next:'.\n\n"
         f"{json.dumps(facts, default=str)}",
+        system=await ai_context.system_prompt(db, principal.organization_id, "summaries"),
         max_tokens=350,
     )
-    if text:
-        return {"summary": text, "source": "claude"}
-    return {"summary": rules_summary(object_type, record, facts), "source": "rules"}
+    source = "claude" if text else "rules"
+    text = text or rules_summary(object_type, record, facts)
+    metering.record_ai_words(db, principal.organization_id, principal.user_id, "summaries", text, source)
+    await db.commit()
+    return {"summary": text, "source": source}
 
 
 class DraftPayload(BaseModel):
@@ -568,19 +578,26 @@ async def draft(
     record = await db.get(model, payload.record_id)
     if record is None or record.organization_id != principal.organization_id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Record not found.")
+    await metering.ensure_ai_words(db, principal.organization_id, principal.user_id)
     facts = await _record_facts(db, principal, payload.object_type, record)
     sender = principal.full_name.split(" ")[0]
     text = await ai.complete(
         f"Draft a {payload.tone} email (under 150 words) for this purpose: {payload.intent}. "
         f"It's from {principal.full_name}. Use the CRM data below. Return the subject on the first line as 'Subject: …', "
         f"then a blank line, then the body.\n\n{json.dumps(facts, default=str)}",
+        system=await ai_context.system_prompt(db, principal.organization_id, "drafts"),
         max_tokens=450,
     )
+    if text:
+        metering.record_ai_words(db, principal.organization_id, principal.user_id, "drafts", text, "claude")
+        await db.commit()
     if text and text.lower().startswith("subject:"):
         subject, _, body = text.partition("\n")
         return {"subject": subject[8:].strip(), "body": body.strip(), "source": "claude"}
     if text:
         return {"subject": "Following up", "body": text, "source": "claude"}
+    context = await workspace_settings.get(db, principal.organization_id, "ai_context")
+    signature = context.signature.strip() if "drafts" in context.use_for else ""
     if payload.object_type == "case":
         subject = f"Re: {record.subject}"
         body = f"Hi,\n\nThanks for your patience on “{record.subject}”. Here's where things stand: we're on it and will update you as soon as we have news.\n\nBest regards,\n{sender}"
@@ -594,4 +611,10 @@ async def draft(
             + ("Do you have 15 minutes this week to talk through next steps?" if payload.tone != "brief" else "Any update on your side?")
             + f"\n\nBest,\n{sender}"
         )
+    if signature:
+        body = body.rsplit("\n\n", 1)[0] + f"\n\n{signature}"
+    if "drafts" in context.use_for:
+        body = ai_context.apply_words_to_avoid(body, context)
+    metering.record_ai_words(db, principal.organization_id, principal.user_id, "drafts", f"{subject} {body}", "rules")
+    await db.commit()
     return {"subject": subject, "body": body, "source": "rules"}

@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.dependencies.tenant import (
     get_current_organization_id,
 )
+from app.services import prospecting
 from app.db.session import get_db
 from app.schemas.contact import (
     ContactCreate,
@@ -53,6 +54,11 @@ async def create_contact_endpoint(
             get_db
         ),
 ):
+    await prospecting.validate_stage(db, organization_id, "contact", payload.stage)
+    await prospecting.check_new_person(
+        db, organization_id, "contact", email=payload.email, first_name=payload.first_name,
+        last_name=payload.last_name, account_id=payload.account_id,
+    )
     return await create_contact(
         db,
         organization_id,
@@ -298,6 +304,10 @@ async def update_contact_endpoint(
             get_db
         ),
 ):
+    if "stage" in payload.model_fields_set:
+        if payload.stage is None:
+            payload.stage = "cold"
+        await prospecting.validate_stage(db, organization_id, "contact", payload.stage)
     return await update_contact(
         db,
         organization_id,

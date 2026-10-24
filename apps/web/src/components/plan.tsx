@@ -2,12 +2,12 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { FlaskConical, Lock, Sparkles, TriangleAlert } from "lucide-react";
+import { FlaskConical, LifeBuoy, Lock, PackagePlus, ShieldAlert, Sparkles, TriangleAlert } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { AppShell } from "@/components/app-shell";
 import { useSession } from "@/components/providers";
-import { FEATURE_PLAN, PLAN_NAMES, PLAN_PRICES, featurePlan } from "@/lib/plans";
+import { ADDON_FOR_FEATURE, FEATURE_PLAN, PLAN_NAMES, PLAN_PRICES, featurePlan } from "@/lib/plans";
 
 /** Small "Pro" / "Enterprise" chip next to features a plan doesn't include. */
 export function PlanChip({ feature }: { feature: string }) {
@@ -67,7 +67,13 @@ export function UpgradeGate({ feature, children, compact }: { feature: string; c
             <Link className="ui-btn ui-btn-primary" href={`/settings/billing?plan=${plan}`}>
               Upgrade to {PLAN_NAMES[plan]}
             </Link>
-          ) : (
+          ) : null}
+          {manage && ADDON_FOR_FEATURE[feature] ? (
+            <Link className="ui-btn" href="/settings/billing/add-ons">
+              <PackagePlus size={15} /> Or add {ADDON_FOR_FEATURE[feature]}
+            </Link>
+          ) : null}
+          {manage ? null : (
             <span className="ui-muted ui-small">Ask a workspace admin to upgrade the plan.</span>
           )}
           <Link className="ui-btn" href="/pricing">
@@ -109,6 +115,30 @@ export function PlanBanner() {
   const subscription = session.subscription;
   const onBilling = pathname.startsWith("/settings/billing");
 
+  if (session.support_access) {
+    return (
+      <div className="plan-banner tone-warning" role="status">
+        <LifeBuoy size={16} />
+        <span>
+          <strong>Support access.</strong> You&apos;re in {session.organization.name} as AIVA support. Everything you open is recorded in the
+          workspace&apos;s activity log.
+        </span>
+      </div>
+    );
+  }
+  if (session.mfa_enforced && !session.user.mfa_enabled && !pathname.startsWith("/settings/security")) {
+    return (
+      <div className="plan-banner tone-warning" role="alert">
+        <ShieldAlert size={16} />
+        <span>
+          <strong>Two-step verification is required.</strong> Your workspace asks everyone to turn it on.
+        </span>
+        <Link href="/settings/security" className="ui-btn ui-btn-sm ui-btn-primary">
+          Set it up
+        </Link>
+      </div>
+    );
+  }
   if (session.is_sandbox) {
     return (
       <div className="plan-banner tone-sandbox" role="status">

@@ -43,6 +43,7 @@ import {
 import { RecordDocuments, RecordMeetings } from "@/components/record-panels";
 import { PinButton } from "@/components/pins";
 import { RecordActions, RecordInsights } from "@/components/record-extras";
+import { RecordProfilePanel } from "@/components/record-profile";
 
 import {
   EditAccountModal,
@@ -2561,6 +2562,7 @@ const accountHealth =
 
 
             <aside className="accountSideColumn">
+              <RecordProfilePanel objectType="account" recordId={account.id} version={extrasVersion} onChanged={() => setExtrasVersion((v) => v + 1)} />
               <section className="detailPanel">
                 <div className="detailPanelHeader">
                   <div>

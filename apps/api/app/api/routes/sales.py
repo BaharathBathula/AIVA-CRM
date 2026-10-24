@@ -546,12 +546,16 @@ class ScoringRulePayload(BaseModel):
     value: str | None = Field(default=None, max_length=200)
     points: int = Field(ge=-100, le=100)
     is_active: bool = True
+    object_type: str = Field(default="lead", pattern="^(lead|contact|account)$")
+
+
+SCORED = {"lead": Lead, "contact": Contact, "account": Account}
 
 
 def _validate_scoring(payload: ScoringRulePayload) -> None:
-    lead_fields = {f.key for f in OBJECTS["lead"].fields}
-    if payload.field not in lead_fields:
-        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "Choose a lead field.")
+    fields = {f.key for f in OBJECTS[payload.object_type].fields}
+    if payload.field not in fields:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, f"Choose a {payload.object_type} field.")
     if payload.operator not in OPERATORS:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "Choose a valid condition.")
     if payload.operator not in {"is_empty", "is_not_empty"} and not (payload.value or "").strip():
@@ -567,18 +571,20 @@ def scoring_out(rule: LeadScoringRule) -> dict:
         "value": rule.value,
         "points": rule.points,
         "is_active": rule.is_active,
+        "object_type": rule.object_type or "lead",
     }
 
 
 @router.get("/lead-scoring/rules")
 async def list_scoring_rules(
+    object_type: str = Query(default="lead", pattern="^(lead|contact|account)$"),
     principal: Principal = Depends(require_permission("records.read")),
     db: AsyncSession = Depends(get_db),
 ):
     rules = (
         await db.execute(
             select(LeadScoringRule)
-            .where(LeadScoringRule.organization_id == principal.organization_id)
+            .where(LeadScoringRule.organization_id == principal.organization_id, LeadScoringRule.object_type == object_type)
             .order_by(LeadScoringRule.points.desc(), LeadScoringRule.name)
         )
     ).scalars()
@@ -632,11 +638,13 @@ async def delete_scoring_rule(
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
-async def _active_scoring(db: AsyncSession, organization_id: uuid.UUID) -> list[dict]:
+async def _active_scoring(db: AsyncSession, organization_id: uuid.UUID, object_type: str = "lead") -> list[dict]:
     rules = (
         await db.execute(
             select(LeadScoringRule).where(
-                LeadScoringRule.organization_id == organization_id, LeadScoringRule.is_active.is_(True)
+                LeadScoringRule.organization_id == organization_id,
+                LeadScoringRule.is_active.is_(True),
+                LeadScoringRule.object_type == object_type,
             )
         )
     ).scalars()
@@ -649,11 +657,13 @@ def grade(score: int) -> str:
 
 @router.post("/lead-scoring/recalculate")
 async def recalculate_scores(
+    object_type: str = Query(default="lead", pattern="^(lead|contact|account)$"),
     principal: Principal = Depends(require_permission("sales.lead_scoring")),
     db: AsyncSession = Depends(get_db),
 ):
-    rules = await _active_scoring(db, principal.organization_id)
-    leads = (await db.execute(select(Lead).where(Lead.organization_id == principal.organization_id))).scalars().all()
+    rules = await _active_scoring(db, principal.organization_id, object_type)
+    model = SCORED[object_type]
+    leads = (await db.execute(select(model).where(model.organization_id == principal.organization_id))).scalars().all()
     db.sync_session.info["automation_disabled"] = True
     updated = 0
     for lead in leads:
@@ -666,23 +676,24 @@ async def recalculate_scores(
         organization_id=principal.organization_id,
         action="recalculate",
         entity_type="scoring_rule",
-        entity_label="Lead scores recalculated",
-        changes={"leads": len(leads), "updated": updated},
+        entity_label=f"{object_type.title()} scores recalculated",
+        changes={"records": len(leads), "updated": updated},
     )
     await db.commit()
-    return {"leads": len(leads), "updated": updated}
+    return {"leads": len(leads), "records": len(leads), "updated": updated}
 
 
 @router.get("/lead-scoring/summary")
 async def scoring_summary(
+    object_type: str = Query(default="lead", pattern="^(lead|contact|account)$"),
     principal: Principal = Depends(require_permission("records.read")),
     db: AsyncSession = Depends(get_db),
 ):
-    scores = (
-        await db.execute(
-            select(Lead.score).where(Lead.organization_id == principal.organization_id, Lead.status != "converted")
-        )
-    ).scalars().all()
+    model = SCORED[object_type]
+    query = select(model.score).where(model.organization_id == principal.organization_id)
+    if object_type == "lead":
+        query = query.where(Lead.status != "converted")
+    scores = (await db.execute(query)).scalars().all()
     distribution = {"A": 0, "B": 0, "C": 0, "D": 0}
     for score in scores:
         distribution[grade(score)] += 1

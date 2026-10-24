@@ -887,9 +887,23 @@ async def track(request: Request, db: AsyncSession = Depends(get_db)):
     url = _clip(event.get("u"), 1000) or ""
     if site is None or not site.is_active or not url.lower().startswith(("http://", "https://")) or not _host_allowed(url, site.domain):
         return Response(status_code=status.HTTP_204_NO_CONTENT)
+    from app.api.dependencies.auth import _ip_allowed, client_ip
+    from app.services import workspace_settings
+
+    rules = await workspace_settings.get(db, site.organization_id, "website")
+    path_now = urlsplit(url).path or "/"
+    if any(path_now == p or path_now.startswith(p.rstrip("*").rstrip("/") + "/") or (p.endswith("*") and path_now.startswith(p[:-1])) for p in rules.exclude_paths):
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
+    if rules.exclude_ips and _ip_allowed(client_ip(request), rules.exclude_ips):
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
+    # Settings → Website visitors: honour the browser's Do Not Track / Global Privacy Control signals.
+    if rules.respect_do_not_track and (request.headers.get("dnt") == "1" or request.headers.get("sec-gpc") == "1"):
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
     db.sync_session.info["automation_disabled"] = True
     now = utcnow()
     kind = event.get("e") if event.get("e") in {"view", "ping", "identify"} else "view"
+    if kind == "identify" and not rules.identify_on_form_submit:
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
     visitor = (
         await db.execute(select(WebVisitor).where(WebVisitor.site_id == site.id, WebVisitor.visitor_key == visitor_key))
     ).scalar_one_or_none()

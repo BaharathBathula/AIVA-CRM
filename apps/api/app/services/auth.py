@@ -38,10 +38,38 @@ async def active_memberships(db: AsyncSession, user_id: uuid.UUID) -> list[tuple
         )
         .order_by(Organization.name)
     )
-    return [(membership, organization) for membership, organization in result.all()]
+    rows = [(membership, organization) for membership, organization in result.all()]
+    rows += await _support_workspaces(db, user_id, {org.id for _, org in rows})
+    return rows
+
+
+async def _support_workspaces(db: AsyncSession, user_id: uuid.UUID, exclude: set[uuid.UUID]) -> list[tuple[OrganizationMembership, Organization]]:
+    """AIVA support staff see the workspaces whose admins granted them access."""
+
+    from app.models.governance import SupportAccessGrant
+    from app.models.user import User
+
+    user = await db.get(User, user_id)
+    if user is None or not user.is_platform_staff:
+        return []
+    now = utcnow()
+    result = await db.execute(
+        select(Organization)
+        .join(SupportAccessGrant, SupportAccessGrant.organization_id == Organization.id)
+        .where(SupportAccessGrant.revoked_at.is_(None), SupportAccessGrant.expires_at > now, Organization.is_active.is_(True))
+        .distinct()
+        .order_by(Organization.name)
+    )
+    return [
+        (OrganizationMembership(organization_id=org.id, user_id=user_id, role="support", status="active"), org)
+        for org in result.scalars()
+        if org.id not in exclude
+    ]
 
 
 async def role_name(db: AsyncSession, organization_id: uuid.UUID, role_key: str) -> str:
+    if role_key == "support":
+        return "AIVA support"
     if role_key in SYSTEM_ROLES:
         return SYSTEM_ROLES[role_key].name
     result = await db.execute(select(Role.name).where(Role.organization_id == organization_id, Role.key == role_key))

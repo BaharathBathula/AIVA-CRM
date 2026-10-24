@@ -135,6 +135,19 @@ class Account(
         index=True,
     )
 
+    territory_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("territories.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+
+    score: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+        default=0,
+        server_default="0",
+    )
+
     is_archived: Mapped[bool] = mapped_column(
         Boolean,
         nullable=False,
