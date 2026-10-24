@@ -100,6 +100,18 @@ from app.models.editions import (
 )
 
 
+from app.models.integration_hub import (
+    ChannelMessage,
+    ExternalFileLink,
+    IntegrationConnection,
+    IntegrationLog,
+    IntegrationOAuthState,
+    IntegrationToggle,
+    SignatureRequest,
+    WebhookDelivery,
+    WebhookSubscription,
+)
+
 __all__ = [
     "PriceBook",
     "PriceBookEntry",
@@ -217,4 +229,13 @@ __all__ = [
     "FieldPrompt",
     "Scorecard",
     "ScorecardReview",
+    "ChannelMessage",
+    "ExternalFileLink",
+    "IntegrationConnection",
+    "IntegrationLog",
+    "IntegrationOAuthState",
+    "IntegrationToggle",
+    "SignatureRequest",
+    "WebhookDelivery",
+    "WebhookSubscription",
 ]

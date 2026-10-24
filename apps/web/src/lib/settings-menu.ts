@@ -135,7 +135,8 @@ export const SETTINGS_MENU: SettingsGroup[] = [
     key: "integrations",
     label: "Integrations",
     items: [
-      { label: "All integrations", href: "/settings/integrations", icon: Plug, description: "Gmail or Outlook, calendar feed, Zoom, Slack and Teams." },
+      { label: "All integrations", href: "/integrations", icon: Plug, description: "Gmail, Outlook, calendars, Slack, Teams, WhatsApp, Zoom, Drive, DocuSign, Zapier and more." },
+      { label: "Other connections", href: "/settings/integrations", icon: Plug, description: "App-password mailboxes, the calendar feed, Google Ads and QuickBooks." },
       { label: "MCP", href: "/settings/mcp", icon: Bot, description: "Connect Claude and other AI assistants to your CRM.", feature: "api_access" },
       { label: "API keys", href: "/settings/api-keys", icon: KeyRound, description: "Connect other systems to the AIVA API.", feature: "api_access" },
       { label: "Developer sandbox", href: "/settings/sandbox", icon: FlaskConical, description: "Test changes in a copy of your setup, then deploy.", permission: "admin.settings", feature: "sandbox" },

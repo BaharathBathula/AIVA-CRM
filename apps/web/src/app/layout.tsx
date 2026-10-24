@@ -15,6 +15,11 @@ import "./sequences.css";
 import "./conversations.css";
 import "./data-icp.css";
 import "./admin-suite.css";
+import "./integrations.css";
+import "./int-mail-calendar.css";
+import "./int-messaging.css";
+import "./int-documents.css";
+import "./int-leads-automation.css";
 
 export const metadata: Metadata = {
   title: {

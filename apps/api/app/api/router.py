@@ -42,6 +42,9 @@ from app.api.routes.outbound import router as outbound_router
 from app.api.routes.icp import router as icp_router
 from app.api.routes.conversations import router as conversations_router
 from app.api.routes.mcp import router as mcp_router
+from app.api.routes.integration_hub import public_router as integration_public_router
+from app.api.routes.integration_hub import router as integration_hub_router
+from app.api.routes import int_documents, int_leads_automation, int_mail_calendar, int_messaging
 
 
 api_router = APIRouter()
@@ -53,6 +56,9 @@ api_router.include_router(oauth_router)
 api_router.include_router(public_router)
 api_router.include_router(tracking_router)
 api_router.include_router(outbound_public_router)
+api_router.include_router(integration_public_router)
+for _module in (int_mail_calendar, int_messaging, int_documents, int_leads_automation):
+    api_router.include_router(_module.public_router)
 
 # Core CRM records: every request needs a signed-in member whose role
 # allows reading (GET), writing (POST/PATCH/PUT) or deleting (DELETE).
@@ -108,3 +114,10 @@ api_router.include_router(outbound_router)
 api_router.include_router(icp_router)
 api_router.include_router(conversations_router)
 api_router.include_router(mcp_router)
+
+# Integrations hub (Gmail, Outlook, calendars, Teams, Slack, WhatsApp, Twilio SMS,
+# Zoom, Meet, Calendly, Drive, OneDrive, Dropbox, DocuSign, WordPress, Facebook
+# Lead Ads, Zapier, Make, n8n) and each group's own endpoints.
+api_router.include_router(integration_hub_router)
+for _module in (int_mail_calendar, int_messaging, int_documents, int_leads_automation):
+    api_router.include_router(_module.router)

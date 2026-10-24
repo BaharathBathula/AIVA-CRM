@@ -54,6 +54,7 @@ FEATURES: tuple[Feature, ...] = (
     Feature("team_chat", "Team chat", "starter", "Channels and direct messages with @mentions and links to records."),
     Feature("sequences", "Sales sequences", "starter", "Multi-step outreach with automatic emails, calls and tasks that stop when people reply."),
     Feature("goals", "Goals", "starter", "Weekly, monthly and quarterly targets for people and teams with live progress."),
+    Feature("messaging", "SMS and WhatsApp", "starter", "Text customers by SMS (Twilio) or WhatsApp from any record, with replies in AIVA."),
     # ---------------------------------------------------------------- Pro
     Feature("ai_agents", "AI agents", "pro", "Agents that qualify leads, coach deals, triage cases and draft follow-ups."),
     Feature("process_management", "Process management", "pro", "Stage playbooks with required fields and checklists."),
@@ -73,6 +74,7 @@ FEATURES: tuple[Feature, ...] = (
     Feature("projects", "Projects", "pro", "Delivery projects with milestones, tasks and progress, started from won deals."),
     Feature("social", "Social publishing", "pro", "Publish and schedule posts to LinkedIn, X, Facebook and Instagram."),
     Feature("website_visits", "Website visits", "pro", "See who visits your website, which pages they read, and link visits to leads and contacts."),
+    Feature("e_signature", "E-signatures", "pro", "Send quotes and documents for signature with DocuSign and track them on the record."),
     Feature("territories", "Territories", "pro", "Carve up the market by region, industry or size and route new records to the right people."),
     Feature("buying_intent", "Personas, intent and signals", "pro", "Buyer personas, buying-intent topics and signals that tell reps who to call today."),
     Feature("waterfall_enrichment", "Waterfall enrichment", "pro", "Fill gaps from several data providers in the order you choose, paid with credits."),

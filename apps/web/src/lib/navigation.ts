@@ -1,5 +1,6 @@
 import { SETTINGS_PATHS } from "@/lib/settings-menu";
 import {
+  Blocks,
   Boxes,
   ChartPie,
   Handshake,
@@ -130,6 +131,17 @@ export const SECTIONS: NavSection[] = [
     ],
   },
   {
+    key: "integrations",
+    label: "Integrations",
+    icon: Blocks,
+    pages: [
+      { label: "All integrations", href: "/integrations" },
+      { label: "Messages", href: "/integrations/messages", feature: "messaging" },
+      { label: "Webhooks", href: "/integrations/webhooks", feature: "api_access" },
+      { label: "Activity", href: "/integrations/activity" },
+    ],
+  },
+  {
     key: "apps",
     label: "Apps",
     icon: Boxes,
@@ -145,7 +157,6 @@ export const SECTIONS: NavSection[] = [
       { label: "Users", href: "/settings/users", permission: "admin.users" },
       { label: "Billing", href: "/settings/billing", match: ["/settings/billing/add-ons", "/settings/billing/invoices"] },
       { label: "Outbound", href: "/settings/outbound" },
-      { label: "Integrations", href: "/settings/integrations" },
     ],
   },
 ];

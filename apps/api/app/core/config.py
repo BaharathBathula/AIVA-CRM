@@ -70,6 +70,24 @@ class Settings(BaseSettings):
     apple_key_id: str = ""
     apple_private_key: str = ""  # contents of the .p8 key file
 
+    # Integrations (Settings → Integrations). Google and Microsoft reuse the sign-in
+    # apps above. Register {APP_BASE_URL}/api/aiva/public/integrations/oauth/callback
+    # as a redirect URI with each provider. Workspaces can also bring their own app.
+    slack_client_id: str = ""
+    slack_client_secret: str = ""
+    zoom_client_id: str = ""
+    zoom_client_secret: str = ""
+    dropbox_app_key: str = ""
+    dropbox_app_secret: str = ""
+    docusign_integration_key: str = ""
+    docusign_secret_key: str = ""
+    docusign_environment: str = "demo"  # demo | production
+    calendly_client_id: str = ""
+    calendly_client_secret: str = ""
+    calendly_webhook_signing_key: str = ""
+    facebook_app_id: str = ""
+    facebook_app_secret: str = ""
+
     # Background jobs (reminders, campaigns, journeys, chat alerts).
     scheduler_enabled: bool = True
     scheduler_interval_seconds: int = 30

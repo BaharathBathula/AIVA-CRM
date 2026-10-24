@@ -167,6 +167,12 @@ async def _job_retention(db) -> int:
     return removed
 
 
+async def _job_integrations(db) -> int:
+    from app.integrations.jobs import run_due
+
+    return await run_due(db)
+
+
 JOBS = (
     ("reminders", send_due_reminders),
     ("sequences", _job_sequences),
@@ -180,6 +186,7 @@ JOBS = (
     ("chat", _job_chat),
     ("agents", _job_agents),
     ("mailbox_sync", _job_mailbox_sync),
+    ("integrations", _job_integrations),
 )
 
 
