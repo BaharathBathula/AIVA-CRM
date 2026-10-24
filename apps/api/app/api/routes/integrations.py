@@ -108,6 +108,7 @@ def mailbox_out(connection: MailboxConnection | None) -> dict[str, Any] | None:
         "last_error": connection.last_error,
         "last_sync_at": connection.last_sync_at,
         "sync_enabled": connection.sync_enabled,
+        "transport": connection.transport,
     }
 
 
@@ -145,6 +146,8 @@ async def connect_mailbox(
         "imap_host": (payload.imap_host or preset["imap_host"] or "").strip() or None,
         "imap_port": payload.imap_port or preset["imap_port"],
         "sync_enabled": payload.sync_enabled,
+        # An app password replaces a Gmail / Outlook Mail integration mailbox.
+        "transport": "smtp",
     }
     if not values["smtp_host"]:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "Enter your SMTP server.")

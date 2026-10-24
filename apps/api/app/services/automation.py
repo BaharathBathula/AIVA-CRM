@@ -198,6 +198,10 @@ async def load_automation_context(
                 )
             )
         ).scalars().all()
+        # Outgoing webhooks (Zapier, Make, n8n): which events have subscribers.
+        from app.integrations.providers.automation import context_entries as webhook_entries
+
+        webhooks = await webhook_entries(db, organization_id)
         context = {
             "stages": {str(stage.id): {"name": stage.name, "category": stage.category} for stage in stages},
             "stage_rules": {
@@ -225,6 +229,7 @@ async def load_automation_context(
                 for journey in journeys
             ],
             "chat": [{"channel": chat.kind, "events": list(chat.events or [])} for chat in chats],
+            "webhooks": webhooks,
             "workflow_rules": [
                 {
                     "id": rule.id,
@@ -847,6 +852,12 @@ def _before_flush(session: Session, flush_context: Any, instances: Any) -> None:
                     user_agent=session.info.get("user_agent"),
                 )
             )
+
+        if organization_id is not None and context.get("webhooks") and enabled("api_access"):
+            # Outbox for Zapier / Make / n8n: queued in this transaction, sent by the scheduler.
+            from app.integrations.providers.automation import queue_events
+
+            queue_events(session, kind, entity_type, obj, dict(changes), context)
 
         if kind == "deleted" or not workflow_rules or entity_type not in OBJECTS:
             continue

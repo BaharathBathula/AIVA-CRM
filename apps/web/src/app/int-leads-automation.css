@@ -1,1 +1,220 @@
-/* int-leads-automation styles */
+/* ==========================================================================
+   Integrations: lead capture (WordPress, Facebook) and automation webhooks
+   (Zapier, Make, n8n, /integrations/webhooks). Prefix: ila-
+   ========================================================================== */
+
+/* ---------- Webhooks page layout ---------- */
+
+.ila-page { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 18px; align-items: start; }
+
+.ila-tools { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.ila-tools a {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  border-radius: 12px;
+  color: var(--text);
+  font-weight: 650;
+  text-decoration: none;
+}
+.ila-tools a:hover { background: var(--surface-muted); }
+
+/* ---------- Tables ---------- */
+
+.ila-filters { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px 18px; border-bottom: 1px solid var(--border); }
+.ila-filters .ui-select { width: auto; min-width: 150px; }
+
+.ila-table td { vertical-align: top; }
+.ila-url { max-width: 340px; }
+.ila-provider-chip {
+  display: inline-block;
+  padding: 1px 8px;
+  margin-right: 4px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-sunken);
+  color: var(--text-2);
+  font-size: 11.5px;
+  font-weight: 700;
+  vertical-align: 1px;
+}
+.ila-row-actions { display: flex; align-items: center; justify-content: flex-end; gap: 4px; }
+.ila-click { cursor: pointer; }
+.ila-click:hover td { background: var(--surface-muted); }
+.ila-click:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+.ila-card-foot { padding: 12px 18px; border-top: 1px solid var(--border); font-size: 13px; }
+
+/* Small "More" menu without JavaScript state. */
+.ila-more { position: relative; }
+.ila-more > summary { list-style: none; }
+.ila-more > summary::-webkit-details-marker { display: none; }
+.ila-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 4px);
+  z-index: 20;
+  display: grid;
+  min-width: 200px;
+  padding: 6px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+  box-shadow: var(--shadow-pop);
+}
+.ila-menu button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+.ila-menu button:hover { background: var(--surface-muted); }
+.ila-menu button.danger { color: var(--danger); }
+
+/* ---------- Add webhook: events ---------- */
+
+.ila-events { margin: 0; padding: 0; border: 0; display: grid; gap: 12px; min-width: 0; }
+.ila-events legend { padding: 0; margin-bottom: 8px; font-size: 13px; font-weight: 700; color: var(--text); }
+.ila-every { padding: 10px 12px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface-muted); }
+.ila-event-groups { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 14px 18px; }
+.ila-event-group { display: grid; gap: 6px; align-content: start; }
+.ila-event-group-name { font-size: 11.5px; font-weight: 750; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); }
+
+/* ---------- Delivery detail ---------- */
+
+.ila-kv { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.ila-kv > div { display: grid; gap: 4px; padding: 10px 12px; border-radius: 14px; background: var(--surface-muted); font-size: 13.5px; font-weight: 650; }
+.ila-kv span:first-child { font-size: 11.5px; font-weight: 700; color: var(--muted); }
+.ila-payload { max-height: 360px; overflow: auto; white-space: pre; word-break: normal; }
+
+/* ---------- Segmented control ---------- */
+
+.ila-seg { display: inline-flex; gap: 2px; padding: 3px; border-radius: var(--radius-pill); background: var(--surface-sunken); width: fit-content; }
+.ila-seg button {
+  height: 30px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--text-2);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 650;
+  cursor: pointer;
+}
+.ila-seg button.on { background: var(--surface); color: var(--text); box-shadow: var(--shadow-float); }
+
+/* ---------- Panels ---------- */
+
+.ila-two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.ila-option { display: grid; gap: 12px; align-content: start; padding: 16px; border: 1px solid var(--border); border-radius: 18px; }
+.ila-option-head { display: grid; gap: 6px; justify-items: start; }
+.ila-option h3 { margin: 0; font-size: 15px; font-weight: 750; }
+.ila-option > .ui-btn { justify-self: start; }
+.ila-steps { margin: 0; padding-left: 20px; display: grid; gap: 6px; font-size: 13.5px; line-height: 1.5; color: var(--text-2); }
+.ila-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.ila-chip { padding: 3px 10px; border-radius: var(--radius-pill); background: var(--surface-sunken); color: var(--text-2); font-size: 12px; font-weight: 650; }
+.ila-secret { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+
+.ila-save-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; width: 100%; }
+
+.ila-stats { display: inline-flex; gap: 12px; font-size: 12.5px; color: var(--text-2); }
+.ila-stats strong { color: var(--text); }
+.ila-stats .bad strong { color: var(--danger); }
+
+.ila-recent { list-style: none; margin: 0; padding: 0; display: grid; }
+.ila-recent li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 13.5px;
+}
+.ila-recent li:last-child { border-bottom: 0; }
+.ila-recent-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Forms with field mapping */
+.ila-form { border: 1px solid var(--border); border-radius: 16px; background: var(--surface); }
+.ila-form[open] { box-shadow: var(--shadow-float); }
+.ila-form-head { display: flex; align-items: center; gap: 10px; padding: 12px 14px; cursor: pointer; list-style: none; }
+.ila-form-head::-webkit-details-marker { display: none; }
+.ila-form-head:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: 16px; }
+.ila-form-icon { display: grid; place-items: center; width: 32px; height: 32px; flex: none; border-radius: 10px; background: var(--surface-sunken); color: var(--text-2); }
+.ila-form-title { display: grid; gap: 2px; min-width: 0; flex: 1; }
+.ila-form-title strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ila-chevron { flex: none; color: var(--muted); transition: transform 0.15s ease; }
+.ila-form[open] .ila-chevron { transform: rotate(180deg); }
+.ila-form-body { display: grid; gap: 14px; padding: 4px 14px 14px; }
+
+.ila-map { display: grid; border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
+.ila-map-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 240px); align-items: center; gap: 12px; padding: 8px 12px; border-top: 1px solid var(--border); }
+.ila-map-row:first-child { border-top: 0; }
+.ila-map-row.head { background: var(--surface-muted); font-size: 11.5px; font-weight: 750; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); }
+.ila-map-field { display: grid; gap: 1px; min-width: 0; font-size: 13.5px; }
+.ila-map-field > * { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ila-map .ui-select { width: 100%; }
+
+/* Facebook pages */
+.ila-pages { list-style: none; margin: 0; padding: 0; }
+.ila-pages li { display: flex; align-items: center; gap: 12px; padding: 12px 18px; border-bottom: 1px solid var(--border); }
+.ila-pages li:last-child { border-bottom: 0; }
+.ila-page-main { display: grid; gap: 2px; min-width: 0; flex: 1; }
+.ila-page-error { color: var(--danger); }
+.ila-subhead { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+
+/* Automation */
+.ila-kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.ila-kpi { display: grid; gap: 4px; padding: 14px 16px; border: 1px solid var(--border); border-radius: 18px; background: var(--surface); }
+.ila-kpi span { font-size: 12px; font-weight: 700; color: var(--muted); }
+.ila-kpi strong { font-size: 22px; font-weight: 800; letter-spacing: -0.02em; color: var(--text); }
+.ila-kpi.bad strong { color: var(--danger); }
+
+.ila-endpoints { display: grid; gap: 12px; }
+.ila-endpoint { display: grid; gap: 6px; }
+.ila-endpoint-head { display: flex; align-items: center; gap: 8px; }
+.ila-method {
+  display: inline-grid;
+  place-items: center;
+  min-width: 58px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 8px;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 800;
+  background: var(--surface-sunken);
+  color: var(--text-2);
+}
+.ila-method.m-get { background: var(--info-soft); color: var(--info, var(--text)); }
+.ila-method.m-post { background: var(--success-soft); color: var(--success, var(--text)); }
+.ila-method.m-delete { background: var(--danger-soft); color: var(--danger, var(--text)); }
+
+/* ---------- Narrow screens ---------- */
+
+@media (max-width: 1100px) {
+  .ila-page { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (max-width: 760px) {
+  .ila-two { grid-template-columns: minmax(0, 1fr); }
+  .ila-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ila-kv { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ila-map-row { grid-template-columns: minmax(0, 1fr); gap: 6px; }
+  .ila-map-row.head span:last-child { display: none; }
+  .ila-recent li { grid-template-columns: auto minmax(0, 1fr); }
+  .ila-recent li > :nth-child(3) { grid-column: 2; }
+  .ila-recent li > a { grid-column: 2; }
+  .ila-recent-text { white-space: normal; }
+  .ila-filters .ui-select { flex: 1 1 140px; min-width: 0; }
+  .ila-url { max-width: 200px; }
+  .ila-pages li { padding: 12px 14px; }
+}

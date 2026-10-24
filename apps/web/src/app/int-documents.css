@@ -1,1 +1,287 @@
-/* int-documents styles */
+/* ==========================================================================
+   Documents, e-signature and scheduling integrations
+   (Google Drive, OneDrive, Dropbox, DocuSign, Calendly)
+   ========================================================================== */
+
+.idoc-mark { font-weight: 800; letter-spacing: 0; }
+
+/* ---------- Cloud file browser ---------- */
+
+.idoc-browser { display: grid; gap: 12px; min-width: 0; }
+
+.idoc-providers { display: flex; flex-wrap: wrap; gap: 6px; }
+.idoc-provider {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 12px 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-2);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 650;
+  cursor: pointer;
+}
+.idoc-provider:hover { border-color: var(--border-strong); color: var(--text); }
+.idoc-provider.on { border-color: var(--ink); color: var(--text); box-shadow: inset 0 0 0 1px var(--ink); }
+
+.idoc-toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.idoc-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1 1 240px;
+  min-width: 0;
+  height: 38px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--muted);
+}
+.idoc-search:focus-within { border-color: var(--focus); box-shadow: 0 0 0 3px var(--primary-soft); }
+.idoc-search input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; color: var(--text); font: inherit; font-size: 13.5px; }
+
+.idoc-views { display: inline-flex; padding: 3px; gap: 2px; border-radius: 12px; background: var(--surface-muted); }
+.idoc-view {
+  height: 32px;
+  padding: 0 11px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--text-2);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 650;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.idoc-view.on { background: var(--surface); color: var(--text); box-shadow: var(--shadow-float); }
+
+.idoc-crumbs { display: flex; align-items: center; flex-wrap: wrap; gap: 2px; font-size: 13px; color: var(--muted); }
+.idoc-crumb { display: inline-flex; align-items: center; gap: 2px; }
+.idoc-crumbs button {
+  max-width: 220px;
+  padding: 3px 6px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text-2);
+  font: inherit;
+  font-weight: 650;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.idoc-crumbs button:hover:not(:disabled) { background: var(--surface-muted); color: var(--text); }
+.idoc-crumbs button:disabled { color: var(--text); cursor: default; }
+
+.idoc-files {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: min(52vh, 460px);
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+}
+.idoc-files:empty { display: none; }
+.idoc-file { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-top: 1px solid var(--border); min-width: 0; }
+.idoc-file:first-child { border-top: 0; }
+.idoc-file:hover { background: var(--surface-muted); }
+.idoc-file-icon { flex: none; color: var(--muted); }
+.idoc-file-icon.folder { color: var(--warning); }
+.idoc-file-main { display: grid; gap: 2px; flex: 1; min-width: 0; }
+.idoc-file-name {
+  overflow: hidden;
+  color: var(--text);
+  font-size: 13.5px;
+  font-weight: 650;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.idoc-file-name.as-link { padding: 0; border: 0; background: none; font: inherit; font-size: 13.5px; font-weight: 650; cursor: pointer; }
+.idoc-file-name.as-link:hover { text-decoration: underline; text-underline-offset: 3px; }
+.idoc-file-meta { overflow: hidden; color: var(--muted); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.idoc-file-actions { display: flex; align-items: center; gap: 4px; flex: none; }
+.idoc-attached { padding: 0 8px; }
+.idoc-empty { margin: 0; padding: 18px 4px; text-align: center; }
+.idoc-loading { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 10px; color: var(--muted); font-size: 13px; }
+.idoc-more { justify-self: center; }
+
+.idoc-connect {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  border: 1px dashed var(--border-strong);
+  border-radius: 14px;
+  background: var(--surface-muted);
+}
+
+/* ---------- Links on a record ---------- */
+
+.idoc-links li { align-items: center; }
+.idoc-row-actions { display: flex; align-items: center; gap: 2px; flex: none; }
+.idoc-formats { display: grid; gap: 8px; margin: 0; padding: 0; border: 0; }
+.idoc-formats legend { margin-bottom: 6px; color: var(--muted); font-weight: 700; }
+
+.idoc-panel-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.idoc-panel-actions:empty { display: none; }
+
+/* ---------- Send for signature ---------- */
+
+.idoc-fieldset { display: grid; gap: 10px; margin: 0; padding: 0; border: 0; min-width: 0; }
+.idoc-fieldset > legend { margin-bottom: 8px; padding: 0; color: var(--text); font-size: 13.5px; font-weight: 750; }
+.idoc-fieldset code, .settings-row-hint code { padding: 1px 5px; border-radius: 6px; background: var(--surface-muted); font-family: var(--mono); font-size: 12px; }
+
+.idoc-sources { display: grid; gap: 8px; max-height: 240px; overflow-y: auto; }
+.idoc-source {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--text-2);
+  cursor: pointer;
+}
+.idoc-source:hover { border-color: var(--border-strong); }
+.idoc-source.on { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); color: var(--text); }
+.idoc-source.disabled { opacity: 0.55; cursor: not-allowed; }
+.idoc-source input { margin: 0; accent-color: var(--ink); }
+.idoc-source-text { display: grid; gap: 1px; min-width: 0; }
+.idoc-source-text strong { overflow: hidden; color: var(--text); font-size: 13.5px; text-overflow: ellipsis; white-space: nowrap; }
+
+.idoc-recipients { display: grid; gap: 8px; }
+.idoc-recipient { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr) 140px auto; gap: 8px; align-items: center; }
+.idoc-recipient:has(.idoc-order) { grid-template-columns: 64px minmax(0, 1fr) minmax(0, 1.3fr) 140px auto; }
+.idoc-order { text-align: center; }
+.idoc-recipient-tools { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.idoc-suggestions { display: flex; flex-wrap: wrap; gap: 6px; }
+.idoc-suggestion {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 10px;
+  border: 1px dashed var(--border-strong);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.idoc-suggestion:hover { background: var(--surface-muted); border-style: solid; }
+
+/* ---------- Signature requests ---------- */
+
+.idoc-requests { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.idoc-request { border: 1px solid var(--border); border-radius: 14px; background: var(--surface); overflow: hidden; }
+.idoc-request.status-completed { border-color: color-mix(in srgb, var(--success) 35%, var(--border)); }
+.idoc-request.status-declined, .idoc-request.status-error { border-color: color-mix(in srgb, var(--danger) 35%, var(--border)); }
+.idoc-request-head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 11px 12px;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.idoc-request-head:hover { background: var(--surface-muted); }
+.idoc-request-title { display: grid; gap: 2px; min-width: 0; }
+.idoc-request-title strong { overflow: hidden; color: var(--text); font-size: 13.5px; text-overflow: ellipsis; white-space: nowrap; }
+.idoc-request-title .ui-small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.idoc-progress { height: 3px; background: var(--surface-muted); }
+.idoc-progress span { display: block; height: 100%; background: var(--success); transition: width 0.3s ease; }
+.idoc-request-body { display: grid; gap: 12px; padding: 12px; border-top: 1px solid var(--border); }
+
+.idoc-recipient-list { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.idoc-recipient-list li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: center; gap: 10px; }
+.idoc-order-dot {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--surface-muted);
+  color: var(--text-2);
+  font-size: 11.5px;
+  font-weight: 750;
+}
+.idoc-recipient-text { display: grid; gap: 1px; min-width: 0; font-size: 13px; }
+.idoc-recipient-text .ui-muted { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.idoc-timeline { display: grid; gap: 0; margin: 0; padding: 0; list-style: none; }
+.idoc-timeline li {
+  position: relative;
+  display: grid;
+  grid-template-columns: 12px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: baseline;
+  padding: 5px 0;
+  font-size: 13px;
+  color: var(--text-2);
+}
+.idoc-timeline li:not(:last-child)::before {
+  content: "";
+  position: absolute;
+  left: 4px;
+  top: 17px;
+  bottom: -6px;
+  width: 2px;
+  background: var(--border);
+}
+.idoc-timeline-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--muted); transform: translateY(1px); }
+.idoc-timeline li.level-success .idoc-timeline-dot { background: var(--success); }
+.idoc-timeline li.level-warning .idoc-timeline-dot { background: var(--warning); }
+.idoc-timeline li.level-error .idoc-timeline-dot { background: var(--danger); }
+.idoc-timeline li.level-info .idoc-timeline-dot { background: var(--info); }
+.idoc-request-actions { flex-wrap: wrap; align-items: center; }
+
+/* ---------- Calendly ---------- */
+
+.idoc-event-types { display: grid; gap: 12px; margin: 0; padding: 0; list-style: none; }
+.idoc-event-types li { display: grid; gap: 6px; }
+.idoc-event-type-head { display: flex; align-items: center; gap: 8px; min-width: 0; font-size: 13.5px; }
+.idoc-event-type-head strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.idoc-event-type-head .ui-btn { margin-left: auto; }
+.idoc-event-dot { flex: none; width: 10px; height: 10px; border-radius: 50%; }
+
+.idoc-inline-form .settings-row { padding-top: 4px; border-top: 0; }
+
+/* ---------- Small screens ---------- */
+
+@media (max-width: 680px) {
+  .idoc-recipient,
+  .idoc-recipient:has(.idoc-order) { grid-template-columns: minmax(0, 1fr) auto; }
+  .idoc-recipient > .ui-input:not(.idoc-order) { grid-column: 1 / -1; }
+  .idoc-recipient > .idoc-order { grid-column: 1 / -1; width: 80px; }
+  .idoc-recipient-list li { grid-template-columns: auto minmax(0, 1fr) auto; }
+  .idoc-recipient-list li > .ui-nowrap { grid-column: 2 / -1; }
+  .idoc-connect { grid-template-columns: auto minmax(0, 1fr); }
+  .idoc-connect > .ui-btn { grid-column: 1 / -1; justify-self: start; }
+  .idoc-views { width: 100%; overflow-x: auto; }
+  .idoc-files { max-height: 60vh; }
+  .idoc-request-head { grid-template-columns: auto minmax(0, 1fr); }
+  .idoc-request-head > .ui-badge { grid-column: 2; justify-self: start; }
+  .idoc-timeline li { grid-template-columns: 12px minmax(0, 1fr); }
+  .idoc-timeline li > .ui-nowrap { grid-column: 2; }
+}

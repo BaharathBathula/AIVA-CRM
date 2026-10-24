@@ -292,7 +292,8 @@ async def _token_request(family: OAuthFamily, app: dict[str, Any], data: dict[st
         async with httpx.AsyncClient(timeout=20) as client:
             response = await client.post(url, data=data, headers=headers, auth=auth)
     except httpx.HTTPError as exc:
-        raise IntegrationError(f"Couldn't reach {family.label} ({exc.__class__.__name__}). Try again.", 502) from exc
+        logger.warning("Network error during %s sign-in: %r", family.label, exc)
+        raise IntegrationError(f"Couldn't reach {family.label}. Try again in a moment.", 502) from exc
     try:
         payload = response.json()
     except ValueError:
@@ -418,7 +419,8 @@ async def request(
         async with httpx.AsyncClient(timeout=timeout) as client:
             response = await client.request(method, url, headers=headers, **kwargs)
     except httpx.HTTPError as exc:
-        raise IntegrationError(f"Couldn't reach {definition(connection.provider).name} ({exc.__class__.__name__}).", 502) from exc
+        logger.warning("Network error calling %s for %s: %r", url.split("?")[0], connection.provider, exc)
+        raise IntegrationError(f"Couldn't reach {definition(connection.provider).vendor}. Try again in a moment.", 502) from exc
     if response.status_code == 401 and retry_auth and token is None and connection.refresh_token:
         await refresh_access_token(db, connection)
         return await request(db, connection, method, url, retry_auth=False, timeout=timeout, headers=headers | {"Authorization": f"Bearer {decrypt(connection.access_token)}"}, **kwargs)

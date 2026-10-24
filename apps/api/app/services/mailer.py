@@ -2,14 +2,19 @@
 
 Mail goes out through, in order of preference:
 
-1. the sender's connected mailbox (Gmail, Outlook or any SMTP server, using
-   an app password),
+1. the sender's connected mailbox: either the Gmail / Outlook Mail
+   integration (the provider's API, signed in with OAuth) or any SMTP server
+   with an app password,
 2. the server-wide SMTP settings (``SMTP_HOST`` …), or
 3. the outbox: nothing is delivered; the message is stored so it can be
    reviewed in AIVA. Every caller reports which one was used.
 
-Connected mailboxes can also pull recent inbox messages over IMAP and
-attach them to matching contacts and leads.
+An API mailbox is only used while its integration is switched on and signed
+in; otherwise mail falls back to the server settings, so nothing is ever sent
+through an integration an admin has turned off.
+
+Connected mailboxes can also pull recent inbox messages (IMAP, or the
+provider API) and attach them to matching contacts and leads.
 """
 
 from __future__ import annotations
@@ -21,6 +26,7 @@ import imaplib
 import logging
 import smtplib
 import ssl
+import uuid
 from dataclasses import dataclass
 from email.header import decode_header, make_header
 from email.message import EmailMessage
@@ -70,6 +76,10 @@ class MailError(Exception):
     pass
 
 
+# Mailbox transports that send through a provider API, and the integration each one belongs to.
+API_TRANSPORTS: dict[str, str] = {"gmail_api": "gmail", "graph": "outlook_mail"}
+
+
 @dataclass(frozen=True)
 class SmtpConfig:
     host: str
@@ -80,6 +90,8 @@ class SmtpConfig:
     from_email: str
     from_name: str | None
     source: str  # mailbox | server
+    transport: str = "smtp"  # smtp | gmail_api | graph
+    mailbox_id: uuid.UUID | None = None
 
 
 def server_config() -> SmtpConfig | None:
@@ -99,16 +111,33 @@ def server_config() -> SmtpConfig | None:
 
 
 def mailbox_config(connection: MailboxConnection) -> SmtpConfig:
+    transport = getattr(connection, "transport", None) or "smtp"
     return SmtpConfig(
         connection.smtp_host,
         connection.smtp_port,
         connection.smtp_security,
         connection.username,
-        decrypt(connection.secret) or "",
+        (decrypt(connection.secret) or "") if transport == "smtp" and connection.secret else "",
         connection.email_address,
         connection.display_name,
         "mailbox",
+        transport,
+        connection.id,
     )
+
+
+async def api_mailbox_usable(db: AsyncSession, connection: MailboxConnection) -> bool:
+    """An API mailbox sends only while its integration is on and its sign-in works."""
+
+    from app.integrations import core
+
+    key = API_TRANSPORTS.get(connection.transport)
+    if key is None:
+        return True
+    if not await core.is_enabled(db, connection.organization_id, key):
+        return False
+    link = await core.connection_for(db, connection.organization_id, key, connection.user_id)
+    return link is not None and link.status != "needs_reauth"
 
 
 async def sender_config(db: AsyncSession, organization_id, user_id) -> SmtpConfig | None:
@@ -122,7 +151,7 @@ async def sender_config(db: AsyncSession, organization_id, user_id) -> SmtpConfi
                 )
             )
         ).scalar_one_or_none()
-        if connection is not None:
+        if connection is not None and (connection.transport == "smtp" or await api_mailbox_usable(db, connection)):
             return mailbox_config(connection)
     return server_config()
 
@@ -199,7 +228,12 @@ async def send(
     headers: dict[str, str] | None = None,
     attachments: list[tuple[str, str, bytes]] | None = None,
 ) -> str:
-    """Send one message. Returns "smtp" when delivered, "outbox" when there's no mail server."""
+    """Send one message.
+
+    Returns "smtp" when the message was handed to a mail transport (an SMTP
+    server, or the Gmail / Microsoft Graph API for integration mailboxes) and
+    "outbox" when there's no mail server. Raises ``MailError`` when sending fails.
+    """
 
     if config is None:
         return "outbox"
@@ -207,11 +241,37 @@ async def send(
         config, to=to, to_name=to_name, subject=subject, text=text, html_body=html_body,
         reply_to=reply_to, from_name=from_name, headers=headers, attachments=attachments,
     )
+    if config.transport in API_TRANSPORTS:
+        await _api_send(config, message)
+        return "smtp"
     try:
         await asyncio.to_thread(_smtp_send, config, message)
     except (smtplib.SMTPException, OSError) as exc:
         raise MailError(str(exc) or exc.__class__.__name__) from exc
     return "smtp"
+
+
+async def _api_send(config: SmtpConfig, message: EmailMessage) -> None:
+    """Send through the Gmail / Graph API in a session of its own.
+
+    Callers hold their own transaction (often mid-flush), and sending may need to
+    refresh and store the access token, so the integration work runs separately.
+    """
+
+    from app.db.session import AsyncSessionLocal
+    from app.integrations.core import IntegrationError
+    from app.integrations.providers import mail as mail_api
+
+    async with AsyncSessionLocal() as session:
+        mailbox = await session.get(MailboxConnection, config.mailbox_id) if config.mailbox_id else None
+        if mailbox is None or mailbox.transport != config.transport:
+            raise MailError("The mailbox was disconnected. Connect it again in Integrations.")
+        try:
+            await mail_api.send_message(session, mailbox, message)
+        except IntegrationError as exc:
+            await session.commit()  # keep refreshed tokens / error state
+            raise MailError(str(exc)) from exc
+        await session.commit()
 
 
 def _smtp_check(config: SmtpConfig) -> None:
@@ -234,12 +294,32 @@ def _smtp_check(config: SmtpConfig) -> None:
 
 
 async def verify_smtp(config: SmtpConfig) -> None:
+    if config.transport in API_TRANSPORTS:
+        await _api_check(config)
+        return
     try:
         await asyncio.to_thread(_smtp_check, config)
     except smtplib.SMTPAuthenticationError as exc:
         raise MailError("The mail server rejected the username or app password.") from exc
     except (smtplib.SMTPException, OSError) as exc:
         raise MailError(f"Couldn't reach {config.host}:{config.port} ({exc or exc.__class__.__name__}).") from exc
+
+
+async def _api_check(config: SmtpConfig) -> None:
+    from app.db.session import AsyncSessionLocal
+    from app.integrations.core import IntegrationError
+    from app.integrations.providers import mail as mail_api
+
+    async with AsyncSessionLocal() as session:
+        mailbox = await session.get(MailboxConnection, config.mailbox_id) if config.mailbox_id else None
+        if mailbox is None:
+            raise MailError("The mailbox was disconnected. Connect it again in Integrations.")
+        try:
+            await mail_api.check_mailbox(session, mailbox)
+        except IntegrationError as exc:
+            await session.commit()
+            raise MailError(str(exc)) from exc
+        await session.commit()
 
 
 # ---------------------------------------------------------------------------
@@ -278,6 +358,27 @@ def _plain_text(message: email.message.Message) -> str:
     return payload.decode(message.get_content_charset() or "utf-8", errors="replace")
 
 
+def parse_message(raw: bytes, fallback_id: str) -> InboundMessage:
+    """Turn a raw RFC 822 message (IMAP or the Gmail API's ``format=raw``) into an InboundMessage."""
+
+    parsed = email.message_from_bytes(raw)
+    name, address = email.utils.parseaddr(parsed.get("From", ""))
+    recipients = [addr.lower() for _, addr in email.utils.getaddresses(parsed.get_all("To", []) + parsed.get_all("Cc", [])) if addr]
+    try:
+        sent = email.utils.parsedate_to_datetime(parsed.get("Date"))
+    except (TypeError, ValueError):
+        sent = None
+    return InboundMessage(
+        message_id=(parsed.get("Message-ID") or "").strip() or fallback_id,
+        subject=_decode(parsed.get("Subject")) or "(no subject)",
+        from_address=address.lower(),
+        from_name=_decode(name) or None,
+        to_addresses=recipients,
+        date=sent,
+        text=_plain_text(parsed)[:20000],
+    )
+
+
 def _imap_fetch(connection_values: dict[str, Any], limit: int) -> list[InboundMessage]:
     client = imaplib.IMAP4_SSL(connection_values["host"], connection_values["port"], timeout=20)
     try:
@@ -292,24 +393,7 @@ def _imap_fetch(connection_values: dict[str, Any], limit: int) -> list[InboundMe
             status, parts = client.fetch(message_id, "(BODY.PEEK[])")
             if status != "OK" or not parts or not isinstance(parts[0], tuple):
                 continue
-            parsed = email.message_from_bytes(parts[0][1])
-            name, address = email.utils.parseaddr(parsed.get("From", ""))
-            recipients = [addr.lower() for _, addr in email.utils.getaddresses(parsed.get_all("To", []) + parsed.get_all("Cc", []))]
-            try:
-                sent = email.utils.parsedate_to_datetime(parsed.get("Date"))
-            except (TypeError, ValueError):
-                sent = None
-            messages.append(
-                InboundMessage(
-                    message_id=(parsed.get("Message-ID") or "").strip() or f"imap-{message_id.decode()}",
-                    subject=_decode(parsed.get("Subject")) or "(no subject)",
-                    from_address=address.lower(),
-                    from_name=_decode(name) or None,
-                    to_addresses=recipients,
-                    date=sent,
-                    text=_plain_text(parsed)[:20000],
-                )
-            )
+            messages.append(parse_message(parts[0][1], f"imap-{message_id.decode()}"))
         return messages
     finally:
         try:

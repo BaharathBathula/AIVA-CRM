@@ -27,6 +27,8 @@ interface Mailbox {
   last_error: string | null;
   last_sync_at: string | null;
   sync_enabled: boolean;
+  /** "smtp" (app password) or the Gmail / Outlook Mail integration's API ("gmail_api" | "graph"). */
+  transport?: "smtp" | "gmail_api" | "graph";
 }
 
 interface ChatState {
@@ -68,7 +70,7 @@ function Integrations() {
   const reload = () => void data.reload();
   return (
     <>
-      <PageHeader title="Integrations" description="Connect your mailbox, calendar, Zoom, Slack and Microsoft Teams. Each person connects their own mailbox, calendar and Zoom link." />
+      <PageHeader title="Other connections" description="App-password mailboxes, your calendar feed and personal Zoom link, plus connections that live elsewhere in AIVA. Gmail, Outlook, calendars, Slack, Teams and the rest are in Integrations." actions={<Link className="ui-btn" href="/integrations">All integrations</Link>} />
       {data.error ? <Alert>{data.error}</Alert> : null}
       {!d ? (
         <Card>
@@ -81,12 +83,10 @@ function Integrations() {
             <CalendarCard data={d} onChanged={reload} />
             <ZoomCard data={d} />
           </div>
-          <div className="ui-grid ui-grid-2">
-            <ChatCard kind="slack" data={d} onChanged={reload} />
-            <ChatCard kind="teams" data={d} onChanged={reload} />
-          </div>
           <Card title="More connections">
             <div className="integration-list">
+              <IntegrationRow icon={<MessageSquare size={16} />} name="Slack" status={d.slack.connected ? "Alerts on · manage in Integrations" : "Set up in Integrations"} href="/integrations/slack" feature="chat_integrations" />
+              <IntegrationRow icon={<MessageSquare size={16} />} name="Microsoft Teams" status={d.teams.connected ? "Alerts on · manage in Integrations" : "Set up in Integrations"} href="/integrations/microsoft_teams" feature="chat_integrations" />
               <IntegrationRow icon={<MessageSquare size={16} />} name="Google Ads" status={d.google_ads.connected ? "Connected" : "Not connected"} href="/marketing/google-ads" feature="google_ads" />
               <IntegrationRow icon={<CreditCard size={16} />} name="QuickBooks Online" status={d.quickbooks.available ? "CSV export ready" : "Enterprise"} href="/invoices" feature="quickbooks" />
               <IntegrationRow icon={<CreditCard size={16} />} name="Stripe billing" status={d.stripe.configured ? "Card payments on" : "Demo billing (no card needed)"} href="/settings/billing" />
@@ -180,12 +180,19 @@ function MailboxCard({ data, onChanged }: { data: Overview; onChanged: () => voi
             {mailbox.last_error ? <Alert>{mailbox.last_error}</Alert> : null}
             <p className="ui-muted ui-small" style={{ margin: 0 }}>
               Emails you send from AIVA go out from this address. Replies from your leads and contacts are logged on their timeline every few minutes.
+              {mailbox.transport && mailbox.transport !== "smtp" ? (
+                <>
+                  {" "}
+                  Connected with {mailbox.transport === "gmail_api" ? "Google" : "Microsoft"} sign-in; manage it in{" "}
+                  <a href={mailbox.transport === "gmail_api" ? "/integrations/gmail" : "/integrations/outlook_mail"}>Integrations</a>.
+                </>
+              ) : null}
             </p>
             <div className="ui-row" style={{ gap: 8, flexWrap: "wrap" }}>
               <button type="button" className="ui-btn ui-btn-sm" disabled={busy} onClick={() => void test()}>
                 Send a test email
               </button>
-              {mailbox.sync_enabled && mailbox.imap_host ? (
+              {mailbox.sync_enabled && (mailbox.imap_host || (mailbox.transport && mailbox.transport !== "smtp")) ? (
                 <button type="button" className="ui-btn ui-btn-sm" disabled={busy} onClick={() => void sync()}>
                   Sync now
                 </button>
@@ -471,115 +478,6 @@ function ZoomCard({ data }: { data: Overview }) {
           <button type="button" className="ui-btn" style={{ width: "fit-content" }} disabled={link === (data.zoom.personal_link ?? "")} onClick={() => void save()}>
             Save
           </button>
-        </div>
-      </UpgradeGate>
-    </Card>
-  );
-}
-
-function ChatCard({ kind, data, onChanged }: { kind: "slack" | "teams"; data: Overview; onChanged: () => void }) {
-  const toast = useToast();
-  const state = data[kind];
-  const [url, setUrl] = useState("");
-  const [events, setEvents] = useState<string[]>(state.events);
-  const [busy, setBusy] = useState(false);
-  const name = kind === "slack" ? "Slack" : "Microsoft Teams";
-
-  useEffect(() => setEvents(state.events), [state.events]);
-
-  async function save() {
-    setBusy(true);
-    try {
-      await api.put(`/integrations/chat/${kind}`, { webhook_url: url || null, events, is_active: true });
-      toast(`${name} saved.`);
-      setUrl("");
-      onChanged();
-    } catch (caught) {
-      toast(errorMessage(caught), "danger");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function test() {
-    setBusy(true);
-    try {
-      toast((await api.post<{ message: string }>(`/integrations/chat/${kind}/test`)).message);
-    } catch (caught) {
-      toast(errorMessage(caught), "danger");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function disconnect() {
-    setBusy(true);
-    try {
-      await api.del(`/integrations/chat/${kind}`);
-      toast(`${name} disconnected.`);
-      onChanged();
-    } catch (caught) {
-      toast(errorMessage(caught), "danger");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <Card
-      title={
-        <>
-          {name} <PlanChip feature="chat_integrations" />
-        </>
-      }
-      icon={<MessageSquare size={16} />}
-      actions={state.connected ? <Badge tone={state.last_error ? "danger" : "success"}>{state.last_error ? "Error" : "Connected"}</Badge> : null}
-    >
-      <UpgradeGate feature="chat_integrations" compact>
-        <div className="ui-stack">
-          <p className="ui-muted ui-small" style={{ margin: 0 }}>
-            {kind === "slack"
-              ? "Post alerts to a channel. In Slack, add the Incoming Webhooks app to the channel and paste its URL."
-              : "Post alerts to a channel. In Teams, open the channel → Workflows → “Post to a channel when a webhook request is received”, and paste the URL."}
-          </p>
-          {state.last_error ? <Alert>{state.last_error}</Alert> : null}
-          {data.can_manage ? (
-            <>
-              <Field label={state.connected ? "Replace webhook URL (optional)" : "Incoming webhook URL"}>
-                <input className="ui-input ui-mono" value={url} onChange={(e) => setUrl(e.target.value)} placeholder={kind === "slack" ? "https://hooks.slack.com/services/…" : "https://…"} />
-              </Field>
-              <Field label="Send an alert when">
-                <div className="chip-list">
-                  {data.chat_events.map((event) => {
-                    const on = events.includes(event.key);
-                    return (
-                      <button key={event.key} type="button" className={`chip${on ? " on" : ""}`} aria-pressed={on} onClick={() => setEvents(on ? events.filter((e) => e !== event.key) : [...events, event.key])}>
-                        {event.label}
-                      </button>
-                    );
-                  })}
-                </div>
-              </Field>
-              <div className="ui-row" style={{ gap: 8, flexWrap: "wrap" }}>
-                <button type="button" className="ui-btn ui-btn-primary ui-btn-sm" disabled={busy || (!state.connected && !url.trim())} onClick={() => void save()}>
-                  {state.connected ? "Save" : "Connect"}
-                </button>
-                {state.connected ? (
-                  <>
-                    <button type="button" className="ui-btn ui-btn-sm" disabled={busy} onClick={() => void test()}>
-                      Send a test
-                    </button>
-                    <button type="button" className="ui-btn ui-btn-sm ui-btn-ghost" disabled={busy} onClick={() => void disconnect()}>
-                      Disconnect
-                    </button>
-                  </>
-                ) : null}
-              </div>
-              {state.last_used_at ? <span className="ui-muted ui-small">Last message {relativeTime(state.last_used_at)}</span> : null}
-            </>
-          ) : (
-            <span className="ui-muted ui-small">{state.connected ? "Connected by an admin." : "Ask an admin to connect it."}</span>
-          )}
         </div>
       </UpgradeGate>
     </Card>

@@ -28,6 +28,9 @@ import {
 } from "@/components/activities/activity-timeline";
 import { RecordDocuments, RecordMeetings, DealProjectButton } from "@/components/record-panels";
 import { PinButton } from "@/components/pins";
+import { RecordCloudFiles } from "@/components/integrations/record/RecordCloudFiles";
+import { RecordSignatures } from "@/components/integrations/record/RecordSignatures";
+import { ShareToSlackButton } from "@/components/integrations/record/ShareToSlackButton";
 import { ApprovalModal, RecordActions, RecordInsights, approvalFromError, type ApprovalNeeded } from "@/components/record-extras";
 
 import {
@@ -568,6 +571,7 @@ export default function OpportunityDetailPage() {
             <div className="detailActions">
               <RecordActions objectType="opportunity" recordId={opportunity.id} call={{ name: opportunity.name, phone: null, opportunity_id: opportunity.id, account_id: opportunity.account_id }} onChanged={() => setExtrasVersion((v) => v + 1)} />
               <PinButton type="opportunity" id={opportunity.id} />
+              <ShareToSlackButton recordType="opportunity" recordId={opportunity.id} className="secondaryButton" />
               <DealProjectButton opportunityId={opportunity.id} />
               <select
                 className="detailStageSelect"
@@ -1097,6 +1101,8 @@ export default function OpportunityDetailPage() {
               <RecordInsights objectType="opportunity" recordId={opportunity.id} version={extrasVersion} onChanged={() => setExtrasVersion((v) => v + 1)} />
               <RecordMeetings recordType="opportunity" recordId={opportunity.id} defaults={{ opportunity_id: opportunity.id, account_id: opportunity.account_id, contact_id: opportunity.primary_contact_id ?? null, title: opportunity.name }} />
               <RecordDocuments recordType="opportunity" recordId={opportunity.id} />
+              <RecordCloudFiles recordType="opportunity" recordId={opportunity.id} />
+              <RecordSignatures recordType="opportunity" recordId={opportunity.id} />
             </aside>
           </div>
         </div>

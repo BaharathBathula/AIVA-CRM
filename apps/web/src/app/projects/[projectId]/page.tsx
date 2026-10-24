@@ -10,6 +10,7 @@ import { PinButton } from "@/components/pins";
 import { ProjectModal } from "@/components/project-modal";
 import { useSession, useToast } from "@/components/providers";
 import { RecordDocuments } from "@/components/record-panels";
+import { RecordCloudFiles } from "@/components/integrations/record/RecordCloudFiles";
 import { Alert, Avatar, Badge, Card, ConfirmDialog, Field, Kpi, LoadingRows, Modal, PageHeader, Progress, Tabs } from "@/components/ui";
 import { compactMoney, date, shortDate } from "@/lib/format";
 import { api, errorMessage, useApi } from "@/lib/use-api";
@@ -268,6 +269,7 @@ function ProjectView() {
             {p.description ? <p style={{ margin: "12px 0 0", whiteSpace: "pre-wrap", fontSize: 13.5 }}>{p.description}</p> : null}
           </Card>
           <RecordDocuments recordType="project" recordId={p.id} />
+          <RecordCloudFiles recordType="project" recordId={p.id} />
           {p.can_manage ? (
             <button type="button" className="ui-btn ui-btn-danger" onClick={() => setDeleting(true)}>
               <Trash2 size={15} /> Delete project

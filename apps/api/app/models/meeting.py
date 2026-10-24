@@ -11,6 +11,7 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    text,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import (
@@ -45,6 +46,19 @@ class Meeting(
             "ix_meetings_org_start_at",
             "organization_id",
             "start_at",
+        ),
+        # Calendar sync (Google / Outlook Calendar integrations) finds meetings by
+        # their calendar event and retries pushes that are pending.
+        Index(
+            "ix_meetings_calendar_event",
+            "organization_id",
+            text("((metadata -> 'calendar'::text) ->> 'event_id'::text)"),
+            postgresql_where=text("(metadata ? 'calendar'::text)"),
+        ),
+        Index(
+            "ix_meetings_calendar_pending",
+            text("((metadata -> 'calendar'::text) ->> 'state'::text)"),
+            postgresql_where=text("(((metadata -> 'calendar'::text) ->> 'state'::text) = 'pending'::text)"),
         ),
     )
 

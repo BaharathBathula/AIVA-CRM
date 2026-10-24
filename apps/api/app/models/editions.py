@@ -192,6 +192,10 @@ class MailboxConnection(UUIDPrimaryKeyMixin, OrganizationOwnedMixin, TimestampMi
     last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
     last_sync_at: Mapped[datetime | None] = _when()
     sync_enabled: Mapped[bool] = _bool(True)
+    # How mail goes out: "smtp" (app password above) or a provider API through the
+    # person's Gmail / Outlook Mail integration ("gmail_api" | "graph"), in which case
+    # the SMTP/IMAP fields are unused and the OAuth tokens live on the integration.
+    transport: Mapped[str] = mapped_column(String(20), nullable=False, default="smtp", server_default="smtp")
 
 
 # ---------------------------------------------------------------------------

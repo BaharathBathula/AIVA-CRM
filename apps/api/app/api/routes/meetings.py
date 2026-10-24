@@ -4,6 +4,12 @@ Meetings live in the existing ``meetings`` table (provider "aiva"). Invites go
 out by email with a calendar (.ics) attachment when mail is set up; teammates
 also get an in-app notification. Completing a meeting logs it on the related
 records' timelines and can turn action items into follow-up tasks.
+
+With the calendar and meeting integrations on, a meeting can also get a Google
+Meet, Zoom or Teams link (``conference``) and is added to the organizer's
+Google or Outlook calendar, which then sends the invitations instead of AIVA
+(see ``app.integrations.providers.meetings``). Meetings read from a connected
+calendar have provider ``google_calendar`` / ``outlook_calendar``.
 """
 
 from __future__ import annotations
@@ -30,6 +36,7 @@ from app.models.opportunity import Opportunity
 from app.models.platform import Notification
 from app.models.task import Task
 from app.models.user import User
+from app.integrations.providers import meetings as meeting_links
 from app.services import mailer
 from app.services.automation import record_audit
 from app.services.lookups import names_for
@@ -143,6 +150,8 @@ class MeetingPayload(BaseModel):
     attendees: list[AttendeePayload] = Field(default_factory=list, max_length=100)
     reminder_minutes: int | None = Field(default=15, ge=0, le=10080)
     send_invites: bool = True
+    # Create an online-meeting link through an integration: google_meet | zoom | microsoft_teams.
+    conference: str | None = Field(default=None, pattern="^(none|google_meet|zoom|microsoft_teams)$")
 
     @field_validator("meeting_url")
     @classmethod
@@ -169,6 +178,7 @@ class MeetingUpdate(BaseModel):
     reminder_minutes: int | None = Field(default=None, ge=0, le=10080)
     notes: str | None = Field(default=None, max_length=20000)
     send_updates: bool = True
+    conference: str | None = Field(default=None, pattern="^(none|google_meet|zoom|microsoft_teams)$")
 
     @field_validator("meeting_url")
     @classmethod
@@ -337,6 +347,8 @@ async def meeting_out(db: AsyncSession, meeting: Meeting, principal: Principal |
         "cancel_reason": metadata.get("cancel_reason"),
         "completed_at": metadata.get("completed_at"),
         "invites_sent": metadata.get("invites_sent", 0),
+        "conference": meeting_links.conference_out(meeting),
+        "calendar_sync": meeting_links.calendar_out(meeting),
         "my_response": my_response,
         "can_edit": principal is not None and principal.can("records.write") and (_manages_others(principal) or str(meeting.organizer_user_id) == me),
         "created_at": meeting.created_at,
@@ -349,8 +361,19 @@ async def _organizer(db: AsyncSession, meeting: Meeting) -> tuple[str, str]:
     return (user.full_name, user.email) if user else ("AIVA", "noreply@aiva.local")
 
 
-async def _notify(db: AsyncSession, meeting: Meeting, actor: uuid.UUID, kind: str, method: str = "REQUEST", only_new: set[str] | None = None) -> int:
-    """In-app notice to teammates and email (with .ics) to everyone with an address. Returns emails sent."""
+async def _notify(
+    db: AsyncSession,
+    meeting: Meeting,
+    actor: uuid.UUID,
+    kind: str,
+    method: str = "REQUEST",
+    only_new: set[str] | None = None,
+    email: bool = True,
+) -> int:
+    """In-app notice to teammates and email (with .ics) to everyone with an address. Returns emails sent.
+
+    ``email`` is off when the organizer's calendar already sent the invitation.
+    """
 
     organizer_name, organizer_email = await _organizer(db, meeting)
     when = meeting.start_at.astimezone(timezone.utc).strftime("%a %b %d, %H:%M UTC")
@@ -376,6 +399,8 @@ async def _notify(db: AsyncSession, meeting: Meeting, actor: uuid.UUID, kind: st
                     is_read=False,
                 )
             )
+    if not email:
+        return 0
     config = await mailer.sender_config(db, meeting.organization_id, meeting.organizer_user_id)
     if config is None:
         return 0
@@ -463,7 +488,7 @@ async def create_meeting(
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "The meeting must end after it starts.")
     if payload.end_at - payload.start_at > timedelta(days=14):
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "A meeting can't be longer than 14 days.")
-    data = payload.model_dump(exclude={"attendees", "reminder_minutes", "send_invites"})
+    data = payload.model_dump(exclude={"attendees", "reminder_minutes", "send_invites", "conference"})
     await _check_links(db, org, data)
     organizer = data.get("organizer_user_id") or principal.user_id
     meeting = Meeting(
@@ -494,12 +519,14 @@ async def create_meeting(
     await db.flush()
     conflicts = await _conflicts(db, meeting)
     await outbound.meeting_booked(db, org, {a.get("email") for a in external if a.get("email")})
-    sent = await _notify(db, meeting, principal.user_id, "invite") if payload.send_invites else 0
+    links = await meeting_links.after_create(db, meeting, conference=payload.conference, send_invites=payload.send_invites)
+    sent = await _notify(db, meeting, principal.user_id, "invite", email=not links["calendar_invites"]) if payload.send_invites else 0
     meeting.meeting_metadata = {**meeting.meeting_metadata, "invites_sent": sent}
     record_audit(db, organization_id=org, action="create", entity_type="meeting", entity_id=meeting.id, entity_label=meeting.title)
     await db.commit()
     data = await meeting_out(db, meeting, principal)
     data["conflicts"] = conflicts
+    data["integration_warnings"] = links["warnings"]
     return data
 
 
@@ -536,16 +563,21 @@ async def update_meeting(
     org = principal.organization_id
     meeting = await _meeting(db, principal, meeting_id)
     _ensure_editor(principal, meeting)
-    changes = payload.model_dump(exclude_unset=True, exclude={"send_updates", "attendees", "reminder_minutes"})
+    changes = payload.model_dump(exclude_unset=True, exclude={"send_updates", "attendees", "reminder_minutes", "conference"})
     if meeting.status == "cancelled" and set(changes) - {"notes"}:
         raise HTTPException(status.HTTP_409_CONFLICT, "This meeting was cancelled. Schedule a new one instead.")
     await _check_links(db, org, changes)
+    if "conference" in payload.model_fields_set and meeting.status == "cancelled":
+        raise HTTPException(status.HTTP_409_CONFLICT, "This meeting was cancelled. Schedule a new one instead.")
     timing_changed = False
+    content_changed = False
     for key, value in changes.items():
         if key in {"title", "is_online", "is_all_day", "start_at", "organizer_user_id"} and value is None:
             continue
         if key in {"start_at", "end_at", "location", "meeting_url"} and getattr(meeting, key) != value:
             timing_changed = True
+        if key in {"title", "description", "start_at", "end_at", "location", "meeting_url", "is_all_day", "timezone"} and getattr(meeting, key) != value:
+            content_changed = True
         setattr(meeting, key, value.strip() if key == "title" else value)
     if meeting.end_at is None or meeting.end_at <= meeting.start_at:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "The meeting must end after it starts.")
@@ -560,20 +592,36 @@ async def update_meeting(
         before = {a.get("id") or a.get("email") for a in meeting.attendees or []}
         meeting.attendees = await _resolve_attendees(db, org, payload.attendees, meeting.attendees or [])
         new_people = {a.get("id") or a.get("email") for a in meeting.attendees} - before
+        if new_people or before != {a.get("id") or a.get("email") for a in meeting.attendees}:
+            content_changed = True
+    if "reminder_minutes" in payload.model_fields_set:
+        content_changed = True
+    meeting.meeting_metadata = metadata
+    links = {"warnings": [], "calendar_invites": False, "link_changed": False}
+    if meeting.status == "scheduled":
+        links = await meeting_links.after_update(
+            db, meeting,
+            conference=payload.conference if "conference" in payload.model_fields_set else meeting_links.UNSET,
+            content_changed=content_changed, send_updates=payload.send_updates,
+        )
+        metadata = dict(meeting.meeting_metadata or {})
+        if links["link_changed"]:
+            timing_changed = True
     sent = 0
     if meeting.status == "scheduled" and payload.send_updates:
         if timing_changed:
             metadata["sequence"] = int(metadata.get("sequence", 0)) + 1
             meeting.meeting_metadata = metadata
-            sent = await _notify(db, meeting, principal.user_id, "update")
+            sent = await _notify(db, meeting, principal.user_id, "update", email=not links["calendar_invites"])
         elif new_people:
             meeting.meeting_metadata = metadata
-            sent = await _notify(db, meeting, principal.user_id, "invite", only_new=new_people)
+            sent = await _notify(db, meeting, principal.user_id, "invite", only_new=new_people, email=not links["calendar_invites"])
     metadata["invites_sent"] = int(metadata.get("invites_sent", 0)) + sent
     meeting.meeting_metadata = metadata
     await db.commit()
     data = await meeting_out(db, meeting, principal)
     data["conflicts"] = await _conflicts(db, meeting) if meeting.status == "scheduled" else []
+    data["integration_warnings"] = links["warnings"]
     return data
 
 
@@ -664,11 +712,14 @@ async def cancel_meeting(
     metadata["cancel_reason"] = payload.reason
     metadata["sequence"] = int(metadata.get("sequence", 0)) + 1
     meeting.meeting_metadata = metadata
+    links = await meeting_links.after_cancel(db, meeting, reason=payload.reason, notify=payload.notify)
     if payload.notify:
-        await _notify(db, meeting, principal.user_id, "cancel", method="CANCEL")
+        await _notify(db, meeting, principal.user_id, "cancel", method="CANCEL", email=not links["calendar_invites"])
     record_audit(db, organization_id=meeting.organization_id, action="cancel", entity_type="meeting", entity_id=meeting.id, entity_label=meeting.title, changes={"reason": payload.reason})
     await db.commit()
-    return await meeting_out(db, meeting, principal)
+    data = await meeting_out(db, meeting, principal)
+    data["integration_warnings"] = links["warnings"]
+    return data
 
 
 @router.post("/meetings/{meeting_id}/respond")
@@ -727,6 +778,7 @@ async def delete_meeting(
 ):
     meeting = await _meeting(db, principal, meeting_id)
     _ensure_editor(principal, meeting)
+    await meeting_links.before_delete(db, meeting)
     record_audit(db, organization_id=meeting.organization_id, action="delete", entity_type="meeting", entity_id=meeting.id, entity_label=meeting.title)
     await db.delete(meeting)
     await db.commit()

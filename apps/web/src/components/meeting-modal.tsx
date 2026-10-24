@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+import { CalendarCheck, Link2, Video } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { useToast } from "@/components/providers";
@@ -31,6 +33,30 @@ function nextHalfHour() {
 }
 
 const DURATIONS = [15, 30, 45, 60, 90, 120, 180];
+
+/** Video-call types an integration can create a link for (GET /integration-hub/mail-calendar/meeting-options). */
+type ConferenceKey = "google_meet" | "zoom" | "microsoft_teams";
+type MeetingOptions = {
+  options: { key: ConferenceKey; label: string; available: boolean; reason: string | null; account: string | null; setup_url: string }[];
+  calendar: { key: string; label: string; account: string | null; invites_from_calendar: boolean } | null;
+};
+const LAST_CONFERENCE = "aiva.meeting.conference";
+
+function rememberedConference(): string {
+  try {
+    return window.localStorage.getItem(LAST_CONFERENCE) ?? "link";
+  } catch {
+    return "link";
+  }
+}
+
+function rememberConference(value: string) {
+  try {
+    window.localStorage.setItem(LAST_CONFERENCE, value);
+  } catch {
+    // Storage can be unavailable (private windows); the choice just isn't remembered.
+  }
+}
 const REMINDERS: { value: string; label: string }[] = [
   { value: "", label: "No reminder" },
   { value: "5", label: "5 minutes before" },
@@ -76,9 +102,15 @@ export function MeetingModal({
   const [reminder, setReminder] = useState("15");
   const [description, setDescription] = useState("");
   const [sendInvites, setSendInvites] = useState(true);
+  // "link" = paste a link yourself; otherwise an integration creates it when you save.
+  const [conference, setConference] = useState<string>("link");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const contacts = useApi<Contact[]>(open && accountId ? `/contacts?account_id=${accountId}&limit=100` : null);
+  const meetingOptions = useApi<MeetingOptions>(open ? "/integration-hub/mail-calendar/meeting-options" : null);
+  const conferenceChoices = (meetingOptions.data?.options ?? []).filter((o) => o.available);
+  const currentConference = meeting?.conference?.type ?? "link";
+  const pulled = Boolean(meeting?.provider && meeting.provider !== "aiva");
   // Default length for new meetings comes from Settings → Team sharing & defaults.
   const sharing = useApi<{ data: { meeting_minutes: number } }>(open && !meeting ? "/workspace-settings/sharing" : null);
   const defaultMinutes = sharing.data?.data.meeting_minutes ?? 30;
@@ -108,6 +140,7 @@ export function MeetingModal({
       setReminder(meeting.reminder_minutes === null ? "" : String(meeting.reminder_minutes));
       setDescription(meeting.description ?? "");
       setSendInvites(true);
+      setConference(meeting.conference?.type ?? "link");
     } else {
       setTitle(defaults?.title ?? "");
       setStart(localInput(defaults?.start ?? nextHalfHour()));
@@ -126,8 +159,16 @@ export function MeetingModal({
       setReminder("15");
       setDescription("");
       setSendInvites(true);
+      setConference(rememberedConference());
     }
   }, [open, meeting, defaults]);
+
+  // A remembered choice that isn't available any more (switched off, disconnected) falls back to a pasted link.
+  useEffect(() => {
+    if (!open || meeting || !meetingOptions.data) return;
+    if (conference !== "link" && !conferenceChoices.some((o) => o.key === conference)) setConference("link");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, meeting, meetingOptions.data]);
 
   // Picking a deal fills in its account and main contact.
   const opportunity = useMemo(() => opportunities.data?.find((o) => o.id === opportunityId) ?? null, [opportunities.data, opportunityId]);
@@ -158,6 +199,8 @@ export function MeetingModal({
       .filter(Boolean);
     const bad = guestEmails.find((e) => !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e));
     if (bad) return setError(`“${bad}” isn't a valid email address.`);
+    const usesIntegration = online && conference !== "link";
+    const conferenceChanged = (online ? conference : "link") !== currentConference;
     const payload = {
       title: title.trim(),
       description: description.trim() || null,
@@ -165,7 +208,8 @@ export function MeetingModal({
       end_at: end.toISOString(),
       is_all_day: allDay,
       is_online: online,
-      meeting_url: online ? url.trim() || null : null,
+      meeting_url: usesIntegration ? (conference === currentConference ? meeting?.meeting_url ?? null : null) : online ? url.trim() || null : null,
+      ...(meeting ? (conferenceChanged ? { conference: usesIntegration ? conference : "none" } : {}) : usesIntegration ? { conference } : {}),
       location: online ? null : location.trim() || null,
       account_id: accountId || null,
       contact_id: contactId || null,
@@ -186,7 +230,18 @@ export function MeetingModal({
         ? await api.patch<Meeting>(`/meetings/${meeting.id}`, { ...payload, send_updates: sendInvites })
         : await api.post<Meeting>("/meetings", { ...payload, send_invites: sendInvites });
       if (saved.conflicts?.length) toast(`Heads up: this overlaps “${saved.conflicts[0].title}”.`, "danger");
-      toast(meeting ? "Meeting updated." : saved.invites_sent ? `Meeting scheduled. ${saved.invites_sent} invitation${saved.invites_sent === 1 ? "" : "s"} emailed.` : "Meeting scheduled.");
+      for (const warning of saved.integration_warnings ?? []) toast(warning, "danger");
+      if (!meeting) rememberConference(online ? conference : "link");
+      const fromCalendar = saved.calendar_sync?.invites && saved.calendar_sync.state === "synced" && sendInvites;
+      toast(
+        meeting
+          ? "Meeting updated."
+          : fromCalendar
+            ? `Meeting scheduled. ${saved.calendar_sync?.label} sent the invitations.`
+            : saved.invites_sent
+              ? `Meeting scheduled. ${saved.invites_sent} invitation${saved.invites_sent === 1 ? "" : "s"} emailed.`
+              : "Meeting scheduled.",
+      );
       onSaved(saved);
       onClose();
     } catch (caught) {
@@ -205,7 +260,8 @@ export function MeetingModal({
       footer={
         <>
           <label className="ui-check" style={{ marginRight: "auto" }}>
-            <input type="checkbox" checked={sendInvites} onChange={(e) => setSendInvites(e.target.checked)} /> {meeting ? "Email updates to guests" : "Email invitations to guests"}
+            <input type="checkbox" checked={sendInvites} onChange={(e) => setSendInvites(e.target.checked)} />{" "}
+            {meeting ? "Send updates to guests" : meetingOptions.data?.calendar?.invites_from_calendar ? `Send invitations from ${meetingOptions.data.calendar.label}` : "Email invitations to guests"}
           </label>
           <button type="button" className="ui-btn" onClick={onClose}>
             Cancel
@@ -245,8 +301,51 @@ export function MeetingModal({
             <option value="in_person">In person</option>
           </select>
         </Field>
-        {online ? (
-          <Field label="Meeting link" hint="Zoom, Teams, Google Meet or any https link.">
+        {online && (conferenceChoices.length || currentConference !== "link") && !pulled ? (
+          <div className="ui-field">
+            <span className="ui-label">Video call</span>
+            <div className="imc-conference" role="radiogroup" aria-label="Video call">
+              {conferenceChoices.map((option) => (
+                <button
+                  key={option.key}
+                  type="button"
+                  role="radio"
+                  aria-checked={conference === option.key}
+                  className={`imc-conference-option${conference === option.key ? " on" : ""}`}
+                  onClick={() => setConference(option.key)}
+                  title={option.account ? `Created in ${option.account}` : undefined}
+                >
+                  <Video size={14} /> {option.label}
+                </button>
+              ))}
+              {currentConference !== "link" && !conferenceChoices.some((o) => o.key === currentConference) ? (
+                <button type="button" role="radio" aria-checked={conference === currentConference} className={`imc-conference-option${conference === currentConference ? " on" : ""}`} onClick={() => setConference(currentConference)}>
+                  <Video size={14} /> {meeting?.conference?.label}
+                </button>
+              ) : null}
+              <button type="button" role="radio" aria-checked={conference === "link"} className={`imc-conference-option${conference === "link" ? " on" : ""}`} onClick={() => setConference("link")}>
+                <Link2 size={14} /> Paste a link
+              </button>
+            </div>
+            {conference === "link" ? (
+              <input className="ui-input" style={{ marginTop: 8 }} value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://" aria-label="Meeting link" />
+            ) : (
+              <div className="imc-conference-note">
+                {conference === currentConference && meeting?.meeting_url ? (
+                  <>
+                    Link:{" "}
+                    <a href={meeting.meeting_url} target="_blank" rel="noopener noreferrer">
+                      {meeting.meeting_url}
+                    </a>
+                  </>
+                ) : (
+                  `AIVA creates the ${conferenceChoices.find((o) => o.key === conference)?.label ?? "meeting"} link when you save and adds it to the invitation.`
+                )}
+              </div>
+            )}
+          </div>
+        ) : online ? (
+          <Field label="Meeting link" hint={<>Zoom, Teams, Google Meet or any https link. <Link href="/integrations">Connect one</Link> to create links automatically.</>}>
             <input className="ui-input" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://" />
           </Field>
         ) : (
@@ -322,6 +421,19 @@ export function MeetingModal({
         <Field label="Agenda" className="span-2">
           <textarea className="ui-textarea" rows={3} value={description} onChange={(e) => setDescription(e.target.value)} />
         </Field>
+        {meeting?.calendar_sync ? (
+          <div className="span-2 imc-calendar-badge">
+            <CalendarCheck size={14} />
+            {meeting.calendar_sync.origin === "pulled" ? `From ${meeting.calendar_sync.label}` : `In ${meeting.calendar_sync.label}`}
+            {meeting.calendar_sync.state === "pending" ? " · waiting to sync" : meeting.calendar_sync.state === "error" ? ` · not synced: ${meeting.calendar_sync.error ?? "error"}` : ""}
+            {pulled && !meeting.calendar_sync.organizer_self ? " · changes here stay in AIVA" : ""}
+          </div>
+        ) : !meeting && meetingOptions.data?.calendar ? (
+          <div className="span-2 imc-calendar-badge">
+            <CalendarCheck size={14} /> Also added to {meetingOptions.data.calendar.label}
+            {meetingOptions.data.calendar.account ? ` (${meetingOptions.data.calendar.account})` : ""}
+          </div>
+        ) : null}
       </div>
     </Modal>
   );

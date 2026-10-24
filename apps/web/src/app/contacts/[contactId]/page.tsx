@@ -33,6 +33,11 @@ import {
 } from "@/components/contacts/edit-contact-modal";
 import { RecordDocuments, RecordMeetings, RecordVisits } from "@/components/record-panels";
 import { PinButton } from "@/components/pins";
+import { RecordMessages } from "@/components/integrations/record/RecordMessages";
+import { RecordCloudFiles } from "@/components/integrations/record/RecordCloudFiles";
+import { RecordSignatures } from "@/components/integrations/record/RecordSignatures";
+import { ShareToSlackButton } from "@/components/integrations/record/ShareToSlackButton";
+import { CalendlyLinksButton } from "@/components/integrations/record/CalendlyLinks";
 import { RecordActions, RecordInsights } from "@/components/record-extras";
 import { RecordProfilePanel } from "@/components/record-profile";
 import { RecordSequences } from "@/components/sequence-enroll";
@@ -1151,6 +1156,8 @@ export default function ContactDetailPage() {
             <div className="detailActions">
               <RecordActions objectType="contact" recordId={contact.id} call={{ name: `${contact.first_name} ${contact.last_name}`.trim(), phone: contact.phone ?? contact.mobile ?? null, contact_id: contact.id, account_id: contact.account_id ?? undefined }} onChanged={() => setExtrasVersion((v) => v + 1)} />
               <PinButton type="contact" id={contact.id} />
+              <CalendlyLinksButton recordType="contact" recordId={contact.id} className="secondaryButton" />
+              <ShareToSlackButton recordType="contact" recordId={contact.id} className="secondaryButton" />
               <button
                 type="button"
                 className="secondaryButton"
@@ -2835,6 +2842,9 @@ export default function ContactDetailPage() {
               <RecordMeetings recordType="contact" recordId={contact.id} defaults={{ account_id: contact.account_id ?? null, contact_id: contact.id, title: `Meeting with ${contact.first_name} ${contact.last_name}`.trim() }} />
               <RecordVisits recordType="contact" recordId={contact.id} />
               <RecordDocuments recordType="contact" recordId={contact.id} />
+              <RecordMessages recordType="contact" recordId={contact.id} />
+              <RecordCloudFiles recordType="contact" recordId={contact.id} />
+              <RecordSignatures recordType="contact" recordId={contact.id} />
             </aside>
           </div>
         </div>

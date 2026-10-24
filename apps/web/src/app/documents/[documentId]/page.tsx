@@ -7,6 +7,7 @@ import { useRef, useState } from "react";
 
 import { FeaturePage } from "@/components/plan";
 import { PinButton } from "@/components/pins";
+import { RecordSignatures } from "@/components/integrations/record/RecordSignatures";
 import { useSession, useToast } from "@/components/providers";
 import { RecordSearch } from "@/components/record-search";
 import { Alert, Badge, Card, ConfirmDialog, Field, LoadingRows, Modal, PageHeader } from "@/components/ui";
@@ -225,6 +226,7 @@ function DocumentView() {
               </p>
             )}
           </Card>
+          <RecordSignatures recordType="document" recordId={d.id} documentId={d.id} />
           <Card title="Versions">
             <ul className="mini-list">
               {(d.versions ?? []).map((v) => (

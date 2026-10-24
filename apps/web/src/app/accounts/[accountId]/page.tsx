@@ -42,6 +42,10 @@ import {
 } from "@/components/accounts/create-contact-modal";
 import { RecordDocuments, RecordMeetings } from "@/components/record-panels";
 import { PinButton } from "@/components/pins";
+import { RecordMessages } from "@/components/integrations/record/RecordMessages";
+import { RecordCloudFiles } from "@/components/integrations/record/RecordCloudFiles";
+import { RecordSignatures } from "@/components/integrations/record/RecordSignatures";
+import { ShareToSlackButton } from "@/components/integrations/record/ShareToSlackButton";
 import { RecordActions, RecordInsights } from "@/components/record-extras";
 import { RecordProfilePanel } from "@/components/record-profile";
 
@@ -1511,6 +1515,7 @@ const accountHealth =
             <div className="detailActions">
               <RecordActions objectType="account" recordId={account.id} call={{ name: account.name, phone: account.phone ?? null, account_id: account.id }} onChanged={() => setExtrasVersion((v) => v + 1)} />
               <PinButton type="account" id={account.id} />
+              <ShareToSlackButton recordType="account" recordId={account.id} className="secondaryButton" />
               <button
                 type="button"
                 className="secondaryButton"
@@ -3103,6 +3108,9 @@ const accountHealth =
               <RecordInsights objectType="account" recordId={account.id} version={extrasVersion} onChanged={() => setExtrasVersion((v) => v + 1)} />
               <RecordMeetings recordType="account" recordId={account.id} defaults={{ account_id: account.id, title: `Meeting with ${account.name}` }} />
               <RecordDocuments recordType="account" recordId={account.id} />
+              <RecordMessages recordType="account" recordId={account.id} />
+              <RecordCloudFiles recordType="account" recordId={account.id} />
+              <RecordSignatures recordType="account" recordId={account.id} />
             </aside>
           </div>
         </div>

@@ -177,7 +177,7 @@ INTEGRATIONS: dict[str, IntegrationDef] = {
                 "Powers Google Meet links on AIVA meetings",
             ),
             "oauth", "calendar_sync", personal=True, family="google",
-            scopes=GOOGLE_ID + ("https://www.googleapis.com/auth/calendar.events",),
+            scopes=GOOGLE_ID + ("https://www.googleapis.com/auth/calendar.events", "https://www.googleapis.com/auth/calendar.calendarlist.readonly"),
             docs_url="https://developers.google.com/calendar/api", color="#1a73e8", monogram="31",
             setup=("Turn Google Calendar on here (admins).", "Each person clicks Connect and signs in with Google.", "Choose which events to bring into AIVA."),
         ),
@@ -226,7 +226,7 @@ INTEGRATIONS: dict[str, IntegrationDef] = {
             scopes=("chat:write", "chat:write.public", "channels:read", "groups:read", "team:read"),
             credential_fields=(
                 CredentialField("webhook_url", "Incoming webhook URL (instead of signing in)", secret=True, required=False,
-                                help="Only if you can't install the AIVA app: create an incoming webhook in Slack and paste it here.",
+                                help="Starts with https://hooks.slack.com/services/.",
                                 placeholder="https://hooks.slack.com/services/…"),
             ),
             docs_url="https://api.slack.com/messaging/sending", color="#4a154b", monogram="S",
@@ -278,7 +278,8 @@ INTEGRATIONS: dict[str, IntegrationDef] = {
                 "Each person connects their own Zoom account",
             ),
             "oauth", "chat_integrations", personal=True, family="zoom",
-            scopes=("meeting:write", "meeting:read", "user:read"),
+            # Zoom apps carry their own scopes (classic or granular), so none are requested here.
+            scopes=(),
             docs_url="https://developers.zoom.us/docs/api/", color="#0b5cff", monogram="Z",
             setup=("Turn Zoom on here (admins).", "Each person clicks Connect and signs in with Zoom.", "Choose Zoom as the meeting type when scheduling."),
         ),

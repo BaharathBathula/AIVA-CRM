@@ -27,6 +27,11 @@ import {
 } from "@/components/activities/activity-timeline";
 import { RecordDocuments, RecordMeetings, RecordVisits } from "@/components/record-panels";
 import { PinButton } from "@/components/pins";
+import { RecordMessages } from "@/components/integrations/record/RecordMessages";
+import { RecordCloudFiles } from "@/components/integrations/record/RecordCloudFiles";
+import { RecordSignatures } from "@/components/integrations/record/RecordSignatures";
+import { ShareToSlackButton } from "@/components/integrations/record/ShareToSlackButton";
+import { CalendlyLinksButton } from "@/components/integrations/record/CalendlyLinks";
 import { RecordActions, RecordInsights } from "@/components/record-extras";
 import { RecordProfilePanel } from "@/components/record-profile";
 import { RecordSequences } from "@/components/sequence-enroll";
@@ -380,6 +385,8 @@ export default function LeadDetailPage() {
             <div className="detailActions">
               <RecordActions objectType="lead" recordId={lead.id} call={{ name: `${lead.first_name} ${lead.last_name}`.trim(), phone: lead.phone ?? null, lead_id: lead.id }} onChanged={() => setExtrasVersion((v) => v + 1)} />
               <PinButton type="lead" id={lead.id} />
+              <CalendlyLinksButton recordType="lead" recordId={lead.id} className="secondaryButton" />
+              <ShareToSlackButton recordType="lead" recordId={lead.id} className="secondaryButton" />
               {lead.status !==
                 "converted" &&
                 lead.status !==
@@ -764,6 +771,9 @@ export default function LeadDetailPage() {
               <RecordMeetings recordType="lead" recordId={lead.id} defaults={{ lead_id: lead.id, title: `Call with ${lead.first_name} ${lead.last_name}`.trim() }} />
               <RecordVisits recordType="lead" recordId={lead.id} />
               <RecordDocuments recordType="lead" recordId={lead.id} />
+              <RecordMessages recordType="lead" recordId={lead.id} />
+              <RecordCloudFiles recordType="lead" recordId={lead.id} />
+              <RecordSignatures recordType="lead" recordId={lead.id} />
             </aside>
           </div>
         </div>

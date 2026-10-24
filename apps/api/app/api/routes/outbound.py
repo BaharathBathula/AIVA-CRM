@@ -287,9 +287,12 @@ async def list_mailboxes(principal: Principal = Depends(get_current_principal), 
         if stats["bounce_rate"] >= protection.bounce_pause_percent:
             health -= 25
             issues.append(f"Bounce rate is {stats['bounce_rate']}%.")
-        if not connection.imap_host:
+        if connection.transport == "smtp" and not connection.imap_host:
             health -= 10
             issues.append("Replies aren't synced (no IMAP server), so sequences can't stop when people reply.")
+        elif not connection.sync_enabled:
+            health -= 10
+            issues.append("Reading the inbox is off, so sequences can't stop when people reply.")
         items.append(
             {
                 "id": str(connection.id),
@@ -300,7 +303,8 @@ async def list_mailboxes(principal: Principal = Depends(get_current_principal), 
                 "status": connection.status,
                 "last_error": connection.last_error,
                 "last_sync_at": connection.last_sync_at,
-                "reply_sync": bool(connection.imap_host and connection.sync_enabled),
+                "reply_sync": bool((connection.imap_host or connection.transport != "smtp") and connection.sync_enabled),
+                "transport": connection.transport,
                 "domain": domain,
                 "domain_status": domains[domain].status if domain in domains else None,
                 **stats,
@@ -347,7 +351,10 @@ async def test_mailbox(connection_id: uuid.UUID, principal: Principal = Depends(
         await mailer.verify_smtp(mailer.mailbox_config(connection))
         connection.status = "connected"
         connection.last_error = None
-        ok, message = True, f"AIVA signed in to {connection.smtp_host} as {connection.username}."
+        if connection.transport == "smtp":
+            ok, message = True, f"AIVA signed in to {connection.smtp_host} as {connection.username}."
+        else:
+            ok, message = True, f"{connection.email_address} is connected through {'Gmail' if connection.transport == 'gmail_api' else 'Outlook'}."
     except mailer.MailError as exc:
         connection.status = "error"
         connection.last_error = str(exc)[:500]

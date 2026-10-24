@@ -172,6 +172,8 @@ class SignatureRequest(UUIDPrimaryKeyMixin, OrganizationOwnedMixin, TimestampMix
     record_id: Mapped[uuid.UUID | None] = mapped_column(nullable=True)
     document_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("documents.id", ondelete="SET NULL"), nullable=True)
     quote_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("quotes.id", ondelete="SET NULL"), nullable=True)
+    # The completed, signed copy saved to Documents.
+    signed_document_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("documents.id", ondelete="SET NULL"), nullable=True)
     document_name: Mapped[str | None] = mapped_column(String(300), nullable=True)
     recipients: Mapped[list[dict]] = _json_list()
     sent_by_user_id: Mapped[uuid.UUID | None] = _user_fk()

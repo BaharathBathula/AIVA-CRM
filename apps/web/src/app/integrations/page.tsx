@@ -97,7 +97,7 @@ function Integrations() {
         </div>
       ) : (
         <div className="ui-stack">
-          <div className="settings-kpis">
+          <div className="settings-kpis int-kpis">
             <Kpi label="Available" value={items.length} note={`${items.filter((i) => i.available).length} in your plan`} />
             <Kpi label="Turned on" value={onCount} />
             <Kpi label="Connected for you" value={connected} />

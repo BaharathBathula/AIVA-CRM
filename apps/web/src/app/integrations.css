@@ -99,3 +99,13 @@
   .int-hero h1 { font-size: 23px; }
   .int-grid { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* Optional integration panels placed inside a stack: hide the slot when the panel renders nothing. */
+.int-slot:empty {
+  display: none;
+}
+
+/* The catalog's four counts stay two across on phones, so the integrations start on the first screen. */
+@media (max-width: 680px) {
+  .settings-kpis.int-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+}

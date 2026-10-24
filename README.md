@@ -110,8 +110,8 @@ Features outside a workspace's plan show a lock in the navigation and an upgrade
 | Dashboards | Boards of saved reports with resizable, reorderable widgets | Available |
 | Workflows | "When a record is created/updated/field changes, and conditions match, then…" create a task, update a field, change owner or send a notification; run history | Available |
 | Global search & notifications | ⌘K search across records, cases, quotes, articles and products; in-app notification bell | Available |
-| Workspace shell | Floating top navigation with section tabs, an icon rail for Home, Sales, Service, Insights and Settings, and light and dark themes (follows your system until you pick one) | Available |
-| Engagement | Activities, tasks with reminders, email threads, mailbox sync, calendar feed (iCal), Slack/Teams alerts, Zoom links | Available |
+| Workspace shell | Floating top navigation with section tabs, an icon rail for Home, Sales, Service, Insights, Integrations and Settings, and light and dark themes (follows your system until you pick one) | Available |
+| Engagement | Activities, tasks with reminders, email threads, mailbox sync, calendar feed (iCal), and the integrations below | Available |
 | SalesInbox | Email sorted into Deals, Contacts, Leads and Others by who it's with, so customer conversations come first | Available |
 | Documents | Folders, uploads up to 25 MB, versions with notes, in-browser preview, private or shared, linked to any account, contact, deal, order or case | Starter |
 | Team chat & people | Channels and direct messages with @mentions and record links; a people directory with roles, teams and reporting lines | Starter |
@@ -130,7 +130,7 @@ Settings open with a collapsible menu on the left, grouped the way Apollo groups
 | Plan & billing | Plan overview, product add-ons (buy, change packs, cancel — runs to the end of the paid month), billing (invoices, payment method, billing email) |
 | Credits & activity | Credit usage by person and feature with a six-month trend and CSV export; data requests (ask for a missing email, phone or title; the data team fills it in or runs waterfall enrichment, and only found data is charged); AI word usage by day, feature and person |
 | Users & teams | Users, teams, permission profiles, **territories** (rules on country, state, city, industry, size, revenue or custom fields; round-robin routing of new accounts and leads; apply to existing records), **license settings** (seat rules, default role for invites, per-person credit and AI word limits), workspace details, **team sharing & defaults** (shared or private by default for templates, sequences, snippets, reports and documents; default meeting length and task due date; route imports by territory), system activity log, **workspace security** (require two-step verification, IP allowlist, allowed invite domains, minimum password length, turn API keys off), single sign-on, hierarchy, HIPAA, **support access** (time-limited read-only or full access for AIVA support, every page they open is logged) |
-| Integrations | All integrations, **MCP** (connect Claude and other MCP clients over Streamable HTTP with an API key; read tools always, write tools only when allowed and with a read & write key; per-tool switches and a call log), API keys, sandbox |
+| Integrations | All integrations (opens the Integrations section), other connections (app-password mailboxes, calendar feed, personal Zoom link), **MCP** (connect Claude and other MCP clients over Streamable HTTP with an API key; read tools always, write tools only when allowed and with a read & write key; per-tool switches and a call log), API keys, sandbox |
 | Outbound | Overview, sending **domains** (SPF, DKIM, DMARC, MX and tracking-domain checks with fixes), **mailboxes** (daily limits, health, bounce rate), **diagnose**, **sending protection** (sending days and hours, time zone, holidays, daily/hourly caps, spacing, bounce pause, skip shared inboxes), **sequence rules**, **tracking** (opens, clicks, unsubscribe link, tracking domain), **dialer** (your own call outcomes, required notes, automatic follow-ups, Twilio calling), **prospecting configuration** (duplicate rules, the contact stages people move through), **snippets** |
 | Data management | **Waterfall enrichment** (built-in, website, Hunter.io and People Data Labs in your order, paid with credits), contact, account and deal fields & stages (your own contact and account stages), fields & modules, **global picklists** shared by fields, **goals** with live progress and pace, imports & exports, **removal requests** (GDPR and CCPA erasure with the 30- or 45-day deadline, shows everything stored about the person, erases it and adds them to the do-not-contact list) |
 | Automation | Workflows, stage playbooks, approval rules, custom buttons, SLA policies |
@@ -144,6 +144,28 @@ Settings open with a collapsible menu on the left, grouped the way Apollo groups
 | Sequences | Multi-step outreach: automatic emails (sent inside the sending window with per-mailbox caps, threaded follow-ups, open/click tracking and one-click unsubscribe), plus call, LinkedIn and task steps that land on the rep's task list. People leave automatically when they reply, book a meeting, bounce or unsubscribe; per-step stats; add people from a record or many at once from the contact and lead lists | Starter |
 | Conversations | Paste or upload call transcripts (.vtt, .srt, text) or recordings; speaker talk time, tracker hits, a summary with next steps, suggested CRM updates you apply in one click, and scorecard reviews | Enterprise or add-on |
 | Signals | A feed of moments worth acting on, from the signal rules, with links to the record and done/dismiss | Pro |
+
+### Integrations
+
+**Integrations** has its own icon in the left rail. Each of the 20 integrations has an on/off switch for the whole workspace (owners and admins), a page with its connection, settings and activity log, and a plan badge when the plan doesn't include it. Personal integrations (mail, calendars, Zoom, cloud files) are connected by each person for their own account; admins see who has connected. Turning an integration off stops everything it does straight away: no sending, no syncing, and its inbound webhooks are ignored. The section also has a **Messages** inbox (SMS and WhatsApp), **Webhooks** (outgoing events for Zapier, Make and n8n) and **Activity** (every connection, sync, send and webhook, with filters).
+
+| Category | Integration | What it does | Plan |
+|---|---|---|---|
+| Email | Gmail, Microsoft Outlook Mail | Each person signs in with Google or Microsoft; one-off emails, campaigns, sequence steps and meeting invites go out through the Gmail API or Microsoft Graph, and the inbox is read every 10 minutes so customer replies land on the right timeline and stop sequences | Starter |
+| Calendar | Google Calendar, Microsoft Outlook Calendar | Two-way sync: meetings scheduled in AIVA are created, moved and cancelled in the person's calendar (which sends the invitations); customer meetings booked in the calendar come into AIVA linked to the contact, account or lead; choose which calendar and which events | Starter |
+| Communication | Microsoft Teams | Deal, lead and case alerts in a Teams channel (channel webhook); Teams meeting links on AIVA meetings through each person's Outlook Calendar connection | Starter |
+| Communication | Slack | Sign in once for the workspace; alerts for new leads, won deals, urgent cases and more, with a default channel and a channel per alert; **Share to Slack** on leads, contacts, accounts, deals and quotes; an incoming webhook works too | Starter |
+| Communication | WhatsApp Business Platform | Send messages and approved templates (24-hour window respected) from the record or the Messages inbox; replies and delivery status come back on a signed webhook | Starter |
+| Communication | Twilio SMS | Two-way SMS with delivery status; STOP, START and HELP handled, and opted-out numbers can't be texted (they join the do-not-contact list) | Starter |
+| Meetings | Zoom, Google Meet | Pick Zoom, Google Meet or Teams as the video call when scheduling; AIVA creates the meeting and the join link, and updates or deletes it with the AIVA meeting | Starter |
+| Scheduling | Calendly | Bookings become AIVA meetings linked to the contact or lead (a new lead when nobody matches); cancellations cancel the meeting; scheduling links with the person's name and email filled in, from lead and contact pages | Starter |
+| Documents | Google Drive, Microsoft OneDrive, Dropbox | Search your files and attach them to accounts, contacts, leads, deals, quotes, cases and projects; copy a file into AIVA Documents (Google Docs, Sheets and Slides as PDF or Office) | Starter |
+| E-signature | DocuSign | Send a quote or a document for signature with signers in order and copies; status on the record; the signed PDF is saved to Documents and the quote marked accepted; remind, resend and void | Pro |
+| Lead capture | WordPress Forms | A downloadable plugin (Contact Form 7, WPForms, Gravity Forms, Elementor, Ninja Forms, Fluent Forms, Formidable) or any form's webhook; field mapping per form, signed submissions, duplicate handling | Starter |
+| Lead capture | Facebook Lead Ads | Pick your Facebook pages; Facebook and Instagram lead-form leads arrive within seconds, mapped per form, with a catch-up every 15 minutes | Starter |
+| Automation | Zapier, Make, n8n | Signed outgoing webhooks for 25 events (new lead, deal won, task completed…), retried for a day, with a delivery log and resend; REST hooks for Zapier apps; actions through the REST API with an API key | Starter |
+
+Record pages show **Messages**, **Cloud files** and **Signatures** panels, a **Share to Slack** button and **Scheduling links**, each only when that integration is on and connected.
 
 ## Technology stack
 
@@ -250,15 +272,22 @@ The demo workspace is on the Enterprise plan with sample data for every feature:
 | Variable | Purpose |
 |---|---|
 | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` | Real card billing through Stripe Checkout (otherwise demo billing). Point the Stripe webhook at `/api/aiva/public/stripe/webhook`. |
-| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_FROM_EMAIL`, `SMTP_SECURITY` | Server email for invitations, reminders, campaigns and portal sign-in links. People can also connect their own mailbox in Settings → Integrations. |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_FROM_EMAIL`, `SMTP_SECURITY` | Server email for invitations, reminders, campaigns and portal sign-in links. People can also connect their own mailbox (Integrations → Gmail or Outlook Mail, or an app password under Other connections). |
 | `ANTHROPIC_API_KEY`, `AI_MODEL` | Claude for summaries, drafts, Ask AIVA, call notes and field prompts. Without it, AI features use built-in rules. |
-| Workspace keys (entered in Settings, stored encrypted) | Hunter.io and People Data Labs for waterfall enrichment; Twilio for dialer calls; Deepgram or AssemblyAI to transcribe call recordings. Sequences send through each rep's connected mailbox (or the server SMTP settings). |
+| Workspace keys (entered in Settings or on an integration's page, stored encrypted) | Hunter.io and People Data Labs for waterfall enrichment; Twilio for dialer calls and SMS; WhatsApp Cloud API; Deepgram or AssemblyAI to transcribe call recordings. Sequences send through each rep's connected mailbox (Gmail or Outlook sign-in, an app password, or the server SMTP settings). |
 | `FIELD_ENCRYPTION_KEY` | Key for encrypted fields and stored secrets. Defaults to one derived from `JWT_SECRET_KEY`; set it explicitly in production and keep it safe — changing it makes encrypted values unreadable. |
-| `APP_BASE_URL` | Public URL used in emails, portal links, calendar feeds and webhooks (Render sets it automatically). |
+| `APP_BASE_URL` | Public URL used in emails, portal links, calendar feeds, sign-in redirects and webhooks (Render sets it automatically). Integrations that call AIVA back (Twilio, WhatsApp, Calendly, DocuSign, Facebook) need it to be the public https address. |
 | `SCHEDULER_ENABLED` | Background jobs for reminders, campaigns, journeys and mailbox sync (default on). |
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | Turns on "Log In with Google". |
 | `MICROSOFT_CLIENT_ID`, `MICROSOFT_CLIENT_SECRET`, `MICROSOFT_TENANT_ID` | Turns on "Log In with Microsoft" (tenant `common` allows work and personal accounts). |
 | `APPLE_CLIENT_ID`, `APPLE_TEAM_ID`, `APPLE_KEY_ID`, `APPLE_PRIVATE_KEY` | Turns on "Sign in with Apple" (Services ID, team ID, key ID and the `.p8` key contents). |
+| `GOOGLE_CLIENT_ID`/`SECRET`, `MICROSOFT_CLIENT_ID`/`SECRET` (again) | The same apps also power Gmail, Google Calendar and Meet, Google Drive, Outlook Mail and Calendar, Teams meeting links and OneDrive (see below). |
+| `SLACK_CLIENT_ID`, `SLACK_CLIENT_SECRET` | The Slack app people sign in with. |
+| `ZOOM_CLIENT_ID`, `ZOOM_CLIENT_SECRET` | The Zoom app people sign in with. |
+| `DROPBOX_APP_KEY`, `DROPBOX_APP_SECRET` | The Dropbox app. |
+| `DOCUSIGN_INTEGRATION_KEY`, `DOCUSIGN_SECRET_KEY`, `DOCUSIGN_ENVIRONMENT` | The DocuSign app; `demo` (developer sandbox, the default) or `production`. |
+| `CALENDLY_CLIENT_ID`, `CALENDLY_CLIENT_SECRET`, `CALENDLY_WEBHOOK_SIGNING_KEY` | The Calendly app and its webhook signing key. |
+| `FACEBOOK_APP_ID`, `FACEBOOK_APP_SECRET`, `FACEBOOK_WEBHOOK_VERIFY_TOKEN` | The Meta app for Facebook Lead Ads; the verify token is optional (derived from the app secret when unset). |
 
 ### Tracking website visits
 
@@ -298,6 +327,33 @@ https://<your-site>/api/session/oauth/apple/callback
 - **Apple:** Apple Developer → Identifiers → Services ID with Sign in with Apple, your domain and the redirect URI; Keys → a key with Sign in with Apple. Set `APPLE_CLIENT_ID` (the Services ID), `APPLE_TEAM_ID`, `APPLE_KEY_ID` and `APPLE_PRIVATE_KEY` (the `.p8` contents; `\n` for line breaks is fine). Apple requires https.
 
 Workspace single sign-on needs no server settings: an owner or admin fills in **Settings → Single sign-on** (issuer URL, client ID and secret, email domains). The redirect URI to register with the identity provider is shown on that page (`https://<your-site>/api/session/oauth/sso/callback`).
+
+### Setting up integrations
+
+Turn an integration on in **Integrations**, then connect it. Integrations that sign in with the provider need an app registered with that provider; set the server-wide credentials above, or let each workspace use its own app (**Use your own app** on the integration's page, where the client secret is stored encrypted). Register this redirect URI with every provider app:
+
+```text
+https://<your-site>/api/aiva/public/integrations/oauth/callback
+```
+
+| Provider app | Where | Turn on / scopes |
+|---|---|---|
+| Google (Gmail, Calendar, Meet, Drive) | Google Cloud Console → APIs & Services → Credentials → OAuth client ID (Web application) | Enable the Gmail, Google Calendar and Google Drive APIs. Scopes: `gmail.send`, `gmail.readonly`, `calendar.events`, `calendar.calendarlist.readonly`, `drive.readonly`. These are sensitive scopes, so Google's app verification is needed before people outside your organization can connect. Meet must be allowed in the Workspace admin console. |
+| Microsoft (Outlook Mail and Calendar, Teams links, OneDrive) | Microsoft Entra admin center → App registrations | Delegated `Mail.Send`, `Mail.Read`, `Calendars.ReadWrite`, `OnlineMeetings.ReadWrite`, `Files.Read.All`, `offline_access`, `User.Read`. Some tenants need admin consent. Teams links need a work or school account. |
+| Slack | api.slack.com → Your Apps → Create New App | Bot scopes `chat:write`, `chat:write.public`, `channels:read`, `groups:read`, `team:read`. For private channels, invite the app (`/invite @AIVA`). |
+| Zoom | Zoom App Marketplace → Develop → General app (OAuth) | Meeting read/write/delete and user read (classic `meeting:write`, `user:read`, or the granular equivalents); AIVA uses whatever scopes the app has. |
+| Dropbox | dropbox.com/developers → App console (scoped access, full Dropbox) | `account_info.read`, `files.metadata.read`, `files.content.read`, `sharing.read` |
+| DocuSign | DocuSign Admin → Apps and Keys → Add app and integration key (Authorization Code Grant) with a secret key | `signature`, `extended`. Optional: Admin → Connect → Connect Keys, then paste the HMAC key on the DocuSign page so status pushes are verified (otherwise AIVA checks every 15 minutes). |
+| Calendly | developer.calendly.com → Create an OAuth app | Set `CALENDLY_WEBHOOK_SIGNING_KEY` to the app's webhook signing key. Workspaces can also connect with a personal access token instead. Bookings need `APP_BASE_URL` to be public https. |
+| Facebook Lead Ads | developers.facebook.com → Create app (Business) | Permissions `pages_show_list`, `pages_read_engagement`, `pages_manage_metadata`, `leads_retrieval`, `business_management` (App Review for other businesses). Webhooks → Page → callback `https://<your-site>/api/aiva/public/integrations/facebook_lead_ads/webhook/app` with the verify token shown on the integration's page; subscribe to `leadgen`. |
+
+Integrations connected with keys show what to paste and where on their page:
+
+- **Twilio SMS:** account SID and auth token, plus a phone number or messaging service. Point the number's "A message comes in" webhook at the URL shown (or click **Point at AIVA**). `APP_BASE_URL` must match the address Twilio calls exactly, or its signatures won't verify. US numbers need A2P 10DLC registration.
+- **WhatsApp:** phone number ID, WhatsApp Business account ID, a permanent system-user token (`whatsapp_business_messaging`, `whatsapp_business_management`) and the Meta app secret. Set the callback URL and verify token shown on the page in the Meta app (or click **Set it up for me**) and subscribe to `messages`.
+- **Microsoft Teams:** in the channel, Workflows → "Post to a channel when a webhook request is received", then paste the URL.
+- **WordPress Forms:** download the plugin from the integration's page (it already has your address and secret) and activate it, or paste the webhook URL into any form plugin.
+- **Zapier, Make, n8n:** add a webhook on the integration's page or under **Integrations → Webhooks** with the URL from the Zap trigger, Make's custom webhook or n8n's Webhook node. Requests carry `X-AIVA-Signature: t=<time>,v1=<HMAC-SHA256 of "<time>.<body>">` with the webhook's secret. To create or update records from those tools, call the REST API (`https://<your-site>/api/aiva/...`) with an API key; Zapier apps can subscribe through the REST hooks at `/api/aiva/hooks`.
 
 ### Manual setup (without Docker)
 
@@ -347,7 +403,7 @@ npx tsc --noEmit  # type check
 npm run build     # production build
 ```
 
-The integration suite signs up a brand-new workspace per run and exercises sign-in, MFA, lockout, invitations, permissions, tenant isolation, quotes, forecasting, cases and SLAs, workflows, reports and dashboards — plus plans and trial expiry, custom modules and fields, campaigns, forms, imports, calls, API keys, HIPAA mode, AI agents and predictions, inventory and invoices, approvals, journeys, portals, custom buttons, record visibility, ABM, Google Ads and sandboxes — and the settings suite: workspace security (IP allowlist, required MFA, API-key switch), add-ons and credits, data requests, territories and round-robin routing, support access, the MCP server, sending domains, snippets, sequences end to end (sending, click tracking, replies, bounces, meetings, unsubscribes), picklists, goals, removal requests, personas, signals and conversation intelligence.
+The integration suite signs up a brand-new workspace per run and exercises sign-in, MFA, lockout, invitations, permissions, tenant isolation, quotes, forecasting, cases and SLAs, workflows, reports and dashboards — plus plans and trial expiry, custom modules and fields, campaigns, forms, imports, calls, API keys, HIPAA mode, AI agents and predictions, inventory and invoices, approvals, journeys, portals, custom buttons, record visibility, ABM, Google Ads and sandboxes — and the settings suite: workspace security (IP allowlist, required MFA, API-key switch), add-ons and credits, data requests, territories and round-robin routing, support access, the MCP server, sending domains, snippets, sequences end to end (sending, click tracking, replies, bounces, meetings, unsubscribes), picklists, goals, removal requests, personas, signals and conversation intelligence — and the integrations: on/off switches and dependencies, sign-in with PKCE and single-use state, every provider's connect, send, sync and webhook paths with the provider APIs mocked (signature checks both accepted and refused), opt-outs, envelope completion, form and lead-ad capture, and outgoing webhook signing, retries and URL safety.
 
 ## Security notes
 
@@ -355,13 +411,15 @@ The integration suite signs up a brand-new workspace per run and exercises sign-
 - Mailbox passwords, webhook URLs, encrypted fields and workspace integration keys (enrichment, Twilio, transcription) are encrypted at rest (Fernet) and never sent back to the browser.
 - Workspaces can require two-step verification, restrict access to an IP allowlist and switch API keys off; AIVA support can only enter a workspace with a time-limited grant from an admin, and every page they open is logged.
 - Sequence click links are HMAC-signed, so the tracking redirect can't be used as an open redirect.
+- Integration tokens, keys and webhook secrets are encrypted at rest and never returned to the browser (an outgoing webhook's signing secret is shown once). Provider sign-in uses PKCE where supported and single-use, 15-minute state; inbound webhooks verify each provider's signature (Twilio, Meta, Calendly, DocuSign, the WordPress plugin) in constant time and ignore repeats; in production, outgoing webhooks only go to public https addresses, checked when saved and again, pinned, on every delivery.
 - Browser sessions use httpOnly, SameSite cookies; the frontend never sees tokens.
 - Every API route checks the caller's permissions, and every query is scoped to the caller's organization.
 - Production deployments still need: a real email provider for invitations and resets, HTTPS everywhere, secret management, and rate limiting at the edge.
 
 ## Roadmap
 
-- OAuth mailbox connection for Gmail and Microsoft 365 and two-way calendar sync (today: app passwords and an iCal feed)
+- Push notifications from Gmail, Google Calendar and Microsoft Graph (today: inbox and calendar sync every 10 minutes)
+- Sending media (MMS and WhatsApp images and documents), Slack slash commands and interactive buttons
 - Domain verification (DNS) for single sign-on domains and an option to require single sign-on
 - Native QuickBooks and Google Ads API connections (today: CSV export and lead-form webhook)
 - SAML single sign-on and SCIM provisioning (OpenID Connect single sign-on is available)

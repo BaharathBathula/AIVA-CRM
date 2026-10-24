@@ -1,4 +1,9 @@
-"""Slack and Microsoft Teams alerts through incoming webhooks."""
+"""Slack and Microsoft Teams alerts.
+
+Teams alerts go through the channel's incoming webhook. Slack alerts are handed
+to the Slack integration (``app/integrations/providers/slack.py``), which posts
+with the AIVA bot when it's connected and falls back to an incoming webhook.
+"""
 
 from __future__ import annotations
 
@@ -74,19 +79,15 @@ def webhook_url(integration: Integration) -> str | None:
     return decrypt((integration.config or {}).get("webhook_url"))
 
 
-async def deliver_pending(db: AsyncSession, limit: int = 50) -> int:
+async def deliver_pending(db: AsyncSession, limit: int = 50, organization_id=None) -> int:
     now = utcnow()
-    messages = (
-        await db.execute(
-            select(OutboundMessage)
-            .where(
-                OutboundMessage.status == "pending",
-                (OutboundMessage.deliver_after.is_(None)) | (OutboundMessage.deliver_after <= now),
-            )
-            .order_by(OutboundMessage.created_at)
-            .limit(limit)
-        )
-    ).scalars().all()
+    query = select(OutboundMessage).where(
+        OutboundMessage.status == "pending",
+        (OutboundMessage.deliver_after.is_(None)) | (OutboundMessage.deliver_after <= now),
+    )
+    if organization_id is not None:
+        query = query.where(OutboundMessage.organization_id == organization_id)
+    messages = (await db.execute(query.order_by(OutboundMessage.created_at).limit(limit))).scalars().all()
     if not messages:
         return 0
     integrations: dict[tuple, Integration | None] = {}
@@ -103,12 +104,46 @@ async def deliver_pending(db: AsyncSession, limit: int = 50) -> int:
                 )
             ).scalar_one_or_none()
         integration = integrations[key]
+        payload = message.payload or {}
+        if message.channel == "slack":
+            # Slack goes through the Integrations hub: the AIVA bot (per-event
+            # channels) when connected, else an incoming webhook.
+            from app.integrations.providers import slack as slack_provider
+
+            try:
+                await slack_provider.deliver(db, message, integration)
+                message.status = "sent"
+                message.sent_at = utcnow()
+                message.last_error = None
+                if integration is not None:
+                    integration.last_used_at = utcnow()
+                    integration.last_error = None
+                continue
+            except slack_provider.DeliveryError as exc:
+                if exc.permanent:
+                    message.status = "failed"
+                    message.last_error = str(exc)[:500]
+                    if integration is not None:
+                        integration.last_error = message.last_error
+                    continue
+                failure: Exception = exc
+            except Exception as exc:  # noqa: BLE001
+                failure = exc
+            message.attempts += 1
+            message.last_error = str(failure)[:500]
+            if integration is not None:
+                integration.last_error = message.last_error
+            if message.attempts >= MAX_ATTEMPTS:
+                message.status = "failed"
+            else:
+                message.deliver_after = utcnow() + timedelta(minutes=2 ** message.attempts)
+            logger.warning("Slack delivery failed: %s", failure)
+            continue
         url = webhook_url(integration) if integration else None
         if not url:
             message.status = "failed"
             message.last_error = f"{message.channel.title()} isn't connected."
             continue
-        payload = message.payload or {}
         try:
             await post(message.channel, url, payload.get("title") or "AIVA", payload.get("text") or "", payload.get("link"))
             message.status = "sent"

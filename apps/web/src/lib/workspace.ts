@@ -253,6 +253,24 @@ export interface Meeting {
   invites_sent: number;
   conflicts?: { id: string; title: string; start_at: string; end_at: string }[];
   tasks_created?: number;
+  /** "aiva", or "google_calendar" / "outlook_calendar" for meetings brought in from a calendar. */
+  provider?: string;
+  /** Online-meeting link created through an integration (Google Meet, Zoom, Teams). */
+  conference?: { type: "google_meet" | "zoom" | "microsoft_teams"; label: string; join_url: string | null } | null;
+  /** The calendar event this meeting is linked to (Google / Outlook Calendar integration). */
+  calendar_sync?: {
+    key: "google_calendar" | "outlook_calendar";
+    label: string;
+    state: "synced" | "pending" | "error" | null;
+    error: string | null;
+    origin: "aiva" | "pulled" | null;
+    html_link: string | null;
+    invites: boolean;
+    user_id: string | null;
+    organizer_self: boolean;
+  } | null;
+  /** Problems with links or calendars when saving (the meeting itself was saved). */
+  integration_warnings?: string[];
 }
 
 export const MEETING_STATUS: Record<Meeting["status"], { label: string; tone: Tone }> = {

@@ -22,6 +22,19 @@ import {
 // Only used before a user has signed in (public endpoints).
 const FALLBACK_ORGANIZATION_ID = process.env.AIVA_ORGANIZATION_ID;
 
+/** Signature headers that providers send to `/api/aiva/public/...` webhooks. */
+const WEBHOOK_HEADERS = new Set([
+  "x-hub-signature-256", // WhatsApp and Facebook (Meta)
+  "x-hub-signature",
+  "x-twilio-signature", // Twilio
+  "calendly-webhook-signature", // Calendly
+  "x-slack-signature", // Slack
+  "x-slack-request-timestamp",
+  "x-aiva-signature", // AIVA's WordPress plugin
+  "x-aiva-secret",
+  "x-aiva-timestamp",
+]);
+
 async function forward(request: NextRequest, body: ArrayBuffer | undefined, token?: string, organizationId?: string) {
   const path = request.nextUrl.pathname.replace(/^\/api\/aiva\/?/, "");
   const headers = new Headers();
@@ -45,9 +58,15 @@ async function forward(request: NextRequest, body: ArrayBuffer | undefined, toke
   const sessionId = request.cookies.get(COOKIE.session)?.value;
   if (sessionId) headers.set("X-Session-ID", sessionId);
 
-  // Webhook signatures (Stripe) must reach the backend untouched.
+  // Webhook signatures (Stripe, and the integrations' inbound webhooks) must
+  // reach the backend untouched, or every signed delivery is rejected.
   const signature = request.headers.get("stripe-signature");
   if (signature) headers.set("Stripe-Signature", signature);
+  if (path.startsWith("public/")) {
+    request.headers.forEach((value, name) => {
+      if (WEBHOOK_HEADERS.has(name) || name.startsWith("x-docusign-signature-")) headers.set(name, value);
+    });
+  }
 
   const context = clientContext(request);
   if (context.forwardedFor) headers.set("X-Forwarded-For", context.forwardedFor);
@@ -123,8 +142,11 @@ async function proxy(request: NextRequest) {
   let token = request.cookies.get(COOKIE.access)?.value;
   let organizationId = request.cookies.get(COOKIE.organization)?.value;
   let refreshed: BackendSession | null = null;
+  // Public endpoints (webhooks, sign-in callbacks, forms) never refresh or clear a
+  // session: a 401 there is the endpoint's own answer, and retrying would deliver twice.
+  const isPublic = request.nextUrl.pathname.replace(/^\/api\/aiva\/?/, "").startsWith("public/");
 
-  if (!token && request.cookies.get(COOKIE.refresh)) {
+  if (!token && !isPublic && request.cookies.get(COOKIE.refresh)) {
     refreshed = await refreshSession(request);
     if (refreshed) {
       token = refreshed.access_token;
@@ -134,7 +156,7 @@ async function proxy(request: NextRequest) {
 
   let upstream = await forward(request, body, token, organizationId);
 
-  if (upstream.status === 401 && !refreshed && request.cookies.get(COOKIE.refresh)) {
+  if (upstream.status === 401 && !refreshed && !isPublic && request.cookies.get(COOKIE.refresh)) {
     refreshed = await refreshSession(request);
     if (refreshed) {
       upstream = await forward(request, body, refreshed.access_token, refreshed.organization_id);
@@ -147,7 +169,7 @@ async function proxy(request: NextRequest) {
   });
 
   if (refreshed) setSessionCookies(response, refreshed, rememberChoice(request));
-  else if (upstream.status === 401 && request.cookies.get(COOKIE.refresh)) clearSessionCookies(response);
+  else if (upstream.status === 401 && !isPublic && request.cookies.get(COOKIE.refresh)) clearSessionCookies(response);
 
   return response;
 }

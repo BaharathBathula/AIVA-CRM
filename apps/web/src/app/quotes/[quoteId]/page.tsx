@@ -27,6 +27,9 @@ import type { Product, Quote, QuoteLine, QuoteStatus } from "@/lib/platform-type
 import { api, errorMessage, useApi } from "@/lib/use-api";
 import { bookPrice, type PriceBook } from "@/lib/workspace";
 import { PinButton } from "@/components/pins";
+import { RecordCloudFiles } from "@/components/integrations/record/RecordCloudFiles";
+import { RecordSignatures } from "@/components/integrations/record/RecordSignatures";
+import { ShareToSlackButton } from "@/components/integrations/record/ShareToSlackButton";
 
 function round(value: number) {
   return Math.round(value * 100) / 100;
@@ -301,6 +304,7 @@ function QuoteBuilder() {
         actions={
           <div className="ui-actions no-print">
             <PinButton type="quote" id={q.id} />
+            <ShareToSlackButton recordType="quote" recordId={q.id} className="ui-btn" />
             <button type="button" className="ui-btn" onClick={() => window.print()}>
               <Printer size={15} /> Print / PDF
             </button>
@@ -554,6 +558,12 @@ function QuoteBuilder() {
               </p>
             ) : null}
           </Card>
+          <div className="int-slot no-print">
+            <RecordSignatures recordType="quote" recordId={q.id} quoteId={q.id} onChanged={() => void quote.reload()} />
+          </div>
+          <div className="int-slot no-print">
+            <RecordCloudFiles recordType="quote" recordId={q.id} />
+          </div>
           {canEdit && q.status !== "accepted" ? (
             <button type="button" className="ui-btn ui-btn-danger no-print" onClick={() => setDeleting(true)}>
               <Trash2 size={15} /> Delete quote
