@@ -8,6 +8,8 @@ binds the acting user to the database session for audit and automation.
 
 from __future__ import annotations
 
+import ipaddress
+import os
 import re
 import uuid
 from dataclasses import dataclass, field
@@ -79,11 +81,46 @@ async def resolve_role_permissions(
     return frozenset(permissions or [])
 
 
+def _trusted_proxy(peer: str | None) -> bool:
+    """Only the web app (or another proxy we run) may tell us the client's address."""
+
+    if not peer:
+        return False
+    extra = [p.strip() for p in (os.getenv("TRUSTED_PROXY_IPS") or "").split(",") if p.strip()]
+    try:
+        address = ipaddress.ip_address(peer)
+    except ValueError:
+        return False
+    if address.is_loopback or address.is_private:
+        return True
+    for network in extra:
+        try:
+            if address in ipaddress.ip_network(network, strict=False):
+                return True
+        except ValueError:
+            continue
+    return False
+
+
+SUPPORT_BLOCKED_PATHS = (
+    "/admin/users", "/admin/roles", "/admin/teams", "/billing", "/api-keys", "/support-access", "/sso", "/auth/sso",
+    "/workspace-settings/security", "/workspace-settings/licenses", "/workspace-settings/mcp", "/compliance", "/sandbox",
+)
+
+
 def client_ip(request: Request) -> str | None:
+    """The caller's address. X-Forwarded-For is only believed when it comes from a
+    trusted proxy (the web app sets it to a single address); anyone else gets the
+    address of their own connection, so the header can't be used to get past an
+    IP allowlist."""
+
+    peer = request.client.host if request.client else None
     forwarded = request.headers.get("x-forwarded-for")
-    if forwarded:
-        return forwarded.split(",")[0].strip()[:64]
-    return request.client.host if request.client else None
+    if forwarded and _trusted_proxy(peer):
+        last = forwarded.split(",")[-1].strip()[:64]
+        if last:
+            return last
+    return peer
 
 
 def _unauthorized(detail: str) -> HTTPException:
@@ -185,6 +222,10 @@ async def get_current_principal(
         user, organization, subscription, grant = support
         if grant.access_level == "read_only" and writing and not path.startswith("/auth/"):
             raise HTTPException(status.HTTP_403_FORBIDDEN, "Support access to this workspace is read-only.")
+        # Even with full access, support never changes who's in the workspace, what it pays,
+        # its keys or its security settings; those stay with the workspace's own admins.
+        if writing and path.startswith(SUPPORT_BLOCKED_PATHS):
+            raise HTTPException(status.HTTP_403_FORBIDDEN, "AIVA support can't change people, roles, billing, API keys or security settings.")
         membership = OrganizationMembership(
             organization_id=organization_id, user_id=user.id, role="admin" if grant.access_level == "full" else "viewer", status="active"
         )
@@ -279,20 +320,22 @@ async def get_current_principal(
     elif api_key is not None and db.is_modified(api_key):
         await db.commit()
     if grant is not None:
+        # Every change support makes is logged; page views are logged at most once a minute per page.
         now = datetime.now(timezone.utc)
-        if grant.last_used_at is None or (now - grant.last_used_at).total_seconds() > 300:
-            if grant.last_used_at is None or (now - grant.last_used_at).total_seconds() > 3600:
-                db.add(
-                    AuditLog(
-                        id=uuid.uuid4(), organization_id=organization_id, actor_user_id=user.id, action="support_access",
-                        entity_type="support_access", entity_id=grant.id, entity_label=f"Support access by {user.full_name}",
-                        changes={"level": grant.access_level, "path": path}, ip_address=ip,
-                        user_agent=(request.headers.get("user-agent") or "")[:300] or None,
-                    )
+        recent = grant.last_used_at is not None and (now - grant.last_used_at).total_seconds() < 60 and grant.last_path == path
+        if writing or not recent:
+            db.add(
+                AuditLog(
+                    id=uuid.uuid4(), organization_id=organization_id, actor_user_id=user.id, action="support_access",
+                    entity_type="support_access", entity_id=grant.id, entity_label=f"Support access by {user.full_name}",
+                    changes={"level": grant.access_level, "path": path, "method": method}, ip_address=ip,
+                    user_agent=(request.headers.get("user-agent") or "")[:300] or None,
                 )
-            grant.last_used_at = now
-            grant.use_count = (grant.use_count or 0) + 1
-            await db.commit()
+            )
+        grant.last_used_at = now
+        grant.last_path = path[:300]
+        grant.use_count = (grant.use_count or 0) + 1
+        await db.commit()
 
     return Principal(
         user_id=user.id,
@@ -355,7 +398,8 @@ def _ip_allowed(ip: str | None, networks: list[str]) -> bool:
 
 async def _support_access(db: AsyncSession, user_id: uuid.UUID, organization_id: uuid.UUID):
     user = await db.get(User, user_id)
-    if user is None or not user.is_active or not user.is_platform_staff:
+    # Staff must protect their own account with two-step verification to use any grant.
+    if user is None or not user.is_active or not user.is_platform_staff or not user.mfa_enabled:
         return None
     now = datetime.now(timezone.utc)
     grant = (

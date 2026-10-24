@@ -43,6 +43,8 @@ async def active_addons(db: AsyncSession, organization_id: uuid.UUID) -> list[Or
     rows = (
         await db.execute(select(OrgAddon).where(OrgAddon.organization_id == organization_id, OrgAddon.status.in_(("active", "cancelled"))))
     ).scalars().all()
+    # Stripe add-ons stay active while Stripe keeps renewing them (the webhook cancels them);
+    # demo-billing add-ons renew on their own. Cancelled ones run to the end of the paid month.
     return [row for row in rows if row.status == "active" or (row.renews_at and row.renews_at > now)]
 
 

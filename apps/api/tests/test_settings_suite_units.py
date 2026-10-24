@@ -81,3 +81,21 @@ def test_homepage_parsing():
     assert values["company"].startswith("Acme HVAC")
     assert "linkedin.com/company/acme-hvac" in (values.get("linkedin") or "")
     assert values.get("phone")
+
+
+def test_removal_matches_exact_addresses_only():
+    from app.api.routes.data_mgmt import _addresses
+
+    message = SimpleNamespace(to_recipients=[{"email": "JimBob@x.com"}], cc_recipients=[{"email": "bob@x.com.au"}], bcc_recipients=None)
+    assert "bob@x.com" not in _addresses(message)
+    message.cc_recipients.append({"email": "Bob@X.com"})
+    assert "bob@x.com" in _addresses(message)
+
+
+def test_recording_download_name_handles_any_title():
+    from app.api.routes.conversations import _download_name
+
+    header = _download_name(SimpleNamespace(title="Q3 review – Acme \"big\" / deal", recording_type="audio/mpeg"))
+    header.encode("latin-1")  # must not raise
+    assert header.startswith('attachment; filename="Q3 review Acme big deal.mp3"')
+    assert "filename*=UTF-8''Q3%20review%20%E2%80%93" in header

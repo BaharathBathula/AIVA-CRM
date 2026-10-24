@@ -391,6 +391,20 @@ async def send_email_step(
     if record is None:
         await finish(db, enrollment, "removed", "Record deleted")
         raise ValueError("The person was deleted.")
+    # Never email someone who unsubscribed or is on the do-not-contact list, whoever presses send.
+    if enrollment.email and await suppressed(db, org, enrollment.email):
+        await finish(db, enrollment, "unsubscribed", "On the do-not-contact list")
+        raise ValueError("They're on the do-not-contact list, so the email wasn't sent.")
+    if getattr(record, "email_opt_out", False):
+        await finish(db, enrollment, "unsubscribed", "Unsubscribed")
+        raise ValueError("They unsubscribed, so the email wasn't sent.")
+    if enforce_limits:
+        protection = await workspace_settings.get(db, org, "sending")
+        stats = await mailbox_stats(db, org, enrollment.sender_user_id, protection)
+        if stats["paused"]:
+            raise ValueError(f"Sending is paused for this mailbox: its bounce rate is {stats['bounce_rate']}%.")
+        if stats["sent_today"] >= stats["daily_limit"]:
+            raise ValueError(f"This mailbox has reached its daily limit of {stats['daily_limit']} emails.")
     tracking = await workspace_settings.get(db, org, "tracking")
     defaults = await workspace_settings.get(db, org, "sequences")
     sender = await db.get(User, enrollment.sender_user_id) if enrollment.sender_user_id else None
@@ -565,7 +579,7 @@ async def process_enrollment(
             enrollment.next_run_at = last + timedelta(seconds=protection.min_seconds_between)
             return "spacing"
         try:
-            message = await send_email_step(db, enrollment, step)
+            message = await send_email_step(db, enrollment, step, enforce_limits=False)
         except ValueError:
             return "removed"
         if message.status == "failed":

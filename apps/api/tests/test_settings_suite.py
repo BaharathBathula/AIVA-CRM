@@ -319,6 +319,15 @@ def test_support_access_grant_and_revoke(client, ws):
     run_sql("update users set is_platform_staff = true where id = :id", id=staff["user_id"])
     staff_headers = {**staff["headers"], "X-Organization-ID": ws["org"]}
     assert client.get(f"{API}/accounts", headers=staff_headers).status_code in (401, 403)
+    full = client.post(f"{API}/support-access", json={"access_level": "full", "hours": 1}, headers=h).json()
+    # Staff without two-step verification can't use a grant at all.
+    assert client.get(f"{API}/accounts", headers=staff_headers).status_code in (401, 403)
+    run_sql("update users set mfa_enabled = true where id = :id", id=staff["user_id"])
+    assert client.post(f"{API}/accounts", json={"name": "Fixed by support"}, headers=staff_headers).status_code == 201
+    # Even full access can't touch keys, people, billing or security.
+    assert client.post(f"{API}/api-keys", json={"name": "Backdoor", "scope": "read_write"}, headers=staff_headers).status_code == 403
+    assert client.put(f"{API}/workspace-settings/security", json={"data": {"require_mfa": False}}, headers=staff_headers).status_code == 403
+    assert client.post(f"{API}/support-access/{full['id']}/revoke", headers=h).status_code == 200
 
     granted = client.post(f"{API}/support-access", json={"access_level": "read_only", "hours": 2, "reason": "Import help"}, headers=h)
     assert granted.status_code == 201, granted.text
@@ -822,3 +831,55 @@ def test_conversation_links_lead_and_reprocess_keeps_decisions(client, ws):
     again = client.post(f"{API}/conversations/{created['id']}/reprocess", headers=h).json()
     statuses = [s["status"] for s in again["field_suggestions"] if s["prompt_id"] == suggestion["prompt_id"]]
     assert statuses == ["dismissed"]
+
+
+def test_forwarded_for_cannot_bypass_ip_allowlist(client):
+    other = signup(client, "Allowlist Co")
+    h = other["headers"]
+    run_sql(
+        "insert into workspace_settings (id, organization_id, namespace, data, secrets, created_at, updated_at) "
+        "values (gen_random_uuid(), :org, 'security', '{\"ip_allowlist\": [\"203.0.113.0/24\"]}'::jsonb, '{}'::jsonb, now(), now()) "
+        "on conflict (organization_id, namespace) do update set data = excluded.data",
+        org=other["org"],
+    )
+    from app.api.dependencies.auth import invalidate_security_cache
+
+    invalidate_security_cache(uuid.UUID(other["org"]))
+    assert client.get(f"{API}/accounts", headers=h).status_code == 403
+    assert client.get(f"{API}/accounts", headers={**h, "X-Forwarded-For": "203.0.113.99"}).status_code == 403
+
+
+def test_manual_email_never_goes_to_suppressed_people(client, ws):
+    h = ws["headers"]
+    person = new_contact(client, ws, first_name="Quiet")
+    sequence = client.post(f"{API}/sequences", json={"name": "Manual only"}, headers=h).json()
+    client.post(f"{API}/sequences/{sequence['id']}/steps", json={"kind": "manual_email", "subject": "Hi", "body": "Hello"}, headers=h)
+    client.post(f"{API}/sequences/{sequence['id']}/status", json={"status": "active"}, headers=h)
+    client.post(f"{API}/sequences/{sequence['id']}/enroll", json={"record_type": "contact", "record_ids": [person["id"]]}, headers=h)
+    enrollment = client.get(f"{API}/sequences/{sequence['id']}/enrollments", headers=h).json()["items"][0]
+    client.post(f"{API}/suppression", json={"values": [person["email"]]}, headers=h)
+    sent = client.post(f"{API}/sequence-enrollments/{enrollment['id']}/send", json={}, headers=h)
+    assert sent.status_code == 409, sent.text
+    after = client.get(f"{API}/sequences/{sequence['id']}/enrollments", headers=h).json()["items"][0]
+    assert after["status"] == "unsubscribed"
+
+
+def test_mcp_only_sees_people_in_this_workspace(client, ws):
+    h = ws["headers"]
+    stranger = signup(client, "Elsewhere Co")
+    settings(client, ws, "mcp", {"allow_write": True})
+    key = client.post(f"{API}/api-keys", json={"name": "Agent", "scope": "read_write"}, headers=h).json()
+    mcp = {"Authorization": f"Bearer {key['key']}"}
+    assign = client.post(
+        f"{API}/mcp",
+        json={"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "create_task", "arguments": {"title": "Call back", "assign_to_email": stranger["email"]}}},
+        headers=mcp,
+    ).json()
+    assert assign["result"]["isError"] is True
+    deals = client.post(
+        f"{API}/mcp", json={"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": "list_open_deals", "arguments": {"owner_email": stranger["email"]}}}, headers=mcp
+    ).json()
+    assert deals["result"]["isError"] is True
+    bad = client.post(f"{API}/mcp", json={"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": {"name": "list_open_deals", "arguments": {"limit": "abc"}}}, headers=mcp)
+    assert bad.status_code == 200 and bad.json()["result"]["isError"] is True
+    settings(client, ws, "mcp", {"allow_write": False})

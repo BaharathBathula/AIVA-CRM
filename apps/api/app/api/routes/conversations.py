@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import uuid
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
@@ -457,6 +458,22 @@ async def delete_conversation(conversation_id: uuid.UUID, principal: Principal =
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
+EXTENSIONS = {"audio/mpeg": "mp3", "audio/mp4": "m4a", "audio/x-m4a": "m4a", "audio/wav": "wav", "audio/x-wav": "wav", "audio/webm": "webm", "audio/ogg": "ogg", "video/mp4": "mp4", "video/webm": "webm"}
+
+
+def _download_name(row: Conversation) -> str:
+    """Content-Disposition that works for any title (headers must be Latin-1)."""
+
+    from urllib.parse import quote
+
+    extension = EXTENSIONS.get((row.recording_type or "").split(";")[0].strip(), "audio")
+    title = re.sub(r"[\\/:*?\"<>|\r\n]+", " ", row.title or "recording").strip()[:80] or "recording"
+    title = re.sub(r"\s+", " ", title)
+    name = f"{title}.{extension}"
+    plain = re.sub(r"\s+", " ", name.encode("ascii", "ignore").decode()).strip() or f"recording.{extension}"
+    return f"attachment; filename=\"{plain}\"; filename*=UTF-8''{quote(name)}"
+
+
 @router.get("/conversations/{conversation_id}/recording", dependencies=FEATURE)
 async def download_recording(conversation_id: uuid.UUID, principal: Principal = Depends(require_permission("records.read")), db: AsyncSession = Depends(get_db)):
     await _conversation(db, principal, conversation_id)
@@ -464,7 +481,7 @@ async def download_recording(conversation_id: uuid.UUID, principal: Principal = 
     detail = await conversation_detail(db, principal, row)
     if not detail["can_download"] or not row.recording:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "You can't download this recording.")
-    return Response(row.recording, media_type=row.recording_type or "audio/mpeg", headers={"Content-Disposition": f'attachment; filename="{row.title[:80]}"', "X-Content-Type-Options": "nosniff"})
+    return Response(row.recording, media_type=row.recording_type or "audio/mpeg", headers={"Content-Disposition": _download_name(row), "X-Content-Type-Options": "nosniff"})
 
 
 class SuggestionDecision(BaseModel):

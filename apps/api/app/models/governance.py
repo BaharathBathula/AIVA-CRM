@@ -127,6 +127,7 @@ class SupportAccessGrant(UUIDPrimaryKeyMixin, OrganizationOwnedMixin, TimestampM
     revoked_at: Mapped[datetime | None] = _when()
     revoked_by_user_id: Mapped[uuid.UUID | None] = _user_fk()
     last_used_at: Mapped[datetime | None] = _when()
+    last_path: Mapped[str | None] = mapped_column(String(300), nullable=True)
     use_count: Mapped[int] = _int()
 
 

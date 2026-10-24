@@ -35,6 +35,10 @@ services:
         value: "true"
       - key: REDIS_URL
         value: disabled
+      # Render's edge overwrites True-Client-IP with the visitor's address (X-Forwarded-For
+      # can be spoofed), so workspace IP allowlists and audit logs use this header.
+      - key: CLIENT_IP_HEADER
+        value: true-client-ip
       # Optional — add these in the Render dashboard (Environment) when you want them:
       #   STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET   real card billing (otherwise demo billing)
       #   SMTP_HOST, SMTP_PORT, SMTP_USERNAME, SMTP_PASSWORD, SMTP_FROM_EMAIL   outgoing email

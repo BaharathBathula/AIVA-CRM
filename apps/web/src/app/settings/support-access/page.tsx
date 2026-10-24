@@ -122,7 +122,11 @@ function SupportAccessView() {
           ) : (
             <Card title="Let support in">
               <div className="ui-form-grid">
-                <Field label="Access" hint={level === "full" ? "Support can make changes, like fixing an import or a workflow." : "Support can look, but not change anything."}>
+                <Field label="Access" hint={
+                    level === "full"
+                      ? "Support can make changes, like fixing an import or a workflow — never people, roles, billing, API keys or security settings."
+                      : "Support can look, but not change anything."
+                  }>
                   <select className="ui-select" value={level} onChange={(event) => setLevel(event.target.value as "read_only" | "full")}>
                     <option value="read_only">Read-only</option>
                     <option value="full">Full access</option>

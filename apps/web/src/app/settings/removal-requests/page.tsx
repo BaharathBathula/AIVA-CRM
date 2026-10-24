@@ -50,6 +50,8 @@ const COUNT_LABELS: Record<string, string> = {
   campaign_sends: "Campaign sends",
   sequence_enrollments: "Sequence enrollments",
   meeting_invites: "Meeting invites",
+  conversations: "Recorded calls and meetings",
+  email_messages_redacted: "Emails kept for other recipients (their address removed)",
 };
 const REASONS: Record<string, string> = {
   manual: "Added by hand",

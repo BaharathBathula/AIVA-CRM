@@ -948,7 +948,8 @@ class EnrollPayload(BaseModel):
 
 @router.post("/sequences/{sequence_id}/enroll", dependencies=[Depends(require_feature("sequences"))])
 async def enroll_people(sequence_id: uuid.UUID, payload: EnrollPayload, principal: Principal = Depends(require_permission("sequences.manage")), db: AsyncSession = Depends(get_db)):
-    row = await _sequence(db, principal, sequence_id)
+    # Anyone can use a shared sequence; a private one only its owner (or an outbound admin).
+    row = await _sequence(db, principal, sequence_id, edit=True)
     sender = payload.sender_user_id
     if sender and sender != principal.user_id and not principal.can("outbound.manage"):
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Only outbound admins can send from someone else's mailbox.")
@@ -1035,6 +1036,10 @@ async def _enrollment(db: AsyncSession, principal: Principal, enrollment_id: uui
     if row is None or row.organization_id != principal.organization_id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Enrollment not found.")
     sequence = await _sequence(db, principal, row.sequence_id)
+    # Changing someone's place in a sequence needs the right to use that sequence,
+    # unless it's the rep the enrollment sends as.
+    if row.sender_user_id != principal.user_id:
+        await _sequence(db, principal, row.sequence_id, edit=True)
     return row, sequence
 
 
@@ -1097,7 +1102,11 @@ async def send_manual_email(enrollment_id: uuid.UUID, payload: ManualSend, princ
     if row.sender_user_id != principal.user_id and not principal.can("outbound.manage"):
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Only the sender can send this email.")
     step = steps[row.current_position]
-    message = await outbound.send_email_step(db, row, step, subject_override=payload.subject, body_override=payload.body)
+    try:
+        message = await outbound.send_email_step(db, row, step, subject_override=payload.subject, body_override=payload.body)
+    except ValueError as exc:
+        await db.commit()  # keeps the enrollment finished when they're suppressed or deleted
+        raise HTTPException(status.HTTP_409_CONFLICT, str(exc)) from exc
     if message.status != "sent":
         await db.commit()
         raise HTTPException(status.HTTP_502_BAD_GATEWAY, f"The email couldn't be sent: {message.error}")

@@ -62,6 +62,36 @@ def _person(record: Any) -> str:
     return f"{record.first_name or ''} {record.last_name or ''}".strip() or getattr(record, "email", None) or "Unnamed"
 
 
+def _number(value: Any, what: str, default: int, low: int, high: int) -> int:
+    if value in (None, ""):
+        return default
+    try:
+        return max(low, min(high, int(value)))
+    except (TypeError, ValueError) as exc:
+        raise ToolError(f"{what} must be a whole number.") from exc
+
+
+async def _member_id(db: AsyncSession, principal: Principal, email: Any) -> uuid.UUID:
+    """A person in this workspace by email (people in other workspaces are never visible)."""
+
+    from app.models.membership import OrganizationMembership
+
+    member = (
+        await db.execute(
+            select(User.id)
+            .join(OrganizationMembership, OrganizationMembership.user_id == User.id)
+            .where(
+                OrganizationMembership.organization_id == principal.organization_id,
+                OrganizationMembership.status == "active",
+                func.lower(User.email) == str(email).strip().lower(),
+            )
+        )
+    ).scalar_one_or_none()
+    if member is None:
+        raise ToolError("No one in this workspace has that email.")
+    return member
+
+
 def _uuid(value: Any, what: str) -> uuid.UUID:
     try:
         return uuid.UUID(str(value))
@@ -133,13 +163,10 @@ async def tool_open_deals(db: AsyncSession, principal: Principal, args: dict[str
     open_ids = [sid for sid, s in stages.items() if s.category == "open"]
     query = select(Opportunity).where(Opportunity.organization_id == org, Opportunity.stage_id.in_(open_ids or [uuid.uuid4()]))
     if args.get("owner_email"):
-        owner = (await db.execute(select(User.id).where(func.lower(User.email) == str(args["owner_email"]).lower()))).scalar_one_or_none()
-        if owner is None:
-            raise ToolError("No user has that email.")
-        query = query.where(Opportunity.owner_user_id == owner)
+        query = query.where(Opportunity.owner_user_id == await _member_id(db, principal, args["owner_email"]))
     if args.get("closing_within_days"):
-        query = query.where(Opportunity.expected_close_date <= date.today() + timedelta(days=int(args["closing_within_days"])))
-    limit = max(1, min(100, int(args.get("limit") or 25)))
+        query = query.where(Opportunity.expected_close_date <= date.today() + timedelta(days=_number(args["closing_within_days"], "closing_within_days", 30, 0, 3650)))
+    limit = _number(args.get("limit"), "limit", 25, 1, 100)
     rows = (await db.execute(query.order_by(Opportunity.amount.desc().nulls_last()).limit(limit))).scalars().all()
     owners = await names_for(db, org, "user", [r.owner_user_id for r in rows])
     accounts = await names_for(db, org, "account", [r.account_id for r in rows])
@@ -177,7 +204,7 @@ async def tool_tasks(db: AsyncSession, principal: Principal, args: dict[str, Any
 
 
 async def tool_meetings(db: AsyncSession, principal: Principal, args: dict[str, Any]) -> dict[str, Any]:
-    days = max(1, min(60, int(args.get("days_ahead") or 7)))
+    days = _number(args.get("days_ahead"), "days_ahead", 7, 1, 60)
     now = datetime.now(timezone.utc)
     rows = (
         await db.execute(
@@ -231,7 +258,7 @@ async def tool_create_task(db: AsyncSession, principal: Principal, args: dict[st
         links[f"{kind}_id"] = record.id
     assignee = principal.user_id
     if args.get("assign_to_email"):
-        assignee = (await db.execute(select(User.id).where(func.lower(User.email) == str(args["assign_to_email"]).lower()))).scalar_one_or_none() or principal.user_id
+        assignee = await _member_id(db, principal, args["assign_to_email"])
     task = Task(id=uuid.uuid4(), organization_id=principal.organization_id, title=title[:250], description=args.get("description"), task_type="follow_up", status="open",
                 priority=str(args.get("priority") or "medium") if args.get("priority") in ("low", "medium", "high", "urgent") else "medium", source="ai", due_at=due,
                 assigned_to_user_id=assignee, created_by_user_id=principal.user_id, is_recurring=False, is_ai_generated=True, tags=["mcp"], task_metadata={"source": "mcp"}, **links)
@@ -274,13 +301,22 @@ async def tool_update_deal(db: AsyncSession, principal: Principal, args: dict[st
         deal.stage_id = stage.id
         changed.append("stage")
     if args.get("amount") is not None:
-        deal.amount = Decimal(str(args["amount"]))
+        try:
+            amount = Decimal(str(args["amount"]))
+        except (ArithmeticError, ValueError) as exc:
+            raise ToolError("amount must be a number, like 25000.") from exc
+        if not amount.is_finite() or amount < 0:
+            raise ToolError("amount must be zero or more.")
+        deal.amount = amount
         changed.append("amount")
     if args.get("next_step") is not None:
         deal.next_step = str(args["next_step"])[:500]
         changed.append("next_step")
     if args.get("close_date"):
-        deal.expected_close_date = date.fromisoformat(str(args["close_date"]))
+        try:
+            deal.expected_close_date = date.fromisoformat(str(args["close_date"]))
+        except ValueError as exc:
+            raise ToolError("close_date must look like 2026-11-30.") from exc
         changed.append("close_date")
     if not changed:
         raise ToolError("Nothing to change. Pass stage, amount, next_step or close_date.")
@@ -359,9 +395,12 @@ async def _available(db: AsyncSession, principal: Principal) -> tuple[workspace_
     if principal.api_key_id:
         key = await db.get(ApiKey, principal.api_key_id)
         key_writes = bool(key and key.scope != "read")
+    can_read = principal.can("records.read")
     names = [
         name for name, tool in TOOLS.items()
-        if name not in settings.disabled_tools and (not tool["write"] or (settings.allow_write and key_writes and principal.can("records.write")))
+        if can_read
+        and name not in settings.disabled_tools
+        and (not tool["write"] or (settings.allow_write and key_writes and principal.can("records.write")))
     ]
     return settings, key_writes, names
 
@@ -429,6 +468,12 @@ async def handle_message(db: AsyncSession, principal: Principal, message: dict[s
                 await db.rollback()
                 result = {"content": [{"type": "text", "text": str(exc)}], "isError": True}
                 status_value, error = "error", str(exc)
+            except (ValueError, TypeError, ArithmeticError) as exc:
+                # Bad arguments the tool didn't anticipate: report them instead of failing the request.
+                await db.rollback()
+                message = f"Those arguments aren't valid ({exc.__class__.__name__})."
+                result = {"content": [{"type": "text", "text": message}], "isError": True}
+                status_value, error = "error", message
         db.add(McpCall(id=uuid.uuid4(), organization_id=principal.organization_id, user_id=principal.user_id, api_key_id=principal.api_key_id, method=method,
                        tool=str(name)[:80], status=status_value, error=error, duration_ms=int((time.monotonic() - started) * 1000), client_name=(client or "")[:120] or None))
         await db.commit()

@@ -214,7 +214,10 @@ async def buy_addon(key: str, payload: AddonPurchase, principal: Principal = Dep
 
     from app.services import stripe_billing
 
-    if stripe_billing.configured() and subscription.plan != "trial":
+    if stripe_billing.configured() and subscription.plan == "trial":
+        # With real billing, add-ons are charged alongside a plan; a trial has nothing to bill against.
+        raise HTTPException(status.HTTP_409_CONFLICT, "Your trial already includes every feature. Choose a plan first, then add credits or AI words.")
+    if stripe_billing.configured():
         base = get_settings().app_base_url.rstrip("/")
         try:
             url = await stripe_billing.create_addon_checkout(

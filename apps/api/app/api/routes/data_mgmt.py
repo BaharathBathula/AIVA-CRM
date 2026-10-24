@@ -516,21 +516,59 @@ async def find_personal_data(db: AsyncSession, org: uuid.UUID, email: str) -> di
     leads = (await db.execute(select(Lead).where(Lead.organization_id == org, func.lower(Lead.email) == email))).scalars().all()
     contacts = (await db.execute(select(Contact).where(Contact.organization_id == org, func.lower(Contact.email) == email))).scalars().all()
     visitors = (await db.execute(select(WebVisitor).where(WebVisitor.organization_id == org, func.lower(WebVisitor.email) == email))).scalars().all()
-    messages = (
+    # The JSON text search only narrows the candidates; the exact address check below decides
+    # (so erasing bob@x.com never touches jimbob@x.com).
+    candidates = (
         await db.execute(
             select(EmailMessage).where(
                 EmailMessage.organization_id == org,
-                or_(func.lower(EmailMessage.from_address) == email, func.lower(cast(EmailMessage.to_recipients, String)).contains(email)),
+                or_(
+                    func.lower(EmailMessage.from_address) == email,
+                    func.lower(cast(EmailMessage.to_recipients, String)).contains(email, autoescape=True),
+                    func.lower(cast(EmailMessage.cc_recipients, String)).contains(email, autoescape=True),
+                    func.lower(cast(EmailMessage.bcc_recipients, String)).contains(email, autoescape=True),
+                ),
             )
         )
     ).scalars().all()
+    messages = [m for m in candidates if (m.from_address or "").lower() == email or _addresses(m) & {email}]
+    from app.models.conversation import Conversation
+
+    person_ids = [r.id for r in leads] + [r.id for r in contacts]
+    conversations = [
+        c
+        for c in (
+            await db.execute(
+                select(Conversation).where(
+                    Conversation.organization_id == org,
+                    or_(Conversation.contact_id.in_(person_ids), Conversation.lead_id.in_(person_ids), func.lower(cast(Conversation.participants, String)).contains(email, autoescape=True)),
+                )
+            )
+        ).scalars()
+        if (c.contact_id in person_ids or c.lead_id in person_ids) or any((p.get("email") or "").lower() == email for p in c.participants or [] if isinstance(p, dict))
+    ]
     recipients = (await db.execute(select(CampaignRecipient).where(CampaignRecipient.organization_id == org, func.lower(CampaignRecipient.email) == email))).scalars().all()
     enrollments = (await db.execute(select(SequenceEnrollment).where(SequenceEnrollment.organization_id == org, func.lower(SequenceEnrollment.email) == email))).scalars().all()
     meetings = [
         m for m in (await db.execute(select(Meeting).where(Meeting.organization_id == org))).scalars()
         if any((a.get("email") or "").lower() == email for a in m.attendees or [])
     ]
-    return {"leads": leads, "contacts": contacts, "visitors": visitors, "messages": messages, "recipients": recipients, "enrollments": enrollments, "meetings": meetings}
+    return {
+        "leads": leads, "contacts": contacts, "visitors": visitors, "messages": messages, "recipients": recipients,
+        "enrollments": enrollments, "meetings": meetings, "conversations": conversations,
+    }
+
+
+def _recipient_email(item: Any) -> str:
+    return str(item.get("email") if isinstance(item, dict) else item or "").strip().lower()
+
+
+def _addresses(message: Any) -> set[str]:
+    return {
+        _recipient_email(item)
+        for field in ("to_recipients", "cc_recipients", "bcc_recipients")
+        for item in (getattr(message, field, None) or [])
+    } - {""}
 
 
 def _matches_out(found: dict[str, Any]) -> dict[str, Any]:
@@ -543,6 +581,7 @@ def _matches_out(found: dict[str, Any]) -> dict[str, Any]:
             "campaign_sends": len(found["recipients"]),
             "sequence_enrollments": len(found["enrollments"]),
             "meeting_invites": len(found["meetings"]),
+            "conversations": len(found["conversations"]),
         },
     }
 
@@ -655,10 +694,26 @@ async def complete_removal(request_id: uuid.UUID, payload: RemovalDecision, prin
     for visitor in found["visitors"]:
         await db.delete(visitor)
     summary["website_visitors"] = len(found["visitors"])
-    thread_ids = {m.thread_id for m in found["messages"]}
+    thread_ids = set()
+    deleted_messages = redacted_messages = 0
     for message in found["messages"]:
-        await db.delete(message)
-    summary["email_messages"] = len(found["messages"])
+        others = _addresses(message) - {row.email}
+        if (message.from_address or "").lower() == row.email or not others:
+            # Sent by them, or only to them: the whole email is their data.
+            thread_ids.add(message.thread_id)
+            await db.delete(message)
+            deleted_messages += 1
+        else:
+            # Sent to them and other people: keep it for the others, without this person.
+            for field in ("to_recipients", "cc_recipients", "bcc_recipients"):
+                setattr(message, field, [item for item in getattr(message, field) or [] if _recipient_email(item) != row.email])
+            thread_ids.add(message.thread_id)
+            redacted_messages += 1
+    summary["email_messages"] = deleted_messages
+    summary["email_messages_redacted"] = redacted_messages
+    for conversation in found["conversations"]:
+        await db.delete(conversation)
+    summary["conversations"] = len(found["conversations"])
     await db.flush()
     for thread_id in thread_ids:
         remaining = (await db.execute(select(func.count()).select_from(EmailMessage).where(EmailMessage.thread_id == thread_id))).scalar_one()

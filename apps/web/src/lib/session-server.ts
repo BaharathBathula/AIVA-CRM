@@ -89,12 +89,34 @@ export async function backendFetch(
   return fetch(`${BACKEND_URL}${path}`, { ...init, headers, cache: "no-store" });
 }
 
+/**
+ * The visitor's IP address, as reported by the proxy in front of this server.
+ *
+ * The left of X-Forwarded-For is whatever the browser sent, so it can't be trusted
+ * (it would let anyone get past a workspace IP allowlist). Instead:
+ * - CLIENT_IP_HEADER names a header the edge proxy overwrites with the real address
+ *   (on Render: true-client-ip), and is used first when present;
+ * - otherwise TRUSTED_PROXY_HOPS (default 1) counts the proxies that append to
+ *   X-Forwarded-For, and the address the outermost of them saw is used.
+ * With no proxy, Next.js fills X-Forwarded-For with the socket address.
+ */
+export function clientIp(request: NextRequest): string | undefined {
+  for (const name of (process.env.CLIENT_IP_HEADER ?? "").split(",").map((h) => h.trim().toLowerCase()).filter(Boolean)) {
+    const value = request.headers.get(name)?.split(",")[0]?.trim();
+    if (value) return value.slice(0, 64);
+  }
+  const hops = Math.max(1, Number.parseInt(process.env.TRUSTED_PROXY_HOPS ?? "1", 10) || 1);
+  const chain = (request.headers.get("x-forwarded-for") ?? "")
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean);
+  if (chain.length) return chain[Math.max(0, chain.length - hops)].slice(0, 64);
+  return undefined;
+}
+
 export function clientContext(request: NextRequest) {
   return {
-    forwardedFor:
-      request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
-      request.headers.get("x-real-ip") ??
-      undefined,
+    forwardedFor: clientIp(request),
     userAgent: request.headers.get("user-agent") ?? undefined,
   };
 }
