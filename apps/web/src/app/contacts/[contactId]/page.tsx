@@ -34,6 +34,8 @@ import {
 import { RecordDocuments, RecordMeetings, RecordVisits } from "@/components/record-panels";
 import { PinButton } from "@/components/pins";
 import { RecordMessages } from "@/components/integrations/record/RecordMessages";
+import { RecordMarketing } from "@/components/integrations/record/RecordMarketing";
+import { RecordTickets } from "@/components/integrations/record/RecordTickets";
 import { RecordCloudFiles } from "@/components/integrations/record/RecordCloudFiles";
 import { RecordSignatures } from "@/components/integrations/record/RecordSignatures";
 import { ShareToSlackButton } from "@/components/integrations/record/ShareToSlackButton";
@@ -2843,6 +2845,8 @@ export default function ContactDetailPage() {
               <RecordVisits recordType="contact" recordId={contact.id} />
               <RecordDocuments recordType="contact" recordId={contact.id} />
               <RecordMessages recordType="contact" recordId={contact.id} />
+              <RecordTickets recordType="contact" recordId={contact.id} />
+              <RecordMarketing recordType="contact" recordId={contact.id} />
               <RecordCloudFiles recordType="contact" recordId={contact.id} />
               <RecordSignatures recordType="contact" recordId={contact.id} />
             </aside>

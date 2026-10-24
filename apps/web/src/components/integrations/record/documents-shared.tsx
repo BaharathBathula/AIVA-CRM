@@ -84,8 +84,34 @@ export type SignatureRecipient = {
 
 export type SignatureEvent = { action: string; message: string; level: string; at: string; signed_document_id?: string | null };
 
+/** E-signature providers AIVA can send with (see apps/api/app/integrations/providers/_signing.py). */
+export type SignProviderKey = "docusign" | "adobe_sign" | "pandadoc";
+
+/** What a provider can do: send quotes / documents, start from its own templates, void, send reminders. */
+export type SignSupports = { quotes: boolean; documents: boolean; templates: boolean; void: boolean; remind: boolean };
+
+export type SignProvider = { key: SignProviderKey; name: string; enabled: boolean; connected: boolean; supports: SignSupports };
+
+/** Brand marks for the e-signature providers (match the integration catalog). */
+export const SIGN_PROVIDER_LOOK: Record<SignProviderKey, { name: string; color: string; monogram: string }> = {
+  docusign: { name: "DocuSign", color: "#ffc820", monogram: "D" },
+  adobe_sign: { name: "Adobe Acrobat Sign", color: "#eb1000", monogram: "AS" },
+  pandadoc: { name: "PandaDoc", color: "#25b07c", monogram: "PD" },
+};
+
+/** How to mark where each signer signs in an uploaded document, per provider. */
+export const SIGN_TAGS: Record<SignProviderKey, { signature: string; date: string; next: string }> = {
+  docusign: { signature: "/sn1/", date: "/ds1/", next: "/sn2/" },
+  adobe_sign: { signature: "{{Sig1_es_:signer1:signature}}", date: "{{Dte1_es_:signer1:date}}", next: "{{Sig2_es_:signer2:signature}}" },
+  pandadoc: { signature: "{signature:Signer1}", date: "{date:Signer1}", next: "{signature:Signer2}" },
+};
+
 export type SignatureRequestItem = {
   id: string;
+  /** Which provider sent it; older rows are always DocuSign. */
+  provider: SignProviderKey;
+  provider_name: string;
+  supports: Partial<SignSupports>;
   envelope_id: string | null;
   subject: string;
   message: string | null;

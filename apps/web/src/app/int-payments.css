@@ -1,0 +1,88 @@
+/* ==========================================================================
+   Payments integrations: Stripe / PayPal / Square / Chargebee panels, the
+   invoice "Online payment" card and the account "Billing" card.
+   Classes are prefixed ipay-.
+   ========================================================================== */
+
+/* ---------- Facts and figures ---------- */
+
+.ipay-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 14px; }
+.ipay-facts > div { display: grid; gap: 4px; align-content: start; min-width: 0; }
+.ipay-facts strong { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; overflow-wrap: anywhere; }
+.ipay-kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.ipay-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.ipay-subhead { margin: 0 0 8px; color: var(--text); font-size: 13px; font-weight: 700; }
+
+/* ---------- Payment rows ---------- */
+
+.ipay-rows,
+.ipay-subs,
+.ipay-processors { margin: 0; padding: 0; list-style: none; }
+.ipay-rows li,
+.ipay-subs li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-top: 1px solid var(--border);
+}
+.ipay-rows li:first-child,
+.ipay-subs li:first-child { border-top: 0; padding-top: 2px; }
+.ipay-row-main { display: grid; gap: 2px; flex: 1; min-width: 0; }
+.ipay-row-main strong { color: var(--text); font-size: 14px; font-variant-numeric: tabular-nums; }
+.ipay-row-main .ui-small { overflow-wrap: anywhere; }
+.ipay-row-side { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.ipay-negative { color: var(--text-2); }
+.ipay-status { display: inline-flex; align-items: center; gap: 6px; }
+.ipay-sub-icon { flex-shrink: 0; color: var(--muted); }
+
+/* ---------- Invoice card ---------- */
+
+.ipay-invoice { display: grid; gap: 16px; }
+.ipay-balance { display: grid; gap: 2px; }
+.ipay-balance strong { color: var(--text); font-size: 22px; font-weight: 750; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }
+.ipay-processors { display: grid; gap: 10px; }
+.ipay-processor {
+  display: grid;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface-muted);
+}
+.ipay-processor-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-height: 30px; }
+.ipay-processor-head strong { color: var(--text); font-size: 14px; }
+.ipay-mark {
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  border-radius: 7px;
+  background: var(--ink);
+  color: var(--on-ink);
+  font-size: 12px;
+  font-weight: 800;
+}
+.ipay-mark-stripe { background: #635bff; color: #fff; }
+.ipay-mark-paypal { background: #003087; color: #fff; }
+.ipay-mark-square { background: #1a1a1a; color: #fff; }
+.ipay-link { display: grid; gap: 8px; min-width: 0; }
+.ipay-link .copy-field { min-width: 0; }
+.ipay-link .copy-field .ui-input { min-width: 0; background: var(--surface); }
+.ipay-link-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
+.ipay-open { display: inline-flex; align-items: center; gap: 3px; margin-left: auto; font-weight: 650; }
+
+/* ---------- Narrow screens ---------- */
+
+@media (max-width: 900px) {
+  .ipay-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 520px) {
+  .ipay-processor-head .ui-spacer { display: none; }
+  .ipay-rows li,
+  .ipay-subs li { flex-wrap: wrap; }
+  .ipay-row-side { width: 100%; justify-content: flex-end; }
+  .ipay-open { margin-left: 0; }
+}

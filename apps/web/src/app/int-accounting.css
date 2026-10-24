@@ -1,0 +1,80 @@
+/* ==========================================================================
+   Accounting integrations (QuickBooks Online, Xero, FreshBooks, Sage)
+   Classes start with iac-.
+   ========================================================================== */
+
+/* ---------- Lists (errors, payments, remote invoices, customer search) ---------- */
+
+.iac-list { list-style: none; margin: 0; padding: 0; display: grid; }
+.iac-list > li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 12px 22px;
+  border-bottom: 1px solid var(--border);
+}
+.iac-list > li:last-child { border-bottom: 0; }
+.iac-list.compact > li,
+.ui-card-body:not(.flush) .iac-list > li { padding-left: 0; padding-right: 0; }
+.iac-list.picker { margin-top: 12px; max-height: 340px; overflow: auto; }
+.iac-list-main { display: grid; gap: 2px; min-width: 0; flex: 1; }
+.iac-list-title { font-weight: 650; font-size: 13.5px; color: var(--text); overflow-wrap: anywhere; }
+a.iac-list-title { text-decoration: none; }
+a.iac-list-title:hover { text-decoration: underline; }
+.iac-list-sub { font-size: 12.5px; color: var(--muted); overflow-wrap: anywhere; }
+
+/* ---------- Status blocks ---------- */
+
+.iac-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.iac-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.iac-customer,
+.iac-status > div { display: grid; gap: 2px; min-width: 0; }
+.iac-customer strong,
+.iac-status strong { font-size: 15px; overflow-wrap: anywhere; }
+.iac-status { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.iac-balances { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.iac-balances > div {
+  display: grid;
+  gap: 2px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: var(--surface-muted);
+}
+.iac-balances strong { font-size: 16px; font-variant-numeric: tabular-nums; }
+.iac-danger { color: var(--danger); }
+.iac-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--danger-soft);
+  color: var(--danger);
+  font-size: 13px;
+  line-height: 1.45;
+}
+.iac-error svg { flex: none; margin-top: 2px; }
+
+/* ---------- Forms ---------- */
+
+.iac-inline { display: flex; align-items: flex-end; gap: 10px; flex-wrap: wrap; }
+.iac-inline > .ui-select,
+.iac-inline > .ui-input,
+.iac-inline > .ui-field { flex: 1 1 220px; min-width: 0; }
+.iac-inline-actions { display: flex; gap: 8px; }
+.iac-select { max-width: 280px; width: 100%; }
+.iac-save { display: flex; gap: 10px; padding-top: 16px; flex-wrap: wrap; }
+
+.iac-mapping { display: grid; gap: 12px; padding: 16px 0 4px; border-top: 1px solid var(--border); }
+.iac-mapping-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.iac-map-table td { vertical-align: middle; }
+.iac-map-table .iac-select { max-width: 320px; }
+
+@media (max-width: 680px) {
+  .iac-list > li { padding-left: 16px; padding-right: 16px; align-items: flex-start; }
+  .iac-balances { grid-template-columns: minmax(0, 1fr); }
+  .iac-select { max-width: none; }
+  .iac-mapping-head { flex-direction: column; }
+  .iac-inline-actions { width: 100%; }
+}

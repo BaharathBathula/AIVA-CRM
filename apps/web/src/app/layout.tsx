@@ -20,6 +20,12 @@ import "./int-mail-calendar.css";
 import "./int-messaging.css";
 import "./int-documents.css";
 import "./int-leads-automation.css";
+import "./int-marketing.css";
+import "./int-accounting.css";
+import "./int-payments.css";
+import "./int-support.css";
+import "./int-sales.css";
+import "./int-analytics.css";
 
 export const metadata: Metadata = {
   title: {

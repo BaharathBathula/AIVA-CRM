@@ -866,6 +866,11 @@ def _clip(value: Any, size: int) -> str | None:
     return text[:size] or None
 
 
+def _ga_client_id(value: Any) -> str | None:
+    text = str(value or "").strip()[:60]
+    return text if re.fullmatch(r"\d{1,20}\.\d{1,20}", text) else None
+
+
 @public_router.post("/track", status_code=status.HTTP_204_NO_CONTENT)
 async def track(request: Request, db: AsyncSession = Depends(get_db)):
     raw = await request.body()
@@ -939,6 +944,11 @@ async def track(request: Request, db: AsyncSession = Depends(get_db)):
     visitor.last_seen_at = now
     visitor.last_url = url
     site.last_hit_at = now
+    # The visitor's Google Analytics client ID (from the _ga cookie), so CRM events sent
+    # to GA4 later join this visitor's sessions.
+    ga_client_id = _ga_client_id(event.get("ga"))
+    if ga_client_id and (visitor.first_source or {}).get("ga_client_id") != ga_client_id:
+        visitor.first_source = {**(visitor.first_source or {}), "ga_client_id": ga_client_id}
 
     if kind == "identify":
         email = (_clip(event.get("email"), 320) or "").lower()

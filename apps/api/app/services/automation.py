@@ -202,6 +202,10 @@ async def load_automation_context(
         from app.integrations.providers.automation import context_entries as webhook_entries
 
         webhooks = await webhook_entries(db, organization_id)
+        # Google Ads offline conversions and GA4 events: which CRM moments are sent.
+        from app.integrations.providers._conversions import context_entries as conversion_entries
+
+        conversions = await conversion_entries(db, organization_id)
         context = {
             "stages": {str(stage.id): {"name": stage.name, "category": stage.category} for stage in stages},
             "stage_rules": {
@@ -230,6 +234,7 @@ async def load_automation_context(
             ],
             "chat": [{"channel": chat.kind, "events": list(chat.events or [])} for chat in chats],
             "webhooks": webhooks,
+            "conversions": conversions,
             "workflow_rules": [
                 {
                     "id": rule.id,
@@ -858,6 +863,12 @@ def _before_flush(session: Session, flush_context: Any, instances: Any) -> None:
             from app.integrations.providers.automation import queue_events
 
             queue_events(session, kind, entity_type, obj, dict(changes), context)
+
+        if organization_id is not None and context.get("conversions"):
+            # Outbox for Google Ads conversions and GA4 events, sent by the scheduler.
+            from app.integrations.providers._conversions import queue as queue_conversions
+
+            queue_conversions(session, kind, entity_type, obj, dict(changes), context, enabled)
 
         if kind == "deleted" or not workflow_rules or entity_type not in OBJECTS:
             continue

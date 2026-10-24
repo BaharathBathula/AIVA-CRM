@@ -11,6 +11,8 @@ import { Alert, Badge, ConfirmDialog, Field, LoadingRows, Modal } from "@/compon
 import { date, moneyExact, toDateInput } from "@/lib/format";
 import { INVOICE_STATUS, type InvoiceDetail } from "@/lib/invoices";
 import { api, errorMessage, useApi } from "@/lib/use-api";
+import { InvoiceAccounting } from "@/components/integrations/record/InvoiceAccounting";
+import { InvoicePayments } from "@/components/integrations/record/InvoicePayments";
 
 export default function InvoicePage() {
   return (
@@ -187,10 +189,14 @@ function Invoice() {
           {d.account_id ? <Link href={`/accounts/${d.account_id}`}>Account</Link> : null}
           {d.owner_name ? <span>Owner {d.owner_name}</span> : null}
           {d.paid_at ? <span>Paid in full {date(d.paid_at)}</span> : null}
-          {d.exported_at ? <span>Exported to QuickBooks {date(d.exported_at)}</span> : null}
+          {d.exported_at ? <span>Exported to accounting {date(d.exported_at)}</span> : null}
         </div>
         {manage && d.status === "draft" ? <DueDate invoice={d} onSaved={(next) => invoice.setData(next)} /> : null}
       </article>
+      <div className="int-invoice-panels no-print">
+        <InvoicePayments invoiceId={d.id} onChanged={() => void invoice.reload()} />
+        <InvoiceAccounting invoiceId={d.id} onChanged={() => void invoice.reload()} />
+      </div>
       <PaymentModal invoice={paying ? d : null} onClose={() => setPaying(false)} onSaved={(next) => invoice.setData(next)} />
       <ConfirmDialog
         open={voiding}

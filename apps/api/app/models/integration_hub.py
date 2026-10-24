@@ -1,14 +1,16 @@
 """Integrations hub: on/off switches, connected accounts, activity, outgoing
-webhooks (Zapier, Make, n8n), cloud-file links, e-signature envelopes and
-SMS / WhatsApp messages.
+webhooks (Zapier, Make, n8n), cloud-file links, e-signature envelopes,
+SMS / WhatsApp messages, links between AIVA records and their copies in other
+systems, and external items (tickets, payments, subscriptions...) shown in AIVA.
 """
 
 from __future__ import annotations
 
 import uuid
 from datetime import datetime
+from decimal import Decimal
 
-from sqlalchemy import BigInteger, DateTime, ForeignKey, Index, Integer, String, Text, UniqueConstraint, text
+from sqlalchemy import BigInteger, DateTime, ForeignKey, Index, Integer, Numeric, String, Text, UniqueConstraint, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
@@ -210,3 +212,76 @@ class ChannelMessage(UUIDPrimaryKeyMixin, OrganizationOwnedMixin, TimestampMixin
     account_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("accounts.id", ondelete="SET NULL"), nullable=True)
     user_id: Mapped[uuid.UUID | None] = _user_fk()
     is_read: Mapped[bool] = _bool(False)
+
+
+class IntegrationRecordLink(UUIDPrimaryKeyMixin, OrganizationOwnedMixin, TimestampMixin, Base):
+    """An AIVA record and its counterpart in another system.
+
+    One row per (record, provider, kind of external object): an account and its
+    QuickBooks customer, an invoice and its Xero invoice or Stripe payment link, a
+    contact and its Mailchimp audience member, a case and its Zendesk ticket.
+    ``external_parent`` scopes ids that are only unique inside a container (a
+    Mailchimp audience, a QuickBooks company); it is "" when there is none.
+    """
+
+    __tablename__ = "integration_record_links"
+    __table_args__ = (
+        UniqueConstraint(
+            "organization_id", "provider", "external_type", "external_parent", "external_id", name="uq_integration_record_links_external"
+        ),
+        UniqueConstraint(
+            "organization_id", "provider", "record_type", "record_id", "external_type", "external_parent", name="uq_integration_record_links_record"
+        ),
+        Index("ix_integration_record_links_record", "organization_id", "record_type", "record_id"),
+    )
+
+    provider: Mapped[str] = mapped_column(String(40), nullable=False)
+    record_type: Mapped[str] = mapped_column(String(40), nullable=False)
+    record_id: Mapped[uuid.UUID] = mapped_column(nullable=False)
+    external_type: Mapped[str] = mapped_column(String(40), nullable=False)
+    external_id: Mapped[str] = mapped_column(String(200), nullable=False)
+    external_parent: Mapped[str] = mapped_column(String(200), nullable=False, default="", server_default="")
+    external_url: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    # linked | pending | error | removed
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="linked", server_default="linked")
+    data: Mapped[dict] = _json_dict()
+    sync_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)  # what was last sent, to skip unchanged records
+    last_synced_at: Mapped[datetime | None] = _when()
+    last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
+class IntegrationObject(UUIDPrimaryKeyMixin, OrganizationOwnedMixin, TimestampMixin, Base):
+    """Something that lives in another system and is shown in AIVA: a help desk
+    ticket, a payment or refund, a subscription, an accounting invoice, an email
+    campaign, an ad campaign. Linked to the AIVA records it belongs to."""
+
+    __tablename__ = "integration_objects"
+    __table_args__ = (
+        UniqueConstraint("organization_id", "provider", "object_type", "external_parent", "external_id", name="uq_integration_objects_external"),
+        Index("ix_integration_objects_kind_time", "organization_id", "provider", "object_type", "occurred_at"),
+        Index("ix_integration_objects_record", "organization_id", "record_type", "record_id"),
+        Index("ix_integration_objects_email", "organization_id", "email"),
+    )
+
+    provider: Mapped[str] = mapped_column(String(40), nullable=False)
+    # ticket | conversation | payment | refund | subscription | invoice | campaign | ad_campaign | ...
+    object_type: Mapped[str] = mapped_column(String(40), nullable=False)
+    external_id: Mapped[str] = mapped_column(String(200), nullable=False)
+    external_parent: Mapped[str] = mapped_column(String(200), nullable=False, default="", server_default="")
+    title: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    status: Mapped[str | None] = mapped_column(String(60), nullable=True)
+    priority: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    amount: Mapped[Decimal | None] = mapped_column(Numeric(14, 2), nullable=True)
+    currency: Mapped[str | None] = mapped_column(String(3), nullable=True)
+    email: Mapped[str | None] = mapped_column(String(320), nullable=True)  # the person it's about, for matching
+    url: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    occurred_at: Mapped[datetime | None] = _when()  # created at the provider
+    external_updated_at: Mapped[datetime | None] = _when()
+    data: Mapped[dict] = _json_dict()
+    account_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("accounts.id", ondelete="SET NULL"), nullable=True, index=True)
+    contact_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("contacts.id", ondelete="SET NULL"), nullable=True, index=True)
+    lead_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("leads.id", ondelete="SET NULL"), nullable=True, index=True)
+    opportunity_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("opportunities.id", ondelete="SET NULL"), nullable=True)
+    # Any other AIVA record it belongs to (a sales_invoice, a case, a quote).
+    record_type: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    record_id: Mapped[uuid.UUID | None] = mapped_column(nullable=True)

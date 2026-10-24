@@ -330,7 +330,9 @@ async def google_ads_lead(organization_slug: str, request: Request, db: AsyncSes
         payload = await request.json()
     except ValueError as exc:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Send JSON.") from exc
-    if not expected or not hmac.compare_digest(str(payload.get("google_key") or ""), expected):
+    if not isinstance(payload, dict):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Send a JSON object.")
+    if not expected or not hmac.compare_digest(str(payload.get("google_key") or "").encode(), expected.encode()):
         raise HTTPException(status.HTTP_403_FORBIDDEN, "The Google Ads key doesn't match.")
     subscription = (await db.execute(select(Subscription).where(Subscription.organization_id == organization.id))).scalar_one_or_none()
     state = plan_state(subscription)
@@ -379,6 +381,7 @@ async def google_ads_lead(organization_slug: str, request: Request, db: AsyncSes
                 "gclid": payload.get("gcl_id"),
                 "google_lead_id": lead_id or None,
                 "utm_campaign": str(payload.get("campaign_id") or "") or None,
+                "google_campaign_id": str(payload.get("campaign_id") or "") or None,
                 "form_id": str(payload.get("form_id") or "") or None,
                 "test": bool(payload.get("is_test")),
             }

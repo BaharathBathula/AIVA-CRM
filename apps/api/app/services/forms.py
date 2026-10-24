@@ -38,7 +38,14 @@ CASE_FIELDS = {
     "priority": "Priority",
 }
 INPUT_TYPES = ("text", "email", "tel", "textarea", "select", "checkbox", "number", "date")
-ATTRIBUTION_KEYS = ("utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content", "gclid", "referrer", "page")
+ATTRIBUTION_KEYS = ("utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content", "gclid", "gbraid", "wbraid", "ga_client_id", "referrer", "page")
+# Ad click IDs and the GA client ID are only kept when they look like one.
+ATTRIBUTION_PATTERNS = {
+    "gclid": re.compile(r"^[A-Za-z0-9_\-.]{8,200}$"),
+    "gbraid": re.compile(r"^[A-Za-z0-9_\-.]{8,200}$"),
+    "wbraid": re.compile(r"^[A-Za-z0-9_\-.]{8,200}$"),
+    "ga_client_id": re.compile(r"^\d{1,20}\.\d{1,20}$"),
+}
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 
@@ -186,7 +193,11 @@ async def submit(
     if errors:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, {"message": "Check the highlighted fields.", "fields": errors})
 
-    attribution = {k: str(v)[:500] for k, v in attribution.items() if k in ATTRIBUTION_KEYS and v}
+    attribution = {
+        k: str(v)[:500]
+        for k, v in attribution.items()
+        if k in ATTRIBUTION_KEYS and v and (k not in ATTRIBUTION_PATTERNS or ATTRIBUTION_PATTERNS[k].match(str(v)))
+    }
     settings = form.settings or {}
     owner_id = uuid.UUID(settings["owner_user_id"]) if settings.get("owner_user_id") else form.created_by_user_id
     record_type, record_id = form.target, None
@@ -212,7 +223,7 @@ async def submit(
             company_name=values.get("company_name"),
             job_title=values.get("job_title"),
             notes=notes,
-            source=settings.get("lead_source") or ("google_ads" if attribution.get("gclid") else "web_form"),
+            source=settings.get("lead_source") or ("google_ads" if attribution.get("gclid") or attribution.get("gbraid") or attribution.get("wbraid") else "web_form"),
             status="new",
             score=0,
             owner_user_id=owner_id,

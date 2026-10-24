@@ -43,6 +43,9 @@ import {
 import { RecordDocuments, RecordMeetings } from "@/components/record-panels";
 import { PinButton } from "@/components/pins";
 import { RecordMessages } from "@/components/integrations/record/RecordMessages";
+import { RecordAccounting } from "@/components/integrations/record/RecordAccounting";
+import { RecordBilling } from "@/components/integrations/record/RecordBilling";
+import { RecordTickets } from "@/components/integrations/record/RecordTickets";
 import { RecordCloudFiles } from "@/components/integrations/record/RecordCloudFiles";
 import { RecordSignatures } from "@/components/integrations/record/RecordSignatures";
 import { ShareToSlackButton } from "@/components/integrations/record/ShareToSlackButton";
@@ -3108,6 +3111,9 @@ const accountHealth =
               <RecordInsights objectType="account" recordId={account.id} version={extrasVersion} onChanged={() => setExtrasVersion((v) => v + 1)} />
               <RecordMeetings recordType="account" recordId={account.id} defaults={{ account_id: account.id, title: `Meeting with ${account.name}` }} />
               <RecordDocuments recordType="account" recordId={account.id} />
+              <RecordAccounting accountId={account.id} />
+              <RecordBilling accountId={account.id} />
+              <RecordTickets recordType="account" recordId={account.id} />
               <RecordMessages recordType="account" recordId={account.id} />
               <RecordCloudFiles recordType="account" recordId={account.id} />
               <RecordSignatures recordType="account" recordId={account.id} />

@@ -86,6 +86,32 @@ FAMILIES: dict[str, OAuthFamily] = {
         "facebook", "Meta", "https://www.facebook.com/v21.0/dialog/oauth", "https://graph.facebook.com/v21.0/oauth/access_token",
         "facebook_app_id", "facebook_app_secret", pkce=False, scope_separator=",", console_url="https://developers.facebook.com/apps",
     ),
+    "constant_contact": OAuthFamily(
+        "constant_contact", "Constant Contact", "https://authz.constantcontact.com/oauth2/default/v1/authorize",
+        "https://authz.constantcontact.com/oauth2/default/v1/token", "constant_contact_client_id", "constant_contact_client_secret",
+        basic_auth=True, console_url="https://app.constantcontact.com/pages/dma/portal/",
+    ),
+    "intuit": OAuthFamily(
+        "intuit", "Intuit", "https://appcenter.intuit.com/connect/oauth2", "https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer",
+        "quickbooks_client_id", "quickbooks_client_secret", pkce=False, basic_auth=True,
+        console_url="https://developer.intuit.com/app/developer/myapps",
+    ),
+    "xero": OAuthFamily(
+        "xero", "Xero", "https://login.xero.com/identity/connect/authorize", "https://identity.xero.com/connect/token",
+        "xero_client_id", "xero_client_secret", basic_auth=True, console_url="https://developer.xero.com/app/manage",
+    ),
+    "freshbooks": OAuthFamily(
+        "freshbooks", "FreshBooks", "https://auth.freshbooks.com/oauth/authorize", "https://api.freshbooks.com/auth/oauth/token",
+        "freshbooks_client_id", "freshbooks_client_secret", pkce=False, console_url="https://my.freshbooks.com/#/developer",
+    ),
+    "sage": OAuthFamily(
+        "sage", "Sage", "https://www.sageone.com/oauth2/auth/central?filter=apiv3.1", "https://oauth.accounting.sage.com/token",
+        "sage_client_id", "sage_client_secret", pkce=False, console_url="https://developerselfservice.sageone.com/",
+    ),
+    "linkedin": OAuthFamily(
+        "linkedin", "LinkedIn", "https://www.linkedin.com/oauth/v2/authorization", "https://www.linkedin.com/oauth/v2/accessToken",
+        "linkedin_client_id", "linkedin_client_secret", pkce=False, console_url="https://www.linkedin.com/developers/apps",
+    ),
 }
 
 
@@ -390,6 +416,419 @@ INTEGRATIONS: dict[str, IntegrationDef] = {
             docs_url="https://developers.facebook.com/docs/marketing-api/guides/lead-ads", color="#0866ff", monogram="f",
             setup=("Click Connect and sign in with Facebook.", "Choose the pages whose lead forms should send leads to AIVA.", "Use Meta's lead ads testing tool to send a test lead."),
         ),
+        # ------------------------------------------------------------ Email marketing
+        IntegrationDef(
+            "mailchimp", "Mailchimp", "Email Marketing", "Intuit Mailchimp",
+            "Keep Mailchimp audiences in step with your AIVA contacts and leads.",
+            (
+                "Add contacts and leads to an audience automatically, with tags and merge fields",
+                "Unsubscribes and cleaned addresses in Mailchimp update AIVA's do-not-contact list",
+                "Campaign opens and clicks show on the person's timeline",
+            ),
+            "credentials", "mass_email",
+            credential_fields=(
+                CredentialField("api_key", "API key", secret=True, help="Mailchimp → Profile → Extras → API keys. It ends with your data center, like -us21.", placeholder="xxxxxxxx-us21"),
+            ),
+            docs_url="https://mailchimp.com/developer/marketing/", color="#ffe01b", monogram="MC",
+            setup=("Paste an API key.", "Choose the audience and which contacts and leads to sync.", "AIVA registers a webhook so unsubscribes come back."),
+        ),
+        IntegrationDef(
+            "activecampaign", "ActiveCampaign", "Email Marketing", "ActiveCampaign",
+            "Sync contacts to ActiveCampaign lists and bring engagement back to AIVA.",
+            (
+                "Contacts and leads subscribed to the lists you choose, with tags and custom fields",
+                "Unsubscribes and bounces update AIVA's do-not-contact list",
+                "Opens, clicks and automations show on the timeline",
+            ),
+            "credentials", "mass_email",
+            credential_fields=(
+                CredentialField("api_url", "API URL", help="ActiveCampaign → Settings → Developer. Looks like https://youraccount.api-us1.com.", placeholder="https://youraccount.api-us1.com"),
+                CredentialField("api_key", "API key", secret=True),
+            ),
+            docs_url="https://developers.activecampaign.com/reference/overview", color="#356ae6", monogram="AC",
+            setup=("Paste the API URL and key.", "Pick the lists and which records to sync.", "AIVA adds a webhook for unsubscribes and bounces."),
+        ),
+        IntegrationDef(
+            "brevo", "Brevo", "Email Marketing", "Brevo",
+            "Sync AIVA contacts to Brevo lists for email and SMS campaigns.",
+            (
+                "Contacts and leads added to Brevo lists with their attributes",
+                "Unsubscribes, hard bounces and spam complaints update AIVA's do-not-contact list",
+                "Campaign engagement shows on the timeline",
+            ),
+            "credentials", "mass_email",
+            credential_fields=(
+                CredentialField("api_key", "API key", secret=True, help="Brevo → SMTP & API → API keys.", placeholder="xkeysib-…"),
+            ),
+            docs_url="https://developers.brevo.com/", color="#0b996e", monogram="B",
+            setup=("Paste an API key.", "Choose the lists and which records to sync.", "AIVA registers a webhook for unsubscribes."),
+        ),
+        IntegrationDef(
+            "constant_contact", "Constant Contact", "Email Marketing", "Constant Contact",
+            "Sync AIVA contacts to Constant Contact lists.",
+            (
+                "Contacts and leads added to the lists you choose, with permission to send",
+                "Unsubscribes in Constant Contact update AIVA's do-not-contact list",
+                "Campaign activity shows on the timeline",
+            ),
+            "oauth", "mass_email", family="constant_contact", scopes=("account_read", "contact_data", "campaign_data", "offline_access"),
+            docs_url="https://developer.constantcontact.com/api_guide/index.html", color="#1856ed", monogram="CC",
+            setup=("Click Connect and sign in with Constant Contact.", "Choose the lists and which records to sync."),
+        ),
+        IntegrationDef(
+            "klaviyo", "Klaviyo", "Email Marketing", "Klaviyo",
+            "Send AIVA contacts and CRM events to Klaviyo profiles and lists.",
+            (
+                "Contacts and leads become Klaviyo profiles in the lists you choose",
+                "CRM events (deal won, quote accepted…) can trigger Klaviyo flows",
+                "Unsubscribes and suppressions update AIVA's do-not-contact list",
+            ),
+            "credentials", "mass_email",
+            credential_fields=(
+                CredentialField("api_key", "Private API key", secret=True, help="Klaviyo → Settings → API keys → Create private key (full access to profiles, lists, events and metrics).", placeholder="pk_…"),
+            ),
+            docs_url="https://developers.klaviyo.com/en/reference/api_overview", color="#232426", monogram="K",
+            setup=("Paste a private API key.", "Choose the lists and which records to sync.", "Pick the CRM events to send as Klaviyo metrics."),
+        ),
+        # ------------------------------------------------------------ Advertising
+        IntegrationDef(
+            "google_ads", "Google Ads", "Advertising", "Google",
+            "Capture Google Ads lead-form leads and send won deals back as conversions.",
+            (
+                "Lead-form extension submissions become AIVA leads",
+                "Leads keep their click ID (GCLID), campaign and keyword",
+                "Qualified and won deals are uploaded as offline conversions with their value",
+                "Campaign spend and clicks next to the revenue they produced",
+            ),
+            "oauth", "google_ads", family="google", scopes=GOOGLE_ID + ("https://www.googleapis.com/auth/adwords",),
+            docs_url="https://developers.google.com/google-ads/api/docs/start", color="#4285f4", monogram="Ad",
+            setup=("Click Connect and sign in with the Google account that manages your ads.", "Pick the Google Ads account and your conversion actions.", "Add the lead-form webhook URL to your lead forms."),
+        ),
+        # ------------------------------------------------------------ Accounting
+        IntegrationDef(
+            "quickbooks", "QuickBooks Online", "Accounting", "Intuit",
+            "Send invoices to QuickBooks and see when they're paid.",
+            (
+                "Accounts become QuickBooks customers (matched by name or email first)",
+                "AIVA invoices are created in QuickBooks with their lines, tax and terms",
+                "Payments recorded in QuickBooks mark the AIVA invoice paid",
+                "Open balance and overdue invoices on the account",
+            ),
+            "oauth", "accounting_sync", family="intuit", scopes=("com.intuit.quickbooks.accounting",),
+            docs_url="https://developer.intuit.com/app/developer/qbo/docs/get-started", color="#2ca01c", monogram="QB",
+            setup=("Click Connect and choose your QuickBooks company.", "Map products to QuickBooks items and pick the income account and tax code.", "Choose whether invoices sync automatically or by hand."),
+        ),
+        IntegrationDef(
+            "xero", "Xero", "Accounting", "Xero",
+            "Send invoices to Xero and track payments in AIVA.",
+            (
+                "Accounts become Xero contacts",
+                "AIVA invoices are created in Xero as draft or approved invoices",
+                "Payments in Xero mark the AIVA invoice paid",
+                "Outstanding and overdue amounts on the account",
+            ),
+            "oauth", "accounting_sync", family="xero",
+            scopes=("openid", "profile", "email", "offline_access", "accounting.transactions", "accounting.contacts", "accounting.settings.read"),
+            docs_url="https://developer.xero.com/documentation/", color="#13b5ea", monogram="X",
+            setup=("Click Connect and choose your Xero organisation.", "Pick the sales account and tax rate for invoice lines.", "Choose whether invoices sync automatically or by hand."),
+        ),
+        IntegrationDef(
+            "freshbooks", "FreshBooks", "Accounting", "FreshBooks",
+            "Create FreshBooks clients and invoices from AIVA.",
+            (
+                "Accounts become FreshBooks clients",
+                "AIVA invoices are created in FreshBooks",
+                "Payments in FreshBooks mark the AIVA invoice paid",
+            ),
+            "oauth", "accounting_sync", family="freshbooks",
+            scopes=("user:profile:read", "user:clients:read", "user:clients:write", "user:invoices:read", "user:invoices:write", "user:payments:read"),
+            docs_url="https://www.freshbooks.com/api/start", color="#0075dd", monogram="FB",
+            setup=("Click Connect and choose your FreshBooks business.", "Choose whether invoices sync automatically or by hand."),
+        ),
+        IntegrationDef(
+            "sage_accounting", "Sage Accounting", "Accounting", "Sage",
+            "Send invoices to Sage Accounting and follow their payment.",
+            (
+                "Accounts become Sage customers",
+                "AIVA invoices are created as Sage sales invoices",
+                "Payments in Sage mark the AIVA invoice paid",
+            ),
+            "oauth", "accounting_sync", family="sage", scopes=("full_access",),
+            docs_url="https://developer.sage.com/accounting/", color="#00d639", monogram="Sg",
+            setup=("Click Connect and choose your Sage business.", "Pick the sales ledger account and tax rate.", "Choose whether invoices sync automatically or by hand."),
+        ),
+        # ------------------------------------------------------------ Payments
+        IntegrationDef(
+            "stripe", "Stripe", "Payments", "Stripe",
+            "Get paid by card: payment links on invoices, paid status straight back in AIVA.",
+            (
+                "A Stripe payment link on every AIVA invoice, emailed or shared from the record",
+                "Payments, refunds and failed payments update the invoice and its account",
+                "Stripe customers matched to AIVA accounts, with their payments on the timeline",
+            ),
+            "credentials", "online_payments",
+            credential_fields=(
+                CredentialField("secret_key", "Secret or restricted key", secret=True, help="Stripe Dashboard → Developers → API keys. A restricted key needs write access to Checkout, Payment Links, Products, Prices and Customers, and read access to everything else.", placeholder="rk_live_… or sk_live_…"),
+            ),
+            docs_url="https://docs.stripe.com/api", color="#635bff", monogram="S",
+            setup=("Paste a secret or restricted key.", "AIVA creates the webhook endpoint in your Stripe account for you.", "Add a payment link to an invoice."),
+        ),
+        IntegrationDef(
+            "paypal", "PayPal", "Payments", "PayPal",
+            "Collect invoice payments with PayPal and see them in AIVA.",
+            (
+                "PayPal checkout links on AIVA invoices",
+                "Completed and refunded payments update the invoice",
+                "Webhooks verified with PayPal before anything changes",
+            ),
+            "credentials", "online_payments",
+            credential_fields=(
+                CredentialField("client_id", "Client ID", help="developer.paypal.com → Apps & Credentials → your REST app."),
+                CredentialField("client_secret", "Secret", secret=True),
+                CredentialField("environment", "Environment", help="live or sandbox", placeholder="live"),
+            ),
+            docs_url="https://developer.paypal.com/api/rest/", color="#003087", monogram="PP",
+            setup=("Paste your REST app's client ID and secret.", "AIVA registers the webhook in your PayPal app.", "Add a PayPal link to an invoice."),
+        ),
+        IntegrationDef(
+            "square", "Square", "Payments", "Square",
+            "Square payment links on invoices, with payments synced back.",
+            (
+                "Square checkout links on AIVA invoices",
+                "Completed payments and refunds update the invoice",
+                "Square customers matched to AIVA contacts",
+            ),
+            "credentials", "online_payments",
+            credential_fields=(
+                CredentialField("access_token", "Access token", secret=True, help="Square Developer Console → your app → Credentials (production or sandbox)."),
+                CredentialField("environment", "Environment", help="production or sandbox", placeholder="production"),
+                CredentialField("location_id", "Location ID", required=False, help="Leave blank to use your main location."),
+                CredentialField("webhook_signature_key", "Webhook signature key", secret=True, required=False, help="Shown when you add AIVA's webhook URL in the Square Developer Console."),
+            ),
+            docs_url="https://developer.squareup.com/docs", color="#1a1a1a", monogram="Sq",
+            setup=("Paste an access token.", "Add AIVA's webhook URL in Square and paste the signature key.", "Add a Square link to an invoice."),
+        ),
+        IntegrationDef(
+            "chargebee", "Chargebee", "Payments", "Chargebee",
+            "See subscriptions, MRR and renewals on AIVA accounts.",
+            (
+                "Chargebee customers matched to AIVA accounts",
+                "Subscriptions, plan, MRR and renewal dates on the account",
+                "Cancellations and failed payments raise tasks for the account owner",
+            ),
+            "credentials", "online_payments",
+            credential_fields=(
+                CredentialField("site", "Site", help="The part before .chargebee.com in your Chargebee address.", placeholder="acme"),
+                CredentialField("api_key", "API key", secret=True, help="Chargebee → Settings → Configure Chargebee → API keys (full access or read-only)."),
+            ),
+            docs_url="https://apidocs.chargebee.com/docs/api", color="#ff3300", monogram="CB",
+            setup=("Paste your site and an API key.", "Add AIVA's webhook URL in Chargebee.", "Choose what happens on cancellations and failed payments."),
+        ),
+        # ------------------------------------------------------------ Customer support
+        IntegrationDef(
+            "zendesk", "Zendesk", "Customer Support", "Zendesk",
+            "See Zendesk tickets on accounts and contacts, and open tickets from AIVA.",
+            (
+                "Every ticket from a contact or account, with status and priority, on the record",
+                "Open a Zendesk ticket from an AIVA contact or case",
+                "Ticket updates arrive through a signed webhook",
+            ),
+            "credentials", "helpdesk_sync",
+            credential_fields=(
+                CredentialField("subdomain", "Subdomain", help="The part before .zendesk.com.", placeholder="acme"),
+                CredentialField("email", "Agent email", help="The Zendesk agent the API token belongs to."),
+                CredentialField("api_token", "API token", secret=True, help="Admin Center → Apps and integrations → Zendesk API."),
+            ),
+            docs_url="https://developer.zendesk.com/api-reference/", color="#03363d", monogram="Z",
+            setup=("Paste your subdomain, agent email and an API token.", "AIVA creates the webhook in Zendesk for you.", "Tickets appear on matching contacts and accounts."),
+        ),
+        IntegrationDef(
+            "freshdesk", "Freshdesk", "Customer Support", "Freshworks",
+            "Freshdesk tickets on AIVA records, and tickets created from AIVA.",
+            (
+                "Tickets from a contact or company shown on the AIVA record",
+                "Create a Freshdesk ticket from a contact or case",
+                "Status changes sync through a webhook",
+            ),
+            "credentials", "helpdesk_sync",
+            credential_fields=(
+                CredentialField("domain", "Domain", help="Your Freshdesk address, like acme.freshdesk.com.", placeholder="acme.freshdesk.com"),
+                CredentialField("api_key", "API key", secret=True, help="Freshdesk → Profile settings → Your API key."),
+            ),
+            docs_url="https://developers.freshdesk.com/api/", color="#25c16f", monogram="Fd",
+            setup=("Paste your domain and API key.", "Add the webhook URL in a Freshdesk automation rule.", "Tickets appear on matching contacts and accounts."),
+        ),
+        IntegrationDef(
+            "intercom", "Intercom", "Customer Support", "Intercom",
+            "Intercom conversations on AIVA contacts, and new Intercom leads in AIVA.",
+            (
+                "Conversations with a contact shown on the AIVA record",
+                "Intercom leads and users matched to AIVA contacts and leads",
+                "New conversations and replies arrive through a signed webhook",
+            ),
+            "credentials", "helpdesk_sync",
+            credential_fields=(
+                CredentialField("access_token", "Access token", secret=True, help="Intercom Developer Hub → your app → Authentication."),
+                CredentialField("client_secret", "Client secret", secret=True, required=False, help="Developer Hub → Basic information. Used to check webhook signatures."),
+                CredentialField("region", "Region", required=False, help="us, eu or au", placeholder="us"),
+            ),
+            docs_url="https://developers.intercom.com/docs/references/rest-api/api.intercom.io", color="#1f8ded", monogram="I",
+            setup=("Paste an access token from your Intercom app.", "Add AIVA's webhook URL in the Developer Hub and paste the client secret.", "Conversations appear on matching contacts."),
+        ),
+        IntegrationDef(
+            "help_scout", "Help Scout", "Customer Support", "Help Scout",
+            "Help Scout conversations on AIVA contacts and accounts.",
+            (
+                "Conversations with a customer shown on the AIVA record",
+                "Start a Help Scout conversation from a contact or case",
+                "Updates arrive through a signed webhook",
+            ),
+            "credentials", "helpdesk_sync",
+            credential_fields=(
+                CredentialField("app_id", "App ID", help="Help Scout → Your profile → My apps → Create my app."),
+                CredentialField("app_secret", "App secret", secret=True),
+            ),
+            docs_url="https://developer.helpscout.com/mailbox-api/", color="#1292ee", monogram="HS",
+            setup=("Create an app in Help Scout and paste its ID and secret.", "AIVA registers its webhook for you.", "Conversations appear on matching contacts."),
+        ),
+        IntegrationDef(
+            "jira_service_management", "Jira Service Management", "Customer Support", "Atlassian",
+            "Jira Service Management requests on AIVA records, and escalation from AIVA cases.",
+            (
+                "Requests raised by a customer shown on the AIVA contact and account",
+                "Escalate an AIVA case to a Jira request and follow its status",
+                "Status changes arrive through a webhook",
+            ),
+            "credentials", "helpdesk_sync",
+            credential_fields=(
+                CredentialField("site", "Site", help="Your Atlassian site, like acme.atlassian.net.", placeholder="acme.atlassian.net"),
+                CredentialField("email", "Atlassian account email"),
+                CredentialField("api_token", "API token", secret=True, help="id.atlassian.com → Security → API tokens."),
+                CredentialField("service_desk_id", "Service desk ID", required=False, help="Leave blank to pick from a list after connecting."),
+            ),
+            docs_url="https://developer.atlassian.com/cloud/jira/service-desk/rest/", color="#0c66e4", monogram="J",
+            setup=("Paste your site, email and an API token.", "Pick the service desk and request type for escalations.", "Add AIVA's webhook in Jira for status updates."),
+        ),
+        # ------------------------------------------------------------ E-signature (more)
+        IntegrationDef(
+            "adobe_sign", "Adobe Acrobat Sign", "E-signature", "Adobe",
+            "Send quotes and documents for signature with Adobe Acrobat Sign.",
+            (
+                "Send an AIVA quote or document to one or more signers in order",
+                "Status on the record; the signed PDF is saved to Documents",
+                "Signed quotes are marked accepted",
+            ),
+            "credentials", "e_signature",
+            credential_fields=(
+                CredentialField("integration_key", "Integration key", secret=True, help="Acrobat Sign → Account → Acrobat Sign API → API information → Integration key (agreement_read, agreement_write, agreement_send, webhook_read, webhook_write)."),
+                CredentialField("api_access_point", "API access point", required=False, help="Leave blank and AIVA looks it up, like https://api.na1.adobesign.com/."),
+            ),
+            docs_url="https://developer.adobe.com/acrobat-sign/docs/overview/developer_guide/", color="#eb1000", monogram="AS",
+            setup=("Paste an integration key.", "AIVA registers its webhook with Acrobat Sign.", "Send a quote for signature."),
+        ),
+        IntegrationDef(
+            "pandadoc", "PandaDoc", "E-signature", "PandaDoc",
+            "Create PandaDoc documents from AIVA quotes and templates and get them signed.",
+            (
+                "Create a document from a PandaDoc template, filled from the deal, account and contact",
+                "Send quotes and AIVA documents for signature",
+                "Viewed, completed and paid statuses on the record; the signed PDF saved to Documents",
+            ),
+            "credentials", "e_signature",
+            credential_fields=(
+                CredentialField("api_key", "API key", secret=True, help="PandaDoc → Settings → Integrations → API → generate a production API key."),
+            ),
+            docs_url="https://developers.pandadoc.com/reference/about", color="#25b07c", monogram="PD",
+            setup=("Paste an API key.", "AIVA subscribes to document updates for you.", "Create a document from a template on a deal."),
+        ),
+        # ------------------------------------------------------------ Sales intelligence
+        IntegrationDef(
+            "apollo", "Apollo.io", "Sales Intelligence", "Apollo",
+            "Enrich contacts and accounts from Apollo and import prospects.",
+            (
+                "Fill in titles, emails, phones and company data from Apollo",
+                "Apollo joins the waterfall enrichment order",
+                "Search Apollo's people and companies and import them as leads or contacts",
+            ),
+            "credentials", "waterfall_enrichment",
+            credential_fields=(
+                CredentialField("api_key", "API key", secret=True, help="Apollo → Settings → Integrations → API → Create new key (a master key is needed for people search)."),
+            ),
+            docs_url="https://docs.apollo.io/reference/", color="#f9d33f", monogram="A",
+            setup=("Paste an API key.", "Place Apollo in the enrichment order.", "Search for prospects and import them."),
+        ),
+        IntegrationDef(
+            "zoominfo", "ZoomInfo", "Sales Intelligence", "ZoomInfo",
+            "Enrich records with ZoomInfo data and import prospects.",
+            (
+                "Fill in contact and company data from ZoomInfo",
+                "ZoomInfo joins the waterfall enrichment order",
+                "Search ZoomInfo contacts and companies and import them",
+            ),
+            "credentials", "waterfall_enrichment",
+            credential_fields=(
+                CredentialField("username", "Username", help="Your ZoomInfo API username."),
+                CredentialField("client_id", "Client ID", help="ZoomInfo Admin Portal → API → your PKI app."),
+                CredentialField("private_key", "Private key", secret=True, help="The PKI private key (PEM) for that app."),
+            ),
+            docs_url="https://api-docs.zoominfo.com/", color="#e3283b", monogram="Zi",
+            setup=("Paste your API username, client ID and private key.", "Place ZoomInfo in the enrichment order.", "Search for prospects and import them."),
+        ),
+        # ------------------------------------------------------------ Lead capture (more)
+        IntegrationDef(
+            "linkedin_lead_gen", "LinkedIn Lead Gen Forms", "Lead Capture", "LinkedIn",
+            "Leads from LinkedIn Lead Gen Forms arrive in AIVA automatically.",
+            (
+                "Every lead-form submission on your ad accounts becomes an AIVA lead",
+                "Map form questions to lead fields",
+                "Campaign and form names are kept on the lead for reporting",
+            ),
+            "oauth", "web_forms", family="linkedin",
+            scopes=("openid", "profile", "email", "r_marketing_leadgen_automation", "r_ads", "r_organization_admin"),
+            docs_url="https://learn.microsoft.com/linkedin/marketing/lead-sync/leadsync", color="#0a66c2", monogram="in",
+            setup=("Click Connect and sign in with a LinkedIn admin of your ad account.", "Choose the ad accounts and forms to sync.", "Leads arrive within minutes."),
+        ),
+        # ------------------------------------------------------------ Analytics
+        IntegrationDef(
+            "google_analytics", "Google Analytics 4", "Analytics", "Google",
+            "Send CRM conversions to Google Analytics 4 and see where leads came from.",
+            (
+                "Lead created, deal won and other CRM events sent to GA4 as conversions, with their value",
+                "The visitor's GA client ID is kept on leads from your forms and website",
+                "Report on revenue by channel and campaign in GA4",
+            ),
+            "credentials", "bi_connectors",
+            credential_fields=(
+                CredentialField("measurement_id", "Measurement ID", help="GA4 → Admin → Data streams → your web stream.", placeholder="G-XXXXXXXXXX"),
+                CredentialField("api_secret", "Measurement Protocol API secret", secret=True, help="Same data stream → Measurement Protocol API secrets → Create."),
+            ),
+            docs_url="https://developers.google.com/analytics/devguides/collection/protocol/ga4", color="#e37400", monogram="GA",
+            setup=("Paste the measurement ID and an API secret.", "Pick the CRM events to send and their values.", "Mark them as key events in GA4."),
+        ),
+        IntegrationDef(
+            "power_bi", "Microsoft Power BI", "Analytics", "Microsoft",
+            "Build Power BI reports on live AIVA data.",
+            (
+                "A read-only data feed of leads, contacts, accounts, deals, activities, cases and invoices",
+                "Ready-made Power Query to paste into Power BI Desktop",
+                "Scheduled refresh in the Power BI service with an API key",
+            ),
+            "api_key", "bi_connectors",
+            docs_url="https://learn.microsoft.com/power-bi/connect-data/desktop-connect-to-web", color="#f2c811", monogram="BI",
+            setup=("Create a read-only API key for Power BI.", "In Power BI Desktop: Get data → Blank query → paste the query from this page.", "Publish and set a scheduled refresh."),
+        ),
+        IntegrationDef(
+            "looker_studio", "Looker Studio", "Analytics", "Google",
+            "Build Looker Studio dashboards on AIVA data.",
+            (
+                "A read-only data feed of leads, contacts, accounts, deals, activities, cases and invoices",
+                "A ready-made Looker Studio community connector",
+                "Or push the data to a Google Sheet that refreshes on a schedule",
+            ),
+            "api_key", "bi_connectors",
+            docs_url="https://developers.google.com/looker-studio/connector", color="#4285f4", monogram="LS",
+            setup=("Create a read-only API key for Looker Studio.", "Add the AIVA community connector from this page.", "Pick a dataset and build your report."),
+        ),
         # ------------------------------------------------------------ Automation
         IntegrationDef(
             "zapier", "Zapier", "Automation", "Zapier",
@@ -430,7 +869,10 @@ INTEGRATIONS: dict[str, IntegrationDef] = {
     )
 }
 
-CATEGORIES = ("Email", "Calendar", "Communication", "Meetings", "Scheduling", "Documents", "E-signature", "Lead Capture", "Automation")
+CATEGORIES = (
+    "Email", "Calendar", "Communication", "Meetings", "Scheduling", "Email Marketing", "Lead Capture", "Advertising",
+    "Sales Intelligence", "Documents", "E-signature", "Accounting", "Payments", "Customer Support", "Analytics", "Automation",
+)
 
 
 def get(key: str) -> IntegrationDef | None:

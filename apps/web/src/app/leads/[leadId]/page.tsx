@@ -28,6 +28,8 @@ import {
 import { RecordDocuments, RecordMeetings, RecordVisits } from "@/components/record-panels";
 import { PinButton } from "@/components/pins";
 import { RecordMessages } from "@/components/integrations/record/RecordMessages";
+import { RecordMarketing } from "@/components/integrations/record/RecordMarketing";
+import { RecordTickets } from "@/components/integrations/record/RecordTickets";
 import { RecordCloudFiles } from "@/components/integrations/record/RecordCloudFiles";
 import { RecordSignatures } from "@/components/integrations/record/RecordSignatures";
 import { ShareToSlackButton } from "@/components/integrations/record/ShareToSlackButton";
@@ -772,6 +774,8 @@ export default function LeadDetailPage() {
               <RecordVisits recordType="lead" recordId={lead.id} />
               <RecordDocuments recordType="lead" recordId={lead.id} />
               <RecordMessages recordType="lead" recordId={lead.id} />
+              <RecordTickets recordType="lead" recordId={lead.id} />
+              <RecordMarketing recordType="lead" recordId={lead.id} />
               <RecordCloudFiles recordType="lead" recordId={lead.id} />
               <RecordSignatures recordType="lead" recordId={lead.id} />
             </aside>

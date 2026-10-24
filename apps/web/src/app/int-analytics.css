@@ -1,0 +1,138 @@
+/* ==========================================================================
+   Integrations: analytics panels — Google Ads, Google Analytics 4,
+   Power BI and Looker Studio. Prefix: ian-
+   Colors come from theme tokens, so light and dark modes both work.
+   ========================================================================== */
+
+/* ---------- Small forms and save rows ---------- */
+
+.ian-inline-form { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.ian-inline-form > .ui-input { flex: 1 1 240px; min-width: 0; }
+
+.ian-save-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+
+.ian-card-setting { padding: 4px 18px 14px; border-top: 1px solid var(--border); }
+
+/* ---------- Moment → conversion action / GA4 event rules ---------- */
+
+.ian-rules { display: grid; gap: 6px; }
+
+.ian-rule {
+  display: grid;
+  grid-template-columns: minmax(150px, 1fr) minmax(0, 1.4fr) minmax(0, 1.2fr);
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  background: var(--surface);
+}
+.ian-rule.on { border-color: var(--border-strong); background: var(--surface-muted); }
+.ian-rule.ga { grid-template-columns: auto minmax(140px, 1fr) minmax(0, 1fr); }
+.ian-rule-label { font-size: 13.5px; font-weight: 650; color: var(--text); min-width: 0; overflow-wrap: anywhere; }
+.ian-rule .ui-select, .ian-rule .ui-input { width: 100%; min-width: 0; }
+.ian-rule-value { display: flex; gap: 6px; min-width: 0; }
+.ian-rule-value .ui-select { flex: 1 1 auto; }
+.ian-rule-value .ui-input { flex: 0 0 110px; }
+
+/* ---------- KPIs ---------- */
+
+.ian-kpis {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+}
+
+/* ---------- Outbox (conversion uploads, GA4 events) ---------- */
+
+.ian-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+.ian-chip { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; }
+.ian-chip strong { font-variant-numeric: tabular-nums; }
+
+.ian-outbox { list-style: none; margin: 0; padding: 0; display: grid; }
+.ian-outbox > li {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-top: 1px solid var(--border);
+}
+.ian-outbox > li:first-child { border-top: 0; padding-top: 0; }
+.ian-outbox-main { display: grid; gap: 3px; min-width: 0; }
+.ian-outbox-title { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 13.5px; font-weight: 650; }
+.ian-outbox-title a { color: var(--text); text-decoration: none; }
+.ian-outbox-title a:hover { text-decoration: underline; }
+.ian-outbox-message { color: var(--text-2); overflow-wrap: anywhere; }
+
+/* ---------- Code blocks ---------- */
+
+.ian-code {
+  margin: 0;
+  max-height: 320px;
+  overflow: auto;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  background: var(--surface-sunken);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1.55;
+  white-space: pre;
+}
+
+/* ---------- BI datasets ---------- */
+
+.ian-datasets {
+  list-style: none;
+  margin: 0;
+  padding: 10px 12px 12px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 6px;
+}
+.ian-datasets li { display: grid; gap: 2px; padding: 2px; min-width: 0; }
+.ian-datasets button {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 13.5px;
+  text-align: left;
+  cursor: pointer;
+}
+.ian-datasets button:hover { background: var(--surface-muted); }
+.ian-datasets button.on { border-color: var(--border-strong); background: var(--primary-soft); }
+.ian-datasets button:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+.ian-datasets button code { color: var(--muted); font-size: 11.5px; }
+.ian-datasets li > span { padding: 0 8px; }
+
+.ian-preview { padding-top: 12px; border-top: 1px solid var(--border); }
+.ian-preview .ui-table th { white-space: nowrap; }
+
+/* ---------- Phone widths ---------- */
+
+@media (max-width: 860px) {
+  .ian-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 640px) {
+  .ian-rule, .ian-rule.ga { grid-template-columns: minmax(0, 1fr); gap: 6px; }
+  .ian-rule.ga { grid-template-columns: auto minmax(0, 1fr); }
+  .ian-rule.ga .ui-input { grid-column: 1 / -1; }
+  .ian-rule-value .ui-input { flex-basis: 96px; }
+  .ian-outbox > li { flex-direction: column; }
+  .ian-kpis { padding: 12px 14px; }
+  .ian-card-setting { padding: 4px 14px 12px; }
+  .ian-datasets { grid-template-columns: minmax(0, 1fr); }
+}

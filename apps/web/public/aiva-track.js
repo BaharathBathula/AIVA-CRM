@@ -4,6 +4,11 @@
  * Records page views and time on page, and links the visitor to a lead or
  * contact when they submit a form with an email address (or when you call
  * window.aiva.identify(email, name)). Uses first-party storage only.
+ *
+ * It also keeps ad click IDs (gclid, gbraid, wbraid) from the landing page and reads
+ * the Google Analytics client ID from the _ga cookie, and hands them (with UTM
+ * parameters) to AIVA forms embedded on the page, so leads keep their attribution
+ * for Google Ads conversions and GA4 events. window.aiva.attribution() returns them.
  */
 (function () {
   var script = document.currentScript || document.querySelector('script[data-site][src*="aiva-track"]');
@@ -49,6 +54,75 @@
   }
   write("aiva_slast", String(now));
 
+  var CLICK_KEYS = ["gclid", "gbraid", "wbraid"];
+  var UTM_KEYS = ["utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content"];
+  var CLICK_DAYS = 90;
+
+  function gaClientId() {
+    try {
+      var match = document.cookie.match(/(?:^|;\s*)_ga=([^;]+)/);
+      if (!match) return "";
+      var parts = decodeURIComponent(match[1]).split(".");
+      var id = parts.length >= 4 ? parts[parts.length - 2] + "." + parts[parts.length - 1] : "";
+      return /^\d{1,20}\.\d{1,20}$/.test(id) ? id : "";
+    } catch (e) {
+      return "";
+    }
+  }
+
+  // Remember the latest ad click and campaign tags from the landing page (first-party only).
+  try {
+    var params = new URLSearchParams(location.search);
+    for (var c = 0; c < CLICK_KEYS.length; c++) {
+      var clickValue = params.get(CLICK_KEYS[c]);
+      if (clickValue && /^[A-Za-z0-9_\-.]{8,200}$/.test(clickValue)) {
+        write("aiva_click", JSON.stringify({ k: CLICK_KEYS[c], v: clickValue, t: Date.now() }));
+        break;
+      }
+    }
+    var utm = {};
+    var hasUtm = false;
+    for (var u = 0; u < UTM_KEYS.length; u++) {
+      var utmValue = params.get(UTM_KEYS[u]);
+      if (utmValue) {
+        utm[UTM_KEYS[u]] = utmValue.slice(0, 160);
+        hasUtm = true;
+      }
+    }
+    if (hasUtm) write("aiva_utm", JSON.stringify(utm));
+  } catch (e) {
+    /* old browser: attribution from the URL only */
+  }
+
+  function attribution() {
+    var data = {};
+    var ga = gaClientId();
+    if (ga) data.ga_client_id = ga;
+    try {
+      var click = JSON.parse(read("aiva_click") || "null");
+      if (click && click.k && click.v && Date.now() - click.t < CLICK_DAYS * 86400000) data[click.k] = click.v;
+      var saved = JSON.parse(read("aiva_utm") || "null") || {};
+      for (var key in saved) if (UTM_KEYS.indexOf(key) >= 0) data[key] = String(saved[key]).slice(0, 160);
+    } catch (e) {
+      /* nothing stored */
+    }
+    return data;
+  }
+
+  // AIVA forms embedded on this page ask for the attribution when they load.
+  var formOrigin = new URL(script.src, location.href).origin;
+  function shareWith(target) {
+    try {
+      target.postMessage({ type: "aiva:attribution", data: attribution() }, formOrigin);
+    } catch (e) {
+      /* frame gone */
+    }
+  }
+  window.addEventListener("message", function (event) {
+    if (event.origin !== formOrigin || !event.data || event.data.type !== "aiva:attribution-request" || !event.source) return;
+    shareWith(event.source);
+  });
+
   var view = newId();
   var visible = 0;
   var lastTick = Date.now();
@@ -66,6 +140,8 @@
       lang: navigator.language,
       tz: (Intl.DateTimeFormat().resolvedOptions() || {}).timeZone || "",
     };
+    var ga = gaClientId();
+    if (ga) payload.ga = ga;
     for (var key in extra || {}) payload[key] = extra[key];
     var body = JSON.stringify(payload);
     try {
@@ -137,4 +213,5 @@
   window.aiva.identify = function (email, name) {
     if (email) send("identify", { email: String(email), name: name ? String(name) : "" });
   };
+  window.aiva.attribution = attribution;
 })();

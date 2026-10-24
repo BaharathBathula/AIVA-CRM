@@ -70,6 +70,7 @@ export const SECTIONS: NavSection[] = [
       { label: "Opportunities", href: "/opportunities" },
       { label: "Pipeline", href: "/pipeline" },
       { label: "Sequences", href: "/sequences", feature: "sequences" },
+      { label: "Find prospects", href: "/prospects", feature: "waterfall_enrichment" },
       { label: "Forecast", href: "/forecast", permission: "sales.forecast_view" },
       { label: "Predictions", href: "/predictions", feature: "predictive_intelligence" },
       { label: "Documents", href: "/documents", feature: "documents" },

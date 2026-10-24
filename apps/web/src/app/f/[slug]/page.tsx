@@ -31,7 +31,8 @@ interface PublicForm {
   steps: number;
 }
 
-const ATTRIBUTION = ["utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content", "gclid"];
+const ATTRIBUTION = ["utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content", "gclid", "gbraid", "wbraid", "ga_client_id"];
+const SAFE_VALUE = /^[A-Za-z0-9_\-.:%+ /]{1,200}$/;
 
 function PublicFormView() {
   const { slug } = useParams<{ slug: string }>();
@@ -46,14 +47,34 @@ function PublicFormView() {
   const [done, setDone] = useState(false);
   const [honeypot, setHoneypot] = useState("");
 
+  // Attribution handed over by AIVA's tracking script on the page this form is embedded in
+  // (ad click IDs and the Google Analytics client ID). URL parameters win.
+  const [fromPage, setFromPage] = useState<Record<string, string>>({});
+  useEffect(() => {
+    if (!embed || window.parent === window) return;
+    function receive(event: MessageEvent) {
+      if (event.source !== window.parent || !event.data || event.data.type !== "aiva:attribution") return;
+      const incoming = event.data.data as Record<string, unknown> | undefined;
+      const clean: Record<string, string> = {};
+      ATTRIBUTION.forEach((key) => {
+        const value = incoming?.[key];
+        if (typeof value === "string" && SAFE_VALUE.test(value)) clean[key] = value;
+      });
+      setFromPage(clean);
+    }
+    window.addEventListener("message", receive);
+    window.parent.postMessage({ type: "aiva:attribution-request" }, "*");
+    return () => window.removeEventListener("message", receive);
+  }, [embed]);
+
   const attribution = useMemo(() => {
-    const data: Record<string, string> = {};
+    const data: Record<string, string> = { ...fromPage };
     ATTRIBUTION.forEach((key) => {
       const value = params.get(key);
       if (value) data[key] = value;
     });
     return data;
-  }, [params]);
+  }, [params, fromPage]);
 
   useEffect(() => {
     document.title = form.data ? `${form.data.title} · ${form.data.organization_name}` : "Form";

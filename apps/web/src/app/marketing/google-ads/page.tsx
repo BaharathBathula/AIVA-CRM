@@ -13,6 +13,7 @@ import { api, errorMessage, useApi } from "@/lib/use-api";
 
 interface GoogleAds {
   connected: boolean;
+  integration?: { enabled: boolean; connected: boolean; href: string };
   settings: { lead_conversion_name: string; won_conversion_name: string; timezone: string };
   webhook_url: string;
   has_key: boolean;
@@ -74,6 +75,23 @@ function GoogleAdsView() {
           </a>
         }
       />
+      {d.integration ? (
+        <div style={{ marginBottom: 16 }}>
+          <Alert tone={d.integration.enabled && d.integration.connected ? "success" : "info"}>
+            {d.integration.enabled && d.integration.connected ? (
+              <>
+                The Google Ads integration is connected: conversions upload automatically and campaign spend sits next to your revenue.{" "}
+                <Link href={d.integration.href}>Open Google Ads in Integrations</Link>.
+              </>
+            ) : (
+              <>
+                Connect the Google Ads integration to upload conversions automatically (no CSV) and see campaign spend next to revenue.{" "}
+                <Link href={d.integration.href}>Set it up in Integrations</Link>. The webhook and CSV below keep working.
+              </>
+            )}
+          </Alert>
+        </div>
+      ) : null}
       <div className="ui-grid ui-grid-3" style={{ marginBottom: 16 }}>
         <Kpi label="Leads from Google Ads" value={d.stats.leads} note="Have a Google click ID" />
         <Kpi label="Won deals" value={d.stats.won} />

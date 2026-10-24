@@ -22,29 +22,28 @@ from __future__ import annotations
 import base64
 import hashlib
 import hmac
-import html
 import json
 import re
 import uuid
 from datetime import datetime, timedelta
-from decimal import Decimal
 from typing import Any
 from urllib.parse import quote, urlparse
 
 from fastapi import Request
 from fastapi.responses import JSONResponse, Response
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
 from app.integrations import core
 from app.integrations.core import IntegrationError
-from app.integrations.providers import _doc_store
+from app.integrations.providers import _doc_store, _signing
+from app.integrations.providers._signing import DEFAULTS, OPEN, clean_recipients, quote_html, requests_out, settings_for, timelines  # noqa: F401 - re-exported
 from app.models.collaboration import Document
-from app.models.integration_hub import IntegrationConnection, IntegrationLog, SignatureRequest
+from app.models.integration_hub import IntegrationConnection, SignatureRequest
 
 KEY = "docusign"
-OPEN = ("created", "sent", "delivered")
+SUPPORTS = {"quotes": True, "documents": True, "templates": False, "void": True, "remind": True}
 POLL_EVERY = timedelta(minutes=15)
 MAX_DOCUMENT_BYTES = 25 * 1024 * 1024
 ALLOWED_EXTENSIONS = {
@@ -65,25 +64,6 @@ ENVELOPE_STATUS = {
     "deleted": "voided",
     "timedout": "voided",
 }
-DEFAULTS: dict[str, Any] = {
-    "save_signed_copy": True,
-    "include_certificate": True,
-    "mark_quote_accepted": True,
-    "notify_sender": True,
-    "reminder_days": 0,
-    "expire_days": 0,
-}
-EMAIL = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
-
-
-def settings_for(config: dict[str, Any] | None) -> dict[str, Any]:
-    merged = dict(DEFAULTS)
-    for name in DEFAULTS:
-        if config and name in config:
-            merged[name] = config[name]
-    return merged
-
-
 # ---------------------------------------------------------------------------
 # Account address
 # ---------------------------------------------------------------------------
@@ -111,81 +91,6 @@ def _push_url(connection: IntegrationConnection) -> str | None:
 # ---------------------------------------------------------------------------
 
 
-def _money(value: Any, currency: str) -> str:
-    amount = Decimal(str(value or 0)).quantize(Decimal("0.01"))
-    symbol = {"USD": "$", "EUR": "€", "GBP": "£", "INR": "₹", "JPY": "¥", "AUD": "A$", "CAD": "C$"}.get(currency.upper())
-    text = f"{amount:,.2f}"
-    return f"{symbol}{text}" if symbol else f"{text} {currency.upper()}"
-
-
-async def quote_html(db: AsyncSession, quote_row: Any, signers: list[dict[str, Any]]) -> bytes:
-    """A clean, printable quote with a signature block per signer (anchor text in white)."""
-
-    from app.models.account import Account
-    from app.models.contact import Contact
-    from app.models.organization import Organization
-
-    organization = await db.get(Organization, quote_row.organization_id)
-    account = await db.get(Account, quote_row.account_id) if quote_row.account_id else None
-    contact = await db.get(Contact, quote_row.contact_id) if quote_row.contact_id else None
-    e = lambda value: html.escape(str(value or ""))  # noqa: E731
-    currency = quote_row.currency or "USD"
-    rows = []
-    for line in quote_row.line_items or []:
-        discount = f"{Decimal(str(line.discount_percent or 0)).normalize()}%" if line.discount_percent else "—"
-        rows.append(
-            "<tr>"
-            f"<td><strong>{e(line.name)}</strong>{'<br><span class=muted>' + e(line.description) + '</span>' if line.description else ''}</td>"
-            f"<td class=num>{Decimal(str(line.quantity)).normalize():f}</td>"
-            f"<td class=num>{_money(line.unit_price, currency)}</td>"
-            f"<td class=num>{discount}</td>"
-            f"<td class=num>{_money(line.line_total, currency)}</td>"
-            "</tr>"
-        )
-    prepared_for = " · ".join(
-        x for x in [e(account.name) if account else "", e(f"{contact.first_name} {contact.last_name}".strip()) if contact else "", e(contact.email) if contact and contact.email else ""] if x
-    )
-    blocks = []
-    for index, signer in enumerate(signers, start=1):
-        blocks.append(
-            "<div class=sig>"
-            f"<div class=line><span class=anchor>/aivasign{index}/</span></div>"
-            f"<div class=label>Signature — {e(signer['name'])}</div>"
-            f"<div class=line short><span class=anchor>/aivadate{index}/</span></div>"
-            "<div class=label>Date</div>"
-            "</div>"
-        )
-    issued = (quote_row.sent_at or quote_row.created_at or core.utcnow()).strftime("%d %b %Y")
-    valid = quote_row.valid_until.strftime("%d %b %Y") if quote_row.valid_until else "—"
-    document = f"""<!doctype html><html><head><meta charset="utf-8"><title>Quote Q-{quote_row.number}</title>
-<style>
-body{{font-family:Helvetica,Arial,sans-serif;color:#1d1b22;font-size:12px;margin:36px}}
-h1{{font-size:22px;margin:0 0 4px}} .muted{{color:#6b6873}} .head{{display:flex;justify-content:space-between;border-bottom:2px solid #1d1b22;padding-bottom:12px;margin-bottom:18px}}
-table{{width:100%;border-collapse:collapse;margin:14px 0}} th{{text-align:left;font-size:11px;text-transform:uppercase;color:#6b6873;border-bottom:1px solid #ccc;padding:6px}}
-td{{padding:8px 6px;border-bottom:1px solid #eee;vertical-align:top}} .num{{text-align:right;white-space:nowrap}}
-.totals td{{border:none;padding:3px 6px}} .totals .grand td{{font-size:14px;font-weight:bold;border-top:2px solid #1d1b22;padding-top:6px}}
-.box{{margin-top:16px}} .box h3{{font-size:12px;text-transform:uppercase;color:#6b6873;margin:0 0 4px}}
-.sigs{{margin-top:36px}} .sig{{display:inline-block;width:46%;margin:0 3% 24px 0;vertical-align:top}}
-.line{{border-bottom:1px solid #1d1b22;height:34px;position:relative}} .line.short{{width:55%;margin-top:14px}}
-.label{{font-size:10.5px;color:#6b6873;margin-top:3px}} .anchor{{color:#ffffff;font-size:8px}}
-</style></head><body>
-<div class=head><div><h1>Quote Q-{quote_row.number}</h1><div>{e(quote_row.name)}</div></div>
-<div style="text-align:right"><strong>{e(organization.name if organization else '')}</strong><br><span class=muted>Issued {issued} · Valid until {valid}</span></div></div>
-{f'<div><span class=muted>Prepared for</span><br><strong>{prepared_for}</strong></div>' if prepared_for else ''}
-<table><thead><tr><th>Item</th><th class=num>Qty</th><th class=num>Unit price</th><th class=num>Discount</th><th class=num>Amount</th></tr></thead>
-<tbody>{''.join(rows)}</tbody></table>
-<table class=totals style="width:45%;margin-left:55%">
-<tr><td>Subtotal</td><td class=num>{_money(quote_row.subtotal, currency)}</td></tr>
-<tr><td>Discount</td><td class=num>−{_money(quote_row.discount_total, currency)}</td></tr>
-<tr><td>Tax</td><td class=num>{_money(quote_row.tax_total, currency)}</td></tr>
-<tr class=grand><td>Total</td><td class=num>{_money(quote_row.total, currency)}</td></tr></table>
-{f'<div class=box><h3>Terms</h3><div>{e(quote_row.terms).replace(chr(10), "<br>")}</div></div>' if quote_row.terms else ''}
-{f'<div class=box><h3>Notes</h3><div>{e(quote_row.notes).replace(chr(10), "<br>")}</div></div>' if quote_row.notes else ''}
-<div class=sigs><div class=box><h3>Acceptance</h3><div class=muted>By signing, you accept this quote and its terms.</div></div>{''.join(blocks)}</div>
-</body></html>"""
-    return document.encode("utf-8")
-
-
 def _anchor_tabs(index: int) -> dict[str, Any]:
     def tab(anchor: str, offset_y: str) -> dict[str, str]:
         return {
@@ -201,40 +106,6 @@ def _anchor_tabs(index: int) -> dict[str, Any]:
         "signHereTabs": [tab(f"/aivasign{index}/", "-8"), tab(f"/sn{index}/", "-8")],
         "dateSignedTabs": [tab(f"/aivadate{index}/", "-4"), tab(f"/ds{index}/", "-4")],
     }
-
-
-def clean_recipients(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    out: list[dict[str, Any]] = []
-    seen: set[tuple[str, str]] = set()
-    for raw in items:
-        role = raw.get("role") or "signer"
-        if role not in {"signer", "cc"}:
-            raise IntegrationError("Each recipient must sign or get a copy.", 422)
-        name = str(raw.get("name") or "").strip()[:100]
-        email = str(raw.get("email") or "").strip().lower()[:320]
-        if not name:
-            raise IntegrationError("Add a name for each recipient.", 422)
-        if not EMAIL.match(email):
-            raise IntegrationError(f"“{email or name}” isn't a valid email address.", 422)
-        try:
-            order = int(raw.get("routing_order") or 1)
-        except (TypeError, ValueError) as exc:
-            raise IntegrationError("Signing order must be a number.", 422) from exc
-        if not 1 <= order <= 20:
-            raise IntegrationError("Signing order must be between 1 and 20.", 422)
-        if (role, email) in seen:
-            continue
-        seen.add((role, email))
-        out.append({"name": name, "email": email, "role": role, "routing_order": order})
-    signers = [r for r in out if r["role"] == "signer"]
-    if not signers:
-        raise IntegrationError("Add at least one person to sign.", 422)
-    if len(signers) > 10 or len(out) - len(signers) > 10:
-        raise IntegrationError("Up to 10 signers and 10 people copied, please.", 422)
-    for index, recipient in enumerate(out, start=1):
-        recipient["recipient_id"] = str(index)
-        recipient.update({"status": "created", "delivered_at": None, "signed_at": None, "declined_at": None, "decline_reason": None})
-    return out
 
 
 def envelope_body(
@@ -303,33 +174,7 @@ def envelope_body(
 
 
 def _log(db: AsyncSession, request_row: SignatureRequest, action: str, message: str, *, level: str = "info", connection: IntegrationConnection | None = None, user_id: uuid.UUID | None = None, **detail: Any) -> None:
-    core.log(
-        db, request_row.organization_id, KEY, action, message, level=level, connection=connection, user_id=user_id,
-        detail={"signature_request_id": str(request_row.id), "envelope_id": request_row.envelope_id, **detail},
-    )
-
-
-async def timelines(db: AsyncSession, organization_id: uuid.UUID, ids: list[uuid.UUID]) -> dict[str, list[dict[str, Any]]]:
-    if not ids:
-        return {}
-    keys = [str(i) for i in ids]
-    rows = (
-        await db.execute(
-            select(IntegrationLog)
-            .where(
-                IntegrationLog.organization_id == organization_id,
-                IntegrationLog.provider == KEY,
-                IntegrationLog.detail["signature_request_id"].astext.in_(keys),
-            )
-            .order_by(IntegrationLog.created_at)
-        )
-    ).scalars().all()
-    out: dict[str, list[dict[str, Any]]] = {k: [] for k in keys}
-    for row in rows:
-        out.setdefault(row.detail.get("signature_request_id"), []).append(
-            {"action": row.action, "message": row.message, "level": row.level, "at": row.created_at, "signed_document_id": (row.detail or {}).get("signed_document_id")}
-        )
-    return out
+    _signing.log(db, request_row, action, message, level=level, connection=connection, user_id=user_id, **detail)
 
 
 # ---------------------------------------------------------------------------
@@ -382,112 +227,25 @@ async def refresh(db: AsyncSession, connection: IntegrationConnection, request_r
     request_row.recipients = recipients
 
     new_status = ENVELOPE_STATUS.get(str(data.get("status") or "").lower(), request_row.status)
-    previous = request_row.status
-    if new_status != previous:
-        changed = True
-        request_row.status = new_status
+    if new_status == "delivered" and request_row.status in {"created", "sent"}:
+        request_row.status = "delivered"  # the recipient line above already says who opened it
         request_row.error = None
-        if new_status == "completed":
-            completed = _when(data.get("completedDateTime"))
-            request_row.completed_at = datetime.fromisoformat(completed) if completed else core.utcnow()
-            await _completed(db, connection, request_row)
-        elif new_status == "declined":
-            _log(db, request_row, "declined", f"“{request_row.document_name}” was declined.", level="warning", connection=connection)
-            await _notify(db, request_row, f"Declined: {request_row.document_name}", "A recipient declined to sign.")
-        elif new_status == "voided":
-            reason = data.get("voidedReason") or "The envelope was voided or expired."
-            request_row.error = str(reason)[:1000]
-            _log(db, request_row, "voided", f"“{request_row.document_name}” was voided: {reason}", level="warning", connection=connection)
-            await _notify(db, request_row, f"Voided: {request_row.document_name}", str(reason))
-        elif new_status == "delivered" and previous in {"created", "sent"}:
-            pass  # the recipient line above already says who opened it
+        return True
+    if await _signing.apply_status(
+        db, connection, request_row, new_status,
+        completed_at=_when(data.get("completedDateTime")),
+        reason=data.get("voidedReason") or "The envelope was voided or expired.",
+        download=lambda certificate: _download(db, connection, request_row, certificate),
+        description=f"Signed with DocuSign (envelope {request_row.envelope_id}).",
+    ):
+        changed = True
     return changed
 
 
-async def _notify(db: AsyncSession, request_row: SignatureRequest, title: str, body: str) -> None:
-    config = settings_for(await core.workspace_config(db, request_row.organization_id, KEY))
-    if not config["notify_sender"] or not request_row.sent_by_user_id:
-        return
-    from app.models.platform import Notification
-
-    link = None
-    if request_row.record_type and request_row.record_id:
-        from fastapi import HTTPException
-
-        from app.services.records import resolve
-
-        try:
-            link = (await resolve(db, request_row.organization_id, request_row.record_type, request_row.record_id))["href"]
-        except HTTPException:
-            link = None
-    db.add(
-        Notification(
-            id=uuid.uuid4(), organization_id=request_row.organization_id, user_id=request_row.sent_by_user_id, kind="signature",
-            title=title[:200], body=body[:2000], link=(link or "/integrations/docusign")[:300],
-        )
-    )
-
-
-async def _completed(db: AsyncSession, connection: IntegrationConnection, request_row: SignatureRequest) -> None:
-    org = request_row.organization_id
-    config = settings_for(await core.workspace_config(db, org, KEY))
-    signed_document_id = None
-    if config["save_signed_copy"]:
-        url = f"{account_url(connection)}/envelopes/{quote(request_row.envelope_id or '', safe='')}/documents/combined"
-        try:
-            response = await core.request(db, connection, "GET", url, params={"certificate": "true" if config["include_certificate"] else "false"}, timeout=90)
-            links: list[tuple[str, uuid.UUID]] = []
-            if request_row.record_type and request_row.record_id:
-                links.append((request_row.record_type, request_row.record_id))
-            if request_row.quote_id:
-                links.append(("quote", request_row.quote_id))
-                from app.models.platform import Quote
-
-                quote_row = await db.get(Quote, request_row.quote_id)
-                if quote_row is not None and quote_row.opportunity_id:
-                    links.append(("opportunity", quote_row.opportunity_id))
-            base_name = re.sub(r"\.(html?|pdf|docx?|xlsx?|pptx?|txt|rtf)$", "", request_row.document_name or "Document", flags=re.I)
-            document = await _doc_store.save_document(
-                db,
-                organization_id=org,
-                owner_user_id=request_row.sent_by_user_id,
-                name=f"{base_name} (signed).pdf",
-                data=response.content,
-                content_type="application/pdf",
-                links=links,
-                description=f"Signed with DocuSign (envelope {request_row.envelope_id}).",
-                tags=["docusign", "signed"],
-            )
-            signed_document_id = str(document.id)
-            request_row.signed_document_id = document.id
-        except IntegrationError as exc:
-            _log(db, request_row, "signed_copy_failed", f"Signed, but the signed copy couldn't be saved: {exc}", level="warning", connection=connection)
-    _log(
-        db, request_row, "completed", f"Everyone signed “{request_row.document_name}”." + (" The signed copy is in Documents." if signed_document_id else ""),
-        level="success", connection=connection, signed_document_id=signed_document_id,
-    )
-    if config["mark_quote_accepted"] and request_row.quote_id:
-        await _accept_quote(db, request_row)
-    await _notify(db, request_row, f"Signed: {request_row.document_name}", "Everyone has signed." + (" The signed copy is in Documents." if signed_document_id else ""))
-
-
-async def _accept_quote(db: AsyncSession, request_row: SignatureRequest) -> None:
-    from app.models.platform import Quote
-
-    quote_row = await db.get(Quote, request_row.quote_id)
-    if quote_row is None or quote_row.status not in {"draft", "sent"}:
-        return
-    from app.services.billing import get_subscription, plan_state
-    from app.services.metering import addon_features
-
-    features = plan_state(await get_subscription(db, request_row.organization_id)).features | await addon_features(db, request_row.organization_id)
-    if "inventory" in features:
-        from app.api.routes.operations import apply_quote_sale
-
-        await apply_quote_sale(db, quote_row, request_row.sent_by_user_id)
-    quote_row.status = "accepted"
-    quote_row.accepted_at = core.utcnow()
-    _log(db, request_row, "quote_accepted", f"Quote Q-{quote_row.number} was marked accepted.", level="success")
+async def _download(db: AsyncSession, connection: IntegrationConnection, request_row: SignatureRequest, certificate: bool) -> bytes:
+    url = f"{account_url(connection)}/envelopes/{quote(request_row.envelope_id or '', safe='')}/documents/combined"
+    response = await core.request(db, connection, "GET", url, params={"certificate": "true" if certificate else "false"}, timeout=90)
+    return response.content
 
 
 # ---------------------------------------------------------------------------
@@ -533,22 +291,10 @@ async def send(
     else:
         raise IntegrationError("Choose a quote or a document to send.", 422)
 
-    request_row = SignatureRequest(
-        id=uuid.uuid4(),
-        organization_id=org,
-        provider=KEY,
-        subject=(subject or f"Please sign: {document_name}").strip()[:300],
-        message=(message or "").strip()[:10000] or None,
-        status="created",
-        record_type=record_type,
-        record_id=record_id,
-        document_id=document.id if document is not None else None,
-        quote_id=quote_row.id if quote_row is not None else None,
-        document_name=document_name,
-        recipients=cleaned,
-        sent_by_user_id=principal.user_id,
+    request_row = _signing.new_request(
+        db, principal, provider=KEY, record_type=record_type, record_id=record_id, subject=subject, message=message,
+        recipients=cleaned, document_name=document_name, quote_row=quote_row, document=document,
     )
-    db.add(request_row)
     await db.flush()
     options = settings_for(await core.workspace_config(db, org, KEY))
     body = envelope_body(
@@ -564,21 +310,9 @@ async def send(
         raise
     result = response.json()
     request_row.envelope_id = str(result.get("envelopeId") or "")[:100] or None
-    request_row.status = ENVELOPE_STATUS.get(str(result.get("status") or "sent").lower(), "sent")
-    request_row.sent_at = core.utcnow()
-    request_row.last_checked_at = core.utcnow()
-    first_order = min(r["routing_order"] for r in cleaned)
-    request_row.recipients = [{**r, "status": "sent" if r["routing_order"] == first_order else "created"} for r in cleaned]
-    who = ", ".join(r["name"] for r in signers)
-    _log(db, request_row, "sent", f"Sent “{document_name}” to {who} for signature.", level="success", connection=connection, user_id=principal.user_id)
-    if quote_row is not None and quote_row.status == "draft":
-        quote_row.status = "sent"
-        quote_row.sent_at = core.utcnow()
-    from app.services.automation import record_audit
-
-    record_audit(
-        db, organization_id=org, action="signature_requested", entity_type=record_type or "document", entity_id=record_id,
-        entity_label=document_name, changes={"envelope_id": request_row.envelope_id, "signers": [r["email"] for r in signers]},
+    _signing.mark_sent(
+        db, request_row, connection=connection, principal=principal, quote_row=quote_row,
+        status=ENVELOPE_STATUS.get(str(result.get("status") or "sent").lower(), "sent"),
     )
     return request_row
 
@@ -627,71 +361,14 @@ async def test(db: AsyncSession, key: str, connection: IntegrationConnection, pr
     return f"DocuSign answered: account “{data.get('accountName') or connection.account_label}” ({where})."
 
 
-def request_out(row: SignatureRequest, names: dict[str, str], records: dict[tuple[str, str], dict[str, Any]], timeline: list[dict[str, Any]] | None = None) -> dict[str, Any]:
-    signed_document_id = str(row.signed_document_id) if row.signed_document_id else next(
-        (e.get("signed_document_id") for e in reversed(timeline or []) if e.get("signed_document_id")), None
-    )
-    record = records.get((row.record_type, str(row.record_id))) if row.record_type and row.record_id else None
-    recipients = row.recipients or []
-    signers = [r for r in recipients if r.get("role") == "signer"]
-    return {
-        "id": str(row.id),
-        "provider": row.provider,
-        "envelope_id": row.envelope_id,
-        "subject": row.subject,
-        "message": row.message,
-        "status": row.status,
-        "document_name": row.document_name,
-        "document_id": str(row.document_id) if row.document_id else None,
-        "quote_id": str(row.quote_id) if row.quote_id else None,
-        "record_type": row.record_type,
-        "record_id": str(row.record_id) if row.record_id else None,
-        "record": record,
-        "recipients": recipients,
-        "signed_count": sum(1 for r in signers if r.get("status") in {"signed", "completed"}),
-        "signer_count": len(signers),
-        "sent_by": names.get(str(row.sent_by_user_id)) if row.sent_by_user_id else None,
-        "sent_by_user_id": str(row.sent_by_user_id) if row.sent_by_user_id else None,
-        "sent_at": row.sent_at,
-        "completed_at": row.completed_at,
-        "last_checked_at": row.last_checked_at,
-        "error": row.error,
-        "signed_document_id": signed_document_id,
-        "timeline": timeline or [],
-        "created_at": row.created_at,
-    }
-
-
-async def requests_out(db: AsyncSession, organization_id: uuid.UUID, rows: list[SignatureRequest], with_timeline: bool = True) -> list[dict[str, Any]]:
-    from app.services.lookups import names_for
-    from app.services.records import resolve_many
-
-    names = await names_for(db, organization_id, "user", [r.sent_by_user_id for r in rows])
-    records = await resolve_many(db, organization_id, [(r.record_type, r.record_id) for r in rows if r.record_type and r.record_id])
-    lines = await timelines(db, organization_id, [r.id for r in rows]) if with_timeline else {}
-    return [request_out(r, names, records, lines.get(str(r.id))) for r in rows]
-
-
 async def detail(db: AsyncSession, key: str, principal: Any) -> dict[str, Any]:
     org = principal.organization_id
     connection = await core.connection_for(db, org, KEY)
-    counts = dict(
-        (
-            await db.execute(select(SignatureRequest.status, func.count()).where(SignatureRequest.organization_id == org).group_by(SignatureRequest.status))
-        ).all()
-    )
-    rows = (
-        await db.execute(select(SignatureRequest).where(SignatureRequest.organization_id == org).order_by(SignatureRequest.created_at.desc()).limit(8))
-    ).scalars().all()
     toggle = await core.toggle_row(db, org, KEY)
     push = _push_url(connection) if connection is not None else None
-    recent = await requests_out(db, org, list(rows), with_timeline=True)
-    if not principal.can("admin.settings"):
-        # Same rule as the signatures list: requests you sent, or on records you can open.
-        recent = [i for i in recent if i["sent_by_user_id"] == str(principal.user_id) or i["record"] is not None]
+    summary = await _signing.detail_summary(db, KEY, principal)
     return {
-        "counts": {status: int(counts.get(status, 0)) for status in ("sent", "delivered", "completed", "declined", "voided", "error", "created")},
-        "recent": recent,
+        **summary,
         "settings": settings_for(toggle.config if toggle else {}),
         "connect": {
             "push": bool(push),
@@ -709,20 +386,7 @@ async def detail(db: AsyncSession, key: str, principal: Any) -> dict[str, Any]:
 async def clean_settings(db: AsyncSession, key: str, principal: Any, config: dict[str, Any], personal: bool) -> dict[str, Any]:
     if personal:
         raise IntegrationError("DocuSign is set up for the whole workspace.", 422)
-    cleaned: dict[str, Any] = {}
-    for name, value in config.items():
-        if name in {"save_signed_copy", "include_certificate", "mark_quote_accepted", "notify_sender"}:
-            if not isinstance(value, bool):
-                raise IntegrationError(f"“{name.replace('_', ' ')}” must be on or off.", 422)
-            cleaned[name] = value
-        elif name in {"reminder_days", "expire_days"}:
-            limit = 30 if name == "reminder_days" else 365
-            if isinstance(value, bool) or not isinstance(value, int) or not 0 <= value <= limit:
-                raise IntegrationError(f"“{name.replace('_', ' ')}” must be a whole number from 0 to {limit}.", 422)
-            cleaned[name] = value
-        else:
-            raise IntegrationError(f"Unknown setting “{name}”.", 422)
-    return cleaned
+    return _signing.clean_settings_values(config, "DocuSign")
 
 
 def _envelope_id(body: bytes) -> str | None:
@@ -763,7 +427,9 @@ async def handle_webhook(db: AsyncSession, key: str, connection: IntegrationConn
         return JSONResponse({"ignored": "no envelope"})
     request_row = (
         await db.execute(
-            select(SignatureRequest).where(SignatureRequest.organization_id == org, SignatureRequest.envelope_id == envelope_id).with_for_update()
+            select(SignatureRequest)
+            .where(SignatureRequest.organization_id == org, SignatureRequest.provider == KEY, SignatureRequest.envelope_id == envelope_id)
+            .with_for_update()
         )
     ).scalar_one_or_none()
     if request_row is None:
@@ -779,18 +445,7 @@ async def handle_webhook(db: AsyncSession, key: str, connection: IntegrationConn
 
 async def run_due(db: AsyncSession) -> int:
     now = core.utcnow()
-    ids = (
-        await db.execute(
-            select(SignatureRequest.id)
-            .where(
-                SignatureRequest.status.in_(OPEN),
-                SignatureRequest.envelope_id.is_not(None),
-                (SignatureRequest.last_checked_at.is_(None)) | (SignatureRequest.last_checked_at < now - POLL_EVERY),
-            )
-            .order_by(SignatureRequest.last_checked_at.asc().nulls_first())
-            .limit(50)
-        )
-    ).scalars().all()
+    ids = await _signing.due_requests(db, KEY, POLL_EVERY)
     handled = 0
     connections: dict[uuid.UUID, IntegrationConnection | None] = {}
     for request_id in ids:
@@ -827,3 +482,10 @@ async def run_due(db: AsyncSession) -> int:
 def connect_settings_url() -> str:
     environment = get_settings().docusign_environment
     return "https://admin.docusign.com/connect" if environment == "production" else "https://admindemo.docusign.com/connect"
+
+
+def signable(name: str, content_type: str | None, size: int) -> bool:
+    """Whether DocuSign can take this AIVA document."""
+
+    extension = name.rsplit(".", 1)[-1].lower() if "." in name else ""
+    return size <= MAX_DOCUMENT_BYTES and (extension in ALLOWED_EXTENSIONS or content_type == "application/pdf")

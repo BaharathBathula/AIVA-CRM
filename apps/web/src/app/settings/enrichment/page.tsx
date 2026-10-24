@@ -11,7 +11,7 @@ import { SecretInput, SettingRow, SettingsBody, Toggle, useWorkspaceSettings } f
 import { Badge, Card, PageHeader } from "@/components/ui";
 import { api, errorMessage, useApi } from "@/lib/use-api";
 
-type ProviderKey = "builtin" | "website" | "hunter" | "pdl";
+type ProviderKey = "builtin" | "website" | "hunter" | "pdl" | "apollo" | "zoominfo";
 
 type Enrichment = {
   providers: { key: ProviderKey; enabled: boolean }[];
@@ -25,6 +25,8 @@ type ProviderInfo = {
   label: string;
   cost: number;
   needs_key: string | null;
+  /** Set for providers connected in Integrations (Apollo.io, ZoomInfo) instead of with a key here. */
+  integration?: string | null;
   description: string;
   enabled: boolean;
   key_set: boolean;
@@ -84,7 +86,7 @@ function WaterfallEnrichment() {
                 {!paidAllowed ? (
                   <div className="upgrade-inline" style={{ marginBottom: 12 }}>
                     <span>
-                      Paid providers (Hunter.io, People Data Labs) come with Pro or the Advanced data add-on. <PlanChip feature="waterfall_enrichment" />{" "}
+                      Paid providers (Hunter.io, People Data Labs, Apollo.io, ZoomInfo) come with Pro or the Advanced data add-on. <PlanChip feature="waterfall_enrichment" />{" "}
                       <Link href="/settings/billing/add-ons">See add-ons</Link>
                     </span>
                   </div>
@@ -95,6 +97,7 @@ function WaterfallEnrichment() {
                     const paid = Boolean(meta?.cost);
                     const locked = paid && !paidAllowed;
                     const needsKey = meta?.needs_key ?? null;
+                    const integration = meta?.integration ?? null;
                     const result = results[provider.key];
                     return (
                       <div key={provider.key} className="settings-list-row dm-provider">
@@ -126,6 +129,14 @@ function WaterfallEnrichment() {
                           <p className="ui-muted ui-small" style={{ margin: "4px 0 0" }}>
                             {meta?.description}
                           </p>
+                          {integration ? (
+                            <div className="ui-row" style={{ gap: 8, marginTop: 8, flexWrap: "wrap" }}>
+                              {meta?.key_set ? <Badge tone="success" dot>Connected</Badge> : <Badge tone="warning" dot>Not connected</Badge>}
+                              <Link className="ui-small" href={`/integrations/${integration}`}>
+                                {meta?.key_set ? `Manage in Integrations` : `Connect ${meta?.label ?? integration} in Integrations`}
+                              </Link>
+                            </div>
+                          ) : null}
                           {needsKey ? (
                             <div className="ui-row" style={{ gap: 8, marginTop: 8, flexWrap: "wrap" }}>
                               <span className="ui-small" style={{ fontWeight: 650 }}>
@@ -165,7 +176,7 @@ function WaterfallEnrichment() {
                   })}
                 </div>
                 <p className="ui-muted ui-small" style={{ marginBottom: 0 }}>
-                  Keys are stored encrypted and never shown again. Save after pasting a key, then use Test to check it.
+                  Keys are stored encrypted and never shown again. Save after pasting a key, then use Test to check it. Apollo.io and ZoomInfo connect in Integrations and use your own Apollo or ZoomInfo credits as well.
                 </p>
               </Card>
 

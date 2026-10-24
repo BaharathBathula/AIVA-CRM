@@ -2,8 +2,9 @@
 
 * ``/cloud-files``: browse Google Drive, OneDrive and Dropbox with your own
   connection, attach files to records, copy them into AIVA Documents.
-* ``/e-signatures``: send a quote or document with DocuSign from a record,
-  follow its status, void or resend it.
+* ``/e-signatures``: send a quote or document with DocuSign, Adobe Acrobat Sign
+  or PandaDoc (also a PandaDoc template) from a record, follow its status,
+  void or resend it.
 * ``/calendly``: your scheduling links, re-subscribing to bookings and the
   signing key for a workspace's own Calendly app.
 
@@ -28,7 +29,7 @@ from app.db.session import get_db
 from app.integrations import core
 from app.integrations.catalog import INTEGRATIONS
 from app.integrations.core import IntegrationError
-from app.integrations.providers import _doc_store, calendly, cloud_files, docusign
+from app.integrations.providers import _doc_store, _signing, calendly, cloud_files, docusign
 from app.models.collaboration import Document, DocumentLink
 from app.models.contact import Contact
 from app.models.integration_hub import ExternalFileLink, SignatureRequest
@@ -296,7 +297,7 @@ async def remove_file_link(link_id: uuid.UUID, principal: Principal = Depends(re
 
 
 # ===========================================================================
-# E-signatures (DocuSign)
+# E-signatures (DocuSign, Adobe Acrobat Sign, PandaDoc)
 # ===========================================================================
 
 
@@ -333,19 +334,20 @@ async def list_signatures(
         else:
             query = query.where(SignatureRequest.record_type == record_type, SignatureRequest.record_id == record_id)
     if status_filter == "open":
-        query = query.where(SignatureRequest.status.in_(docusign.OPEN))
+        query = query.where(SignatureRequest.status.in_(_signing.OPEN))
     elif status_filter:
         query = query.where(SignatureRequest.status == status_filter)
     rows = (await db.execute(query.order_by(SignatureRequest.created_at.desc()).limit(limit))).scalars().all()
-    items = await docusign.requests_out(db, org, list(rows))
+    items = await _signing.requests_out(db, org, list(rows))
     if not (record_type and record_id) and not principal.can("admin.settings"):
         # Outside a record, people see requests they sent or on records they can open.
         items = [i for i in items if i["sent_by_user_id"] == str(principal.user_id) or i["record"] is not None]
-    connection = await core.connection_for(db, org, docusign.KEY)
+    providers = await _signing.provider_states(db, org)
     return {
         "items": items,
-        "enabled": await core.is_enabled(db, org, docusign.KEY),
-        "connected": bool(connection and connection.status == "connected"),
+        "enabled": any(p["enabled"] for p in providers),
+        "connected": any(p["enabled"] and p["connected"] for p in providers),
+        "providers": providers,
         "can_send": principal.can("records.write"),
     }
 
@@ -424,9 +426,11 @@ async def signature_sources(
         doc_query = doc_query.where(or_(Document.visibility != "private", Document.owner_user_id == principal.user_id))
     documents = (await db.execute(doc_query.order_by(Document.updated_at.desc()).limit(50))).scalars().all()
 
-    def signable(document: Document) -> bool:
-        extension = document.name.rsplit(".", 1)[-1].lower() if "." in document.name else ""
-        return document.size_bytes <= docusign.MAX_DOCUMENT_BYTES and (extension in docusign.ALLOWED_EXTENSIONS or document.content_type in {"application/pdf"})
+    providers = await _signing.provider_states(db, org)
+    ready = [p["key"] for p in providers if p["enabled"] and p["connected"]] or list(_signing.SIGN_KEYS)
+
+    def signable_by(document: Document) -> dict[str, bool]:
+        return {key: _signing.module(key).signable(document.name, document.content_type, document.size_bytes) for key in ready}
 
     return {
         "record": record,
@@ -438,10 +442,13 @@ async def signature_sources(
         else [],
         "can_send_quotes": can_quotes,
         "documents": [
-            {"id": str(d.id), "name": d.name, "content_type": d.content_type, "size_bytes": d.size_bytes, "signable": signable(d)} for d in documents
+            {"id": str(d.id), "name": d.name, "content_type": d.content_type, "size_bytes": d.size_bytes, "signable": any(by.values()), "signable_by": by}
+            for d in documents
+            for by in [signable_by(d)]
         ],
         "recipients": people[:10],
         "me": {"name": principal.full_name, "email": principal.email},
+        "providers": providers,
     }
 
 
@@ -455,8 +462,12 @@ class RecipientPayload(BaseModel):
 class SendPayload(BaseModel):
     record_type: str = Field(max_length=40)
     record_id: uuid.UUID
+    # docusign | adobe_sign | pandadoc; empty picks the first one that's connected (DocuSign first).
+    provider: str | None = Field(default=None, pattern="^(docusign|adobe_sign|pandadoc)$")
     quote_id: uuid.UUID | None = None
     document_id: uuid.UUID | None = None
+    # PandaDoc only: create the document from this template (a quote fills its pricing table).
+    template_id: str | None = Field(default=None, max_length=100, pattern=r"^[A-Za-z0-9_-]+$")
     subject: str | None = Field(default=None, max_length=100)
     message: str | None = Field(default=None, max_length=10000)
     recipients: list[RecipientPayload] = Field(min_length=1, max_length=20)
@@ -469,7 +480,12 @@ async def send_for_signature(payload: SendPayload, principal: Principal = Depend
     org = principal.organization_id
     if payload.record_type not in SIGNABLE:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "Signatures can't be requested from that kind of record.")
-    if bool(payload.quote_id) == bool(payload.document_id):
+    if payload.template_id:
+        if payload.provider not in (None, "pandadoc"):
+            raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "Templates are a PandaDoc option.")
+        if payload.document_id:
+            raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "Choose a template or a document, not both.")
+    elif bool(payload.quote_id) == bool(payload.document_id):
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "Choose one quote or one document to send.")
     if principal.api_key_id is None and principal.support_grant_id is not None:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Support access can't send documents for signature.")
@@ -489,7 +505,7 @@ async def send_for_signature(payload: SendPayload, principal: Principal = Depend
             rule = await matching_quote_rule(db, quote_row)
             if rule is not None:
                 raise HTTPException(status.HTTP_409_CONFLICT, f"This quote needs approval before it's sent ({rule.name}). Submit it for approval first.")
-    else:
+    elif payload.document_id:
         document = await db.get(Document, payload.document_id)
         if (
             document is None
@@ -497,9 +513,14 @@ async def send_for_signature(payload: SendPayload, principal: Principal = Depend
             or (document.visibility == "private" and document.owner_user_id != principal.user_id and not principal.can("admin.settings"))
         ):
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Document not found.")
+    provider = payload.provider or ("pandadoc" if payload.template_id else None)
+    if provider is None:
+        ready = [p["key"] for p in await _signing.provider_states(db, org) if p["enabled"] and p["connected"]]
+        provider = ready[0] if ready else docusign.KEY
     try:
-        connection = await core.active_connection(db, org, docusign.KEY)
-        row = await docusign.send(
+        connection = await core.active_connection(db, org, provider)
+        kwargs: dict[str, Any] = {"template_id": payload.template_id} if provider != docusign.KEY else {}
+        row = await _signing.module(provider).send(
             db,
             principal=principal,
             connection=connection,
@@ -510,11 +531,12 @@ async def send_for_signature(payload: SendPayload, principal: Principal = Depend
             recipients=[r.model_dump() for r in payload.recipients],
             quote_row=quote_row,
             document=document,
+            **kwargs,
         )
     except IntegrationError as exc:
         raise await _fail(db, exc) from exc
     await db.commit()
-    return (await docusign.requests_out(db, org, [row]))[0]
+    return (await _signing.requests_out(db, org, [row]))[0]
 
 
 class HmacPayload(BaseModel):
@@ -545,20 +567,20 @@ async def set_connect_key(payload: HmacPayload, principal: Principal = Depends(r
 @router.get("/e-signatures/{request_id}", dependencies=SIGN)
 async def get_signature(request_id: uuid.UUID, principal: Principal = Depends(require_permission("records.read")), db: AsyncSession = Depends(get_db)):
     row = await _request(db, principal, request_id)
-    return (await docusign.requests_out(db, principal.organization_id, [row]))[0]
+    return (await _signing.requests_out(db, principal.organization_id, [row]))[0]
 
 
 @router.post("/e-signatures/{request_id}/refresh", dependencies=SIGN)
 async def refresh_signature(request_id: uuid.UUID, principal: Principal = Depends(require_permission("records.read")), db: AsyncSession = Depends(get_db)):
     row = await _request(db, principal, request_id, lock=True)
-    if row.status in docusign.OPEN and row.envelope_id:
+    if row.status in _signing.OPEN and row.envelope_id:
         try:
-            connection = await core.active_connection(db, principal.organization_id, docusign.KEY)
-            await docusign.refresh(db, connection, row)
+            connection = await core.active_connection(db, principal.organization_id, row.provider)
+            await _signing.module(row.provider).refresh(db, connection, row)
         except IntegrationError as exc:
             raise await _fail(db, exc) from exc
         await db.commit()
-    return (await docusign.requests_out(db, principal.organization_id, [row]))[0]
+    return (await _signing.requests_out(db, principal.organization_id, [row]))[0]
 
 
 class VoidPayload(BaseModel):
@@ -575,25 +597,25 @@ async def void_signature(request_id: uuid.UUID, payload: VoidPayload, principal:
     if not _can_manage_request(principal, row):
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Only the sender or an admin can void this request.")
     try:
-        connection = await core.active_connection(db, principal.organization_id, docusign.KEY)
-        await docusign.void(db, connection, row, payload.reason.strip(), principal.user_id)
+        connection = await core.active_connection(db, principal.organization_id, row.provider)
+        await _signing.module(row.provider).void(db, connection, row, payload.reason.strip(), principal.user_id)
     except IntegrationError as exc:
         raise await _fail(db, exc) from exc
-    record_audit(db, organization_id=principal.organization_id, action="signature_voided", entity_type=row.record_type or "document", entity_id=row.record_id, entity_label=row.document_name, changes={"reason": payload.reason})
+    record_audit(db, organization_id=principal.organization_id, action="signature_voided", entity_type=row.record_type or "document", entity_id=row.record_id, entity_label=row.document_name, changes={"reason": payload.reason, "provider": row.provider})
     await db.commit()
-    return (await docusign.requests_out(db, principal.organization_id, [row]))[0]
+    return (await _signing.requests_out(db, principal.organization_id, [row]))[0]
 
 
 @router.post("/e-signatures/{request_id}/resend", dependencies=SIGN)
 async def resend_signature(request_id: uuid.UUID, principal: Principal = Depends(require_permission("records.write")), db: AsyncSession = Depends(get_db)):
     row = await _request(db, principal, request_id)
     try:
-        connection = await core.active_connection(db, principal.organization_id, docusign.KEY)
-        await docusign.resend(db, connection, row, principal.user_id)
+        connection = await core.active_connection(db, principal.organization_id, row.provider)
+        await _signing.module(row.provider).resend(db, connection, row, principal.user_id)
     except IntegrationError as exc:
         raise await _fail(db, exc) from exc
     await db.commit()
-    return (await docusign.requests_out(db, principal.organization_id, [row]))[0]
+    return (await _signing.requests_out(db, principal.organization_id, [row]))[0]
 
 
 # ===========================================================================

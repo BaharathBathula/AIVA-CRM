@@ -228,7 +228,7 @@ class SequenceDefaults(BaseModel):
 
 
 class EnrichmentProvider(BaseModel):
-    key: Literal["builtin", "website", "hunter", "pdl"]
+    key: Literal["builtin", "website", "hunter", "pdl", "apollo", "zoominfo"]
     enabled: bool = True
 
 
@@ -239,6 +239,8 @@ class EnrichmentSettings(BaseModel):
             EnrichmentProvider(key="website"),
             EnrichmentProvider(key="hunter", enabled=False),
             EnrichmentProvider(key="pdl", enabled=False),
+            EnrichmentProvider(key="apollo", enabled=False),
+            EnrichmentProvider(key="zoominfo", enabled=False),
         ]
     )
     overwrite: bool = False
@@ -252,7 +254,7 @@ class EnrichmentSettings(BaseModel):
         for value in values:
             if value.key not in {s.key for s in seen}:
                 seen.append(value)
-        for key in ("builtin", "website", "hunter", "pdl"):
+        for key in ("builtin", "website", "hunter", "pdl", "apollo", "zoominfo"):
             if key not in {s.key for s in seen}:
                 seen.append(EnrichmentProvider(key=key, enabled=False))
         return seen

@@ -56,12 +56,14 @@ async def enrichment_providers(principal: Principal = Depends(require_permission
     settings = await workspace_settings.get(db, principal.organization_id, "enrichment")
     keys = await workspace_settings.secrets_set(db, principal.organization_id, "enrichment")
     catalog = {p["key"]: p for p in waterfall.provider_list()}
+    # Apollo and ZoomInfo are "set" when they're on and connected in Integrations.
+    connected = {p.key: await waterfall.integration_ready(db, principal.organization_id, p.key) for p in settings.providers if catalog[p.key].get("integration")}
     return {
         "providers": [
             {
                 **catalog[p.key],
                 "enabled": p.enabled,
-                "key_set": keys.get(catalog[p.key]["needs_key"], False) if catalog[p.key]["needs_key"] else True,
+                "key_set": connected[p.key] if p.key in connected else keys.get(catalog[p.key]["needs_key"], False) if catalog[p.key]["needs_key"] else True,
                 "plan_ok": not catalog[p.key]["cost"] or principal.has("waterfall_enrichment"),
             }
             for p in settings.providers

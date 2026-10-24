@@ -32,7 +32,7 @@ function Integrations() {
   const params = useSearchParams();
   const catalog = useApi<Catalog>("/integration-hub/catalog");
   const [term, setTerm] = useState("");
-  const [category, setCategory] = useState("All");
+  const [category, setCategory] = useState(params.get("category") ?? "All");
   const [filter, setFilter] = useState<Filter>("all");
 
   useEffect(() => {

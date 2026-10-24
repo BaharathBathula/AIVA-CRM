@@ -45,11 +45,11 @@ def ws(client):
     return signup(client)
 
 
-def test_catalog_lists_all_twenty(client, ws):
+def test_catalog_lists_every_integration(client, ws):
     response = client.get(f"{API}/integration-hub/catalog", headers=ws["headers"])
     assert response.status_code == 200, response.text
     items = {i["key"]: i for i in response.json()["items"]}
-    assert len(items) == 20
+    assert len(items) == 47
     assert items["gmail"]["category"] == "Email" and items["gmail"]["personal"] is True
     assert all(i["status"] == "off" for i in items.values())
 
@@ -208,3 +208,93 @@ def test_inbound_addresses_are_for_admins_only(client):
     member_view = client.get(f"{API}/integration-hub/wordpress_forms", headers=member).json()
     assert member_view["connection"]["webhook_url"] is None and member_view["extra"].get("webhook_url") is None
     assert admin_view["connection"]["webhook_url"] not in str(member_view)
+
+
+def test_rotated_refresh_token_survives_a_rolled_back_run(monkeypatch):
+    """Providers that issue a new refresh token on every refresh (Sage, FreshBooks, Zoom)
+    retire the old one: a run that refreshes and then rolls back must not lose the new one."""
+    import asyncio
+    from datetime import datetime, timedelta, timezone
+
+    from sqlalchemy import delete
+
+    from app.core.crypto import decrypt, encrypt
+    from app.db.session import AsyncSessionLocal
+    from app.integrations import core
+    from app.models.integration_hub import IntegrationConnection
+    from app.models.organization import Organization
+
+    calls: list[str] = []
+
+    async def fake_token(family, app_creds, data):
+        calls.append(data["refresh_token"])
+        if data["refresh_token"] != "ORIGINAL-refresh":
+            raise AssertionError("the retired refresh token must not be reused")
+        return {"access_token": "new-access", "refresh_token": "ROTATED-refresh", "expires_in": 300}
+
+    async def fake_app(db, org, family):
+        return {"client_id": "cid", "client_secret": "secret", "source": "server", "options": {}}
+
+    monkeypatch.setattr(core, "_token_request", fake_token)
+    monkeypatch.setattr(core, "oauth_app", fake_app)
+
+    async def main():
+        org_id, connection_id = uuid.uuid4(), uuid.uuid4()
+        async with AsyncSessionLocal() as db:
+            db.add(Organization(id=org_id, name="Token Co", slug=f"tok-{uuid.uuid4().hex[:8]}"))
+            await db.flush()
+            db.add(IntegrationConnection(id=connection_id, organization_id=org_id, provider="sage_accounting", status="connected",
+                                         access_token=encrypt("old-access"), refresh_token=encrypt("ORIGINAL-refresh"),
+                                         token_expires_at=datetime.now(timezone.utc) - timedelta(minutes=1)))
+            await db.commit()
+        try:
+            async with AsyncSessionLocal() as db:
+                connection = await db.get(IntegrationConnection, connection_id)
+                assert await core.access_token(db, connection) == "new-access"
+                await db.rollback()  # e.g. the next call hit a rate limit
+            async with AsyncSessionLocal() as db:
+                connection = await db.get(IntegrationConnection, connection_id)
+                assert decrypt(connection.refresh_token) == "ROTATED-refresh" and connection.status == "connected"
+                assert await core.access_token(db, connection) == "new-access"
+            assert calls == ["ORIGINAL-refresh"]
+        finally:
+            async with AsyncSessionLocal() as db:
+                await db.execute(delete(IntegrationConnection).where(IntegrationConnection.id == connection_id))
+                await db.execute(delete(Organization).where(Organization.id == org_id))
+                await db.commit()
+
+    asyncio.run(main())
+
+
+def test_scheduler_marks_keep_connection_settings():
+    """Marking a connection as looked at merges one key into its settings and keeps the rest."""
+    import asyncio
+
+    from sqlalchemy import delete, select
+
+    from app.db.session import AsyncSessionLocal
+    from app.integrations import core
+    from app.models.integration_hub import IntegrationConnection
+    from app.models.organization import Organization
+
+    async def main():
+        org_id, connection_id = uuid.uuid4(), uuid.uuid4()
+        async with AsyncSessionLocal() as db:
+            db.add(Organization(id=org_id, name="Mark Co", slug=f"mark-{uuid.uuid4().hex[:8]}"))
+            await db.flush()
+            db.add(IntegrationConnection(id=connection_id, organization_id=org_id, provider="zendesk", status="connected",
+                                         config={"subdomain": "acme", "sync": {"cursor": 5}}))
+            await db.commit()
+        try:
+            async with AsyncSessionLocal() as db:
+                await core.mark_seen_ids(db, [connection_id])
+                await core.mark_seen_ids(db, [connection_id])
+                config = (await db.execute(select(IntegrationConnection.config).where(IntegrationConnection.id == connection_id))).scalar_one()
+            assert isinstance(config, dict) and config["subdomain"] == "acme" and config["sync"] == {"cursor": 5} and core.SCHEDULER_SEEN in config
+        finally:
+            async with AsyncSessionLocal() as db:
+                await db.execute(delete(IntegrationConnection).where(IntegrationConnection.id == connection_id))
+                await db.execute(delete(Organization).where(Organization.id == org_id))
+                await db.commit()
+
+    asyncio.run(main())

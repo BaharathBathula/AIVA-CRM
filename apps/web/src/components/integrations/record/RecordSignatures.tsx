@@ -9,19 +9,20 @@ import { Badge, Card, Field, Modal } from "@/components/ui";
 import { dateTime, relativeTime } from "@/lib/format";
 import { api, errorMessage, query, useApi } from "@/lib/use-api";
 
-import { RECIPIENT_STATUS, SignatureBadge, type SignatureRequestItem } from "./documents-shared";
+import { ProviderMark, RECIPIENT_STATUS, SIGN_PROVIDER_LOOK, SIGNATURE_STATUS, SignatureBadge, type SignatureRequestItem, type SignProvider } from "./documents-shared";
 import { SendForSignature } from "./SendForSignature";
 
-type Listing = { items: SignatureRequestItem[]; enabled: boolean; connected: boolean; can_send: boolean };
+type Listing = { items: SignatureRequestItem[]; enabled: boolean; connected: boolean; can_send: boolean; providers?: SignProvider[] };
 
 /**
- * DocuSign signature requests for a record, with "Send for signature".
+ * Signature requests for a record from every e-signature provider (DocuSign,
+ * Adobe Acrobat Sign, PandaDoc), with "Send for signature".
  *
  * Wire it on deals, quotes, accounts, contacts, leads and documents:
  *   <RecordSignatures recordType="quote" recordId={quote.id} quoteId={quote.id} />
  *   <RecordSignatures recordType="opportunity" recordId={deal.id} />
  * `quoteId` / `documentId` preselect what is sent. Renders nothing when
- * DocuSign is off and nothing was ever sent from the record.
+ * every provider is off and nothing was ever sent from the record.
  */
 export function RecordSignatures({
   recordType,
@@ -64,11 +65,7 @@ export function RecordSignatures({
       }
     >
       {listing.error ? <p className="ui-small" style={{ margin: 0, color: "var(--danger)" }}>{listing.error}</p> : null}
-      {data && data.enabled && !data.connected ? (
-        <p className="ui-muted ui-small" style={{ margin: "0 0 8px" }}>
-          DocuSign isn&apos;t connected yet. <Link href="/integrations/docusign">Set it up</Link>.
-        </p>
-      ) : null}
+      {data && data.enabled && !data.connected ? <NotConnected providers={data.providers} /> : null}
       {data?.items.length ? (
         <ul className="idoc-requests">
           {data.items.map((item) => (
@@ -93,6 +90,20 @@ export function RecordSignatures({
   );
 }
 
+/** "X isn't connected yet. Set it up." for the providers that are on but not connected. */
+function NotConnected({ providers }: { providers?: SignProvider[] }) {
+  // Older API responses have no provider list: that was DocuSign only.
+  const waiting = providers ? providers.filter((p) => p.enabled && !p.connected) : [{ key: "docusign" as const, name: "DocuSign" }];
+  if (!waiting.length) return null;
+  const names = waiting.map((p) => p.name);
+  const label = names.length === 1 ? names[0] : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+  return (
+    <p className="ui-muted ui-small" style={{ margin: "0 0 8px" }}>
+      {label} {waiting.length === 1 ? "isn\u2019t" : "aren\u2019t"} connected yet. <Link href={`/integrations/${waiting[0].key}`}>Set it up</Link>.
+    </p>
+  );
+}
+
 /** One request: status, progress, recipients and its timeline; refresh, remind and void. */
 export function SignatureRow({ item, onChanged, showRecord }: { item: SignatureRequestItem; onChanged: () => void; showRecord?: boolean }) {
   const { session, can } = useSession();
@@ -104,6 +115,9 @@ export function SignatureRow({ item, onChanged, showRecord }: { item: SignatureR
   const waiting = item.status === "sent" || item.status === "delivered" || item.status === "created";
   const mine = item.sent_by_user_id === session?.user?.id;
   const canManage = mine || can("records.delete") || can("admin.settings");
+  const look = SIGN_PROVIDER_LOOK[item.provider] ?? SIGN_PROVIDER_LOOK.docusign;
+  const canRemind = item.supports?.remind !== false;
+  const canVoid = item.supports?.void !== false;
 
   async function act(name: "refresh" | "resend" | "void") {
     setBusy(name);
@@ -118,7 +132,7 @@ export function SignatureRow({ item, onChanged, showRecord }: { item: SignatureR
         toast("Reminder sent.");
       } else {
         const next = await api.post<SignatureRequestItem>(`/e-signatures/${item.id}/refresh`);
-        toast(next.status === item.status ? "No change yet." : `Now: ${next.status}.`);
+        toast(next.status === item.status ? "No change yet." : `Now: ${(SIGNATURE_STATUS[next.status]?.label ?? next.status).toLowerCase()}.`);
       }
       onChanged();
     } catch (caught) {
@@ -132,12 +146,16 @@ export function SignatureRow({ item, onChanged, showRecord }: { item: SignatureR
     <li className={`idoc-request status-${item.status}`}>
       <button type="button" className="idoc-request-head" onClick={() => setOpen((v) => !v)} aria-expanded={open}>
         {open ? <ChevronDown size={15} aria-hidden /> : <ChevronRight size={15} aria-hidden />}
+        <span title={`Sent with ${item.provider_name ?? look.name}`} className="isal-request-mark">
+          <ProviderMark provider={look} size={18} />
+        </span>
         <span className="idoc-request-title">
           <strong>{item.document_name ?? item.subject}</strong>
           <span className="ui-muted ui-small">
             {item.signer_count ? `${item.signed_count} of ${item.signer_count} signed` : ""}
             {item.sent_at ? ` · sent ${relativeTime(item.sent_at)}` : ` · ${relativeTime(item.created_at)}`}
             {item.sent_by ? ` by ${item.sent_by}` : ""}
+            {` · ${item.provider_name ?? look.name}`}
             {showRecord && item.record ? ` · ${item.record.kind} ${item.record.label}` : ""}
           </span>
         </span>
@@ -191,12 +209,12 @@ export function SignatureRow({ item, onChanged, showRecord }: { item: SignatureR
                 {busy === "refresh" ? <span className="ui-spinner" /> : <RefreshCw size={14} />} Check status
               </button>
             ) : null}
-            {waiting && item.envelope_id && can("records.write") ? (
+            {waiting && item.envelope_id && canRemind && can("records.write") ? (
               <button type="button" className="ui-btn ui-btn-sm" onClick={() => void act("resend")} disabled={busy !== null}>
                 {busy === "resend" ? <span className="ui-spinner" /> : <BellRing size={14} />} Remind
               </button>
             ) : null}
-            {waiting && item.envelope_id && canManage ? (
+            {waiting && item.envelope_id && canVoid && canManage ? (
               <button type="button" className="ui-btn ui-btn-sm ui-btn-ghost ui-btn-danger" onClick={() => setVoiding(true)} disabled={busy !== null}>
                 <Ban size={14} /> Void
               </button>

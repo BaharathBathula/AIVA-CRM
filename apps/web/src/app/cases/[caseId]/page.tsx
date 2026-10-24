@@ -10,6 +10,7 @@ import { CASE_STATUS_LABEL, CHANNEL_LABEL, SlaBadge } from "@/components/case-bi
 import { useSession, useToast } from "@/components/providers";
 import { RecordDocuments } from "@/components/record-panels";
 import { RecordCloudFiles } from "@/components/integrations/record/RecordCloudFiles";
+import { CaseEscalation } from "@/components/integrations/record/CaseEscalation";
 import { PinButton } from "@/components/pins";
 import { RecordActions, RecordInsights } from "@/components/record-extras";
 import { Alert, Avatar, Badge, Card, CASE_STATUS_TONE, ConfirmDialog, LoadingRows, PageHeader, PRIORITY_TONE } from "@/components/ui";
@@ -406,6 +407,7 @@ function CaseView() {
 
           <RecordInsights objectType="case" recordId={c.id} version={extrasVersion} onChanged={() => setExtrasVersion((v) => v + 1)} />
           <RecordDocuments recordType="case" recordId={c.id} />
+          <CaseEscalation caseId={c.id} onChanged={() => void detail.reload()} />
           <RecordCloudFiles recordType="case" recordId={c.id} />
 
           {can("records.delete") ? (

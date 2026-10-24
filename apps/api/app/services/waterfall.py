@@ -8,6 +8,8 @@ Sources (Settings → Data management → Waterfall enrichment):
   phone number, LinkedIn page and contact email.
 * **hunter** – Hunter.io email finder and domain search (your API key).
 * **pdl** – People Data Labs person and company enrichment (your API key).
+* **apollo**, **zoominfo** – Apollo.io and ZoomInfo, through the workspace's
+  connection in Integrations (turned on and connected there).
 
 Outside providers cost one credit for each record they fill something in
 on (five when they find a mobile number). Only empty fields are filled
@@ -39,7 +41,16 @@ PROVIDERS = {
     "website": {"label": "Company website", "cost": 0, "needs_key": None, "description": "Reads the company's home page for a description, phone number, LinkedIn page and contact email."},
     "hunter": {"label": "Hunter.io", "cost": 1, "needs_key": "hunter_api_key", "description": "Finds work email addresses from a name and company domain, plus company details."},
     "pdl": {"label": "People Data Labs", "cost": 1, "needs_key": "pdl_api_key", "description": "Job titles, mobile numbers, LinkedIn profiles, locations and company firmographics."},
+    "apollo": {
+        "label": "Apollo.io", "cost": 1, "needs_key": None, "integration": "apollo",
+        "description": "Work emails, titles, seniority, phones and company data from Apollo. Connect Apollo in Integrations.",
+    },
+    "zoominfo": {
+        "label": "ZoomInfo", "cost": 1, "needs_key": None, "integration": "zoominfo",
+        "description": "Contact and company data from ZoomInfo: titles, direct dials, firmographics. Connect ZoomInfo in Integrations.",
+    },
 }
+PAID = {key for key, spec in PROVIDERS.items() if spec["cost"]}
 FIELD_LABELS = {
     "email": "Email", "phone": "Phone", "mobile": "Mobile", "job_title": "Job title", "company": "Company", "website": "Website",
     "industry": "Industry", "employees": "Employees", "location": "Location", "seniority": "Seniority", "department": "Department",
@@ -389,10 +400,16 @@ async def run(
                 values = builtin_values(record)
             elif provider.key == "website":
                 values = await website_values(record)
-            else:
-                if provider.key == "pdl" and "waterfall_enrichment" not in principal.features:
+            elif spec.get("integration"):
+                if "waterfall_enrichment" not in principal.features:
                     raise ProviderError("Waterfall enrichment isn't included in your plan.")
-                if provider.key == "hunter" and "waterfall_enrichment" not in principal.features:
+                if charge:
+                    balance = await metering.credit_balance(db, org, principal.user_id)
+                    if balance["remaining"] < 1:
+                        raise ProviderError("Out of credits for this month.")
+                values = await integration_values(db, org, provider.key, record)
+            else:
+                if provider.key in PAID and "waterfall_enrichment" not in principal.features:
                     raise ProviderError("Waterfall enrichment isn't included in your plan.")
                 key = await workspace_settings.secret(db, org, "enrichment", spec["needs_key"])
                 if not key:
@@ -439,10 +456,41 @@ async def run(
     return {"found": found, "applied": applied, "tried": tried, "credits": credits}
 
 
+async def integration_values(db: AsyncSession, organization_id: uuid.UUID, provider: str, record: Any) -> dict[str, Any]:
+    """Apollo / ZoomInfo through the workspace's connection in Integrations."""
+
+    from app.integrations.core import IntegrationError
+    from app.integrations.providers import sales_intel
+
+    try:
+        return await sales_intel.waterfall_values(db, organization_id, provider, record)
+    except IntegrationError as exc:
+        raise ProviderError(str(exc)) from exc
+
+
+async def integration_ready(db: AsyncSession, organization_id: uuid.UUID, provider: str) -> bool:
+    from app.integrations import core
+
+    if not await core.is_enabled(db, organization_id, provider):
+        return False
+    connection = await core.connection_for(db, organization_id, provider)
+    return bool(connection and connection.status == "connected")
+
+
 async def test_provider(db: AsyncSession, organization_id: uuid.UUID, provider: str) -> dict[str, Any]:
     spec = PROVIDERS.get(provider)
     if spec is None:
         raise ProviderError("Unknown provider.")
+    if spec.get("integration"):
+        from app.integrations import core
+        from app.integrations.core import IntegrationError
+        from app.integrations.providers import sales_intel
+
+        try:
+            connection = await core.active_connection(db, organization_id, provider)
+            return {"ok": True, "message": await sales_intel.test(db, provider, connection, None)}
+        except IntegrationError as exc:
+            return {"ok": False, "message": str(exc)}
     if provider == "builtin":
         return {"ok": True, "message": "Built-in rules are always available."}
     if provider == "website":

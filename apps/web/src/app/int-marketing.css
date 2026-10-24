@@ -1,0 +1,38 @@
+/* Integrations: email marketing panels and the record panel (classes start with imk-). */
+
+.imk-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
+.imk-grow { flex: 1 1 280px; min-width: 0; }
+.imk-fieldset { margin: 0; padding: 0; border: 0; min-width: 0; }
+.imk-fieldset legend { margin-bottom: 8px; padding: 0; color: var(--text); font-size: 13px; font-weight: 700; }
+.imk-checks { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px 16px; }
+
+.imk-kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.imk-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; }
+.imk-facts > div { display: grid; gap: 4px; align-content: start; }
+.imk-facts strong { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; color: var(--text); }
+
+.imk-map td { vertical-align: middle; }
+.imk-map .ui-select, .imk-map .ui-input { min-width: 160px; }
+.imk-campaigns .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* Record panel */
+.imk-record { display: grid; gap: 12px; }
+.imk-tool { display: grid; gap: 6px; padding-top: 12px; border-top: 1px solid var(--border); }
+.imk-record > .imk-tool:first-child, .imk-record > .ui-alert + .imk-tool { border-top: 0; padding-top: 0; }
+.imk-tool-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.imk-tool-head strong { font-size: 13.5px; color: var(--text); }
+.imk-tool-meta { display: flex; flex-wrap: wrap; gap: 4px 12px; }
+.imk-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.imk-activity { display: grid; gap: 4px; margin: 2px 0 0; padding: 0; list-style: none; font-size: 12.5px; color: var(--text-2); }
+.imk-activity li { display: grid; grid-template-columns: 14px minmax(0, 1fr) auto; align-items: center; gap: 8px; }
+.imk-activity svg { color: var(--muted); }
+
+@media (max-width: 900px) {
+  .imk-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 520px) {
+  .imk-kpis { grid-template-columns: minmax(0, 1fr); }
+  .imk-tool-head .ui-spacer { display: none; }
+  .imk-map .ui-select, .imk-map .ui-input { min-width: 120px; }
+}

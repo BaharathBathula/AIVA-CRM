@@ -87,6 +87,21 @@ class Settings(BaseSettings):
     calendly_webhook_signing_key: str = ""
     facebook_app_id: str = ""
     facebook_app_secret: str = ""
+    constant_contact_client_id: str = ""
+    constant_contact_client_secret: str = ""
+    quickbooks_client_id: str = ""
+    quickbooks_client_secret: str = ""
+    quickbooks_environment: str = "production"  # production | sandbox
+    xero_client_id: str = ""
+    xero_client_secret: str = ""
+    freshbooks_client_id: str = ""
+    freshbooks_client_secret: str = ""
+    sage_client_id: str = ""
+    sage_client_secret: str = ""
+    linkedin_client_id: str = ""
+    linkedin_client_secret: str = ""
+    # Google Ads also needs the developer token from the Ads API Center (workspaces can paste their own).
+    google_ads_developer_token: str = ""
 
     # Background jobs (reminders, campaigns, journeys, chat alerts).
     scheduler_enabled: bool = True

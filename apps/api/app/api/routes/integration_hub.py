@@ -509,7 +509,7 @@ class AppPayload(BaseModel):
     client_id: str | None = Field(default=None, max_length=300)
     client_secret: str | None = Field(default=None, max_length=500)
     tenant: str | None = Field(default=None, max_length=100, pattern=r"^[A-Za-z0-9.\-]*$")
-    environment: str | None = Field(default=None, pattern="^(demo|production)$")
+    environment: str | None = Field(default=None, pattern="^(demo|production|sandbox)$")
 
 
 @router.put("/apps/{family}")
@@ -528,6 +528,9 @@ async def set_app(family: str, payload: AppPayload, principal: Principal = Depen
     if payload.tenant is not None:
         config["tenant"] = payload.tenant.strip() or None
     if payload.environment is not None:
+        allowed = {"docusign": {"demo", "production"}, "intuit": {"sandbox", "production"}}.get(family, set())
+        if payload.environment not in allowed:
+            raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, f"{FAMILIES[family].label} has no {payload.environment} environment.")
         config["environment"] = payload.environment
     row.config = {k: v for k, v in config.items() if v}
     if payload.client_secret:
@@ -579,6 +582,7 @@ async def _own_session(db: AsyncSession, principal: Principal, session_id: str |
 
 @public_router.get("/oauth/callback")
 async def oauth_callback(
+    request: Request,
     state: str | None = None,
     code: str | None = None,
     error: str | None = None,
@@ -598,7 +602,9 @@ async def oauth_callback(
         return _back(target, error=message[:300])
     db.sync_session.info["automation_disabled"] = True
     try:
-        connection, row = await core.finish_oauth(db, state=state, code=code, session_id=x_session_id)
+        standard = {"state", "code", "error", "error_description", "scope", "session_state", "iss"}
+        callback = {k: v[:200] for k, v in request.query_params.items() if k not in standard}
+        connection, row = await core.finish_oauth(db, state=state, code=code, session_id=x_session_id, callback=dict(list(callback.items())[:10]))
     except IntegrationError as exc:
         await db.commit()
         return _back("/integrations", error=str(exc)[:300])

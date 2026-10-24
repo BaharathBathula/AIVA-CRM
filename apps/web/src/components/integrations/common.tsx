@@ -275,7 +275,7 @@ export function OAuthAppCard({ detail, onSaved }: { detail: IntegrationDetail; o
   const [clientId, setClientId] = useState(oauth?.workspace_client_id ?? "");
   const [clientSecret, setClientSecret] = useState("");
   const [tenant, setTenant] = useState(oauth?.options?.tenant ?? "");
-  const [environment, setEnvironment] = useState(oauth?.options?.environment ?? "demo");
+  const [environment, setEnvironment] = useState(oauth?.options?.environment ?? (oauth?.family === "intuit" ? "production" : "demo"));
   const [busy, setBusy] = useState(false);
   if (!oauth || !detail.can_manage) return null;
 
@@ -288,7 +288,7 @@ export function OAuthAppCard({ detail, onSaved }: { detail: IntegrationDetail; o
         client_id: clientId,
         client_secret: clientSecret || null,
         ...(oauth.family === "microsoft" ? { tenant } : {}),
-        ...(oauth.family === "docusign" ? { environment } : {}),
+        ...(oauth.family === "docusign" || oauth.family === "intuit" ? { environment } : {}),
       });
       toast(`${oauth.label} app saved.`);
       setClientSecret("");
@@ -360,6 +360,14 @@ export function OAuthAppCard({ detail, onSaved }: { detail: IntegrationDetail; o
                 <select className="ui-select" value={environment} onChange={(event) => setEnvironment(event.target.value)}>
                   <option value="demo">Developer sandbox (demo)</option>
                   <option value="production">Production</option>
+                </select>
+              </Field>
+            ) : null}
+            {oauth.family === "intuit" ? (
+              <Field label="Environment" hint="Sandbox companies are for testing your Intuit app.">
+                <select className="ui-select" value={environment} onChange={(event) => setEnvironment(event.target.value)}>
+                  <option value="production">Production</option>
+                  <option value="sandbox">Sandbox</option>
                 </select>
               </Field>
             ) : null}

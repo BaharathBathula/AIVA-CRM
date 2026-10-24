@@ -147,7 +147,7 @@ Settings open with a collapsible menu on the left, grouped the way Apollo groups
 
 ### Integrations
 
-**Integrations** has its own icon in the left rail. Each of the 20 integrations has an on/off switch for the whole workspace (owners and admins), a page with its connection, settings and activity log, and a plan badge when the plan doesn't include it. Personal integrations (mail, calendars, Zoom, cloud files) are connected by each person for their own account; admins see who has connected. Turning an integration off stops everything it does straight away: no sending, no syncing, and its inbound webhooks are ignored. The section also has a **Messages** inbox (SMS and WhatsApp), **Webhooks** (outgoing events for Zapier, Make and n8n) and **Activity** (every connection, sync, send and webhook, with filters).
+**Integrations** has its own icon in the left rail. Each of the 47 integrations has an on/off switch for the whole workspace (owners and admins), a page with its connection, settings and activity log, and a plan badge when the plan doesn't include it. Personal integrations (mail, calendars, Zoom, cloud files) are connected by each person for their own account; admins see who has connected. Turning an integration off stops everything it does straight away: no sending, no syncing, and its inbound webhooks are ignored. The section also has a **Messages** inbox (SMS and WhatsApp), **Webhooks** (outgoing events for Zapier, Make and n8n) and **Activity** (every connection, sync, send and webhook, with filters).
 
 | Category | Integration | What it does | Plan |
 |---|---|---|---|
@@ -164,8 +164,19 @@ Settings open with a collapsible menu on the left, grouped the way Apollo groups
 | Lead capture | WordPress Forms | A downloadable plugin (Contact Form 7, WPForms, Gravity Forms, Elementor, Ninja Forms, Fluent Forms, Formidable) or any form's webhook; field mapping per form, signed submissions, duplicate handling | Starter |
 | Lead capture | Facebook Lead Ads | Pick your Facebook pages; Facebook and Instagram lead-form leads arrive within seconds, mapped per form, with a catch-up every 15 minutes | Starter |
 | Automation | Zapier, Make, n8n | Signed outgoing webhooks for 25 events (new lead, deal won, task completed…), retried for a day, with a delivery log and resend; REST hooks for Zapier apps; actions through the REST API with an API key | Starter |
+| Email marketing | Mailchimp, ActiveCampaign, Brevo, Constant Contact, Klaviyo | Contacts and leads synced to the audience or list you choose, with field mapping and tags; never adds anyone on AIVA's do-not-contact list; unsubscribes, bounces and complaints come back to that list (by webhook where the tool has one, otherwise every 15 minutes) and AIVA unsubscribes go out to the tools; campaign stats, and opens and clicks on the person's timeline; Klaviyo also receives CRM events (deal won, quote accepted…) for flows | Starter |
+| Lead capture | LinkedIn Lead Gen Forms | Pick ad accounts and forms; responses become leads within minutes with campaign and form names | Starter |
+| Advertising | Google Ads | Lead-form leads with their click ID; qualified and won deals uploaded as offline conversions with their value; campaign spend and clicks next to the revenue they produced | Pro |
+| Sales intelligence | Apollo.io, ZoomInfo | Join the waterfall enrichment order; **Find prospects** (Sales menu) searches people and companies and imports them as leads, contacts or accounts, skipping the do-not-contact list | Pro |
+| E-signature | Adobe Acrobat Sign, PandaDoc | Send for signature now offers DocuSign, Acrobat Sign or PandaDoc; PandaDoc documents can be built from templates filled from the deal with the quote as a pricing table; signed copies saved to Documents | Pro |
+| Accounting | QuickBooks Online, Xero, FreshBooks, Sage Accounting | One system at a time: accounts become customers, sent invoices are created there (with idempotency so retries never duplicate), and payments recorded there mark the AIVA invoice paid; open and overdue balances on the account | Pro |
+| Payments | Stripe, PayPal, Square | A payment link on any invoice (copy it or email it from your mailbox); payments and refunds update the invoice, after AIVA re-reads them from the processor | Pro |
+| Payments | Chargebee | Customers matched to accounts; subscriptions, MRR and renewal dates on the account; tasks on cancellations, failed payments and upcoming renewals | Pro |
+| Customer support | Zendesk, Freshdesk, Intercom, Help Scout, Jira Service Management | Tickets and conversations on contacts, leads and accounts; open a ticket from AIVA; escalate or link an AIVA case and follow the ticket's status; optionally open cases for new tickets | Starter |
+| Analytics | Google Analytics 4 | CRM moments (new lead, qualified, won with value) sent as GA4 events with the visitor's GA client ID captured by the tracking script and forms; no personal data sent | Pro |
+| Analytics | Microsoft Power BI, Looker Studio | A read-only data feed of 11 datasets with paging and incremental refresh, authenticated with an API key that sees only what its creator can see; ready-made Power Query and a Looker Studio community connector | Pro |
 
-Record pages show **Messages**, **Cloud files** and **Signatures** panels, a **Share to Slack** button and **Scheduling links**, each only when that integration is on and connected.
+Record pages show **Messages**, **Cloud files**, **Signatures**, **Support tickets** and **Email marketing** panels (accounts also get **Accounting** and **Billing**, cases **Escalation**, and invoices **Payment links** and **Accounting**), a **Share to Slack** button and **Scheduling links**, each only when that integration is on and connected.
 
 ## Technology stack
 
@@ -288,6 +299,13 @@ The demo workspace is on the Enterprise plan with sample data for every feature:
 | `DOCUSIGN_INTEGRATION_KEY`, `DOCUSIGN_SECRET_KEY`, `DOCUSIGN_ENVIRONMENT` | The DocuSign app; `demo` (developer sandbox, the default) or `production`. |
 | `CALENDLY_CLIENT_ID`, `CALENDLY_CLIENT_SECRET`, `CALENDLY_WEBHOOK_SIGNING_KEY` | The Calendly app and its webhook signing key. |
 | `FACEBOOK_APP_ID`, `FACEBOOK_APP_SECRET`, `FACEBOOK_WEBHOOK_VERIFY_TOKEN` | The Meta app for Facebook Lead Ads; the verify token is optional (derived from the app secret when unset). |
+| `CONSTANT_CONTACT_CLIENT_ID`, `CONSTANT_CONTACT_CLIENT_SECRET` | The Constant Contact app. |
+| `QUICKBOOKS_CLIENT_ID`, `QUICKBOOKS_CLIENT_SECRET`, `QUICKBOOKS_ENVIRONMENT`, `QUICKBOOKS_WEBHOOK_VERIFIER_TOKEN` | The Intuit app (`production` or `sandbox`) and its webhook verifier token (or paste it on the QuickBooks page). |
+| `XERO_CLIENT_ID`, `XERO_CLIENT_SECRET`, `XERO_WEBHOOK_KEY` | The Xero app and its webhooks key (or paste it on the Xero page). |
+| `FRESHBOOKS_CLIENT_ID`, `FRESHBOOKS_CLIENT_SECRET` | The FreshBooks app. |
+| `SAGE_CLIENT_ID`, `SAGE_CLIENT_SECRET` | The Sage Accounting app. |
+| `LINKEDIN_CLIENT_ID`, `LINKEDIN_CLIENT_SECRET`, `LINKEDIN_API_VERSION` | The LinkedIn app for Lead Gen Forms; the API version (YYYYMM) defaults to a recent one and should be bumped as LinkedIn retires versions. |
+| `GOOGLE_ADS_DEVELOPER_TOKEN` | Google Ads API developer token (or each workspace pastes its own). Uses the Google app above with the `adwords` scope. |
 
 ### Tracking website visits
 
@@ -346,6 +364,13 @@ https://<your-site>/api/aiva/public/integrations/oauth/callback
 | DocuSign | DocuSign Admin → Apps and Keys → Add app and integration key (Authorization Code Grant) with a secret key | `signature`, `extended`. Optional: Admin → Connect → Connect Keys, then paste the HMAC key on the DocuSign page so status pushes are verified (otherwise AIVA checks every 15 minutes). |
 | Calendly | developer.calendly.com → Create an OAuth app | Set `CALENDLY_WEBHOOK_SIGNING_KEY` to the app's webhook signing key. Workspaces can also connect with a personal access token instead. Bookings need `APP_BASE_URL` to be public https. |
 | Facebook Lead Ads | developers.facebook.com → Create app (Business) | Permissions `pages_show_list`, `pages_read_engagement`, `pages_manage_metadata`, `leads_retrieval`, `business_management` (App Review for other businesses). Webhooks → Page → callback `https://<your-site>/api/aiva/public/integrations/facebook_lead_ads/webhook/app` with the verify token shown on the integration's page; subscribe to `leadgen`. |
+| Google Ads | The Google app above, plus Google Ads → Tools → API Center on a manager account | Add the `https://www.googleapis.com/auth/adwords` scope. Developer token in `GOOGLE_ADS_DEVELOPER_TOKEN` or on the page (test-level tokens only reach test accounts). Create conversion actions as "Import → CRMs, files or other data sources → Track conversions from clicks". |
+| Constant Contact | app.constantcontact.com → My Applications | Scopes `account_read`, `contact_data`, `campaign_data`, `offline_access`. |
+| QuickBooks Online | developer.intuit.com → My apps | Scope `com.intuit.quickbooks.accounting`. Webhooks: endpoint `https://<your-site>/api/aiva/public/integrations/quickbooks/webhook/app` with Invoice and Payment events; the verifier token goes in `QUICKBOOKS_WEBHOOK_VERIFIER_TOKEN` or on the page. |
+| Xero | developer.xero.com → My Apps (web app) | Scopes `accounting.transactions`, `accounting.contacts`, `accounting.settings.read`, `offline_access`. Webhooks: `https://<your-site>/api/aiva/public/integrations/xero/webhook/app` with the Invoices category; key in `XERO_WEBHOOK_KEY` or on the page. |
+| FreshBooks | my.freshbooks.com → Developer | Client and invoice read/write, payments read. Callbacks register themselves when AIVA runs on public https. |
+| Sage Accounting | developerselfservice.sageone.com | Scope `full_access`. Sage has no webhooks, so AIVA checks every 5 minutes. |
+| LinkedIn Lead Gen Forms | linkedin.com/developers → your app with the Advertising API and Lead Sync API products | Scopes `r_marketing_leadgen_automation`, `r_ads`, `r_organization_admin` (plus `openid profile email`). |
 
 Integrations connected with keys show what to paste and where on their page:
 
@@ -353,6 +378,22 @@ Integrations connected with keys show what to paste and where on their page:
 - **WhatsApp:** phone number ID, WhatsApp Business account ID, a permanent system-user token (`whatsapp_business_messaging`, `whatsapp_business_management`) and the Meta app secret. Set the callback URL and verify token shown on the page in the Meta app (or click **Set it up for me**) and subscribe to `messages`.
 - **Microsoft Teams:** in the channel, Workflows → "Post to a channel when a webhook request is received", then paste the URL.
 - **WordPress Forms:** download the plugin from the integration's page (it already has your address and secret) and activate it, or paste the webhook URL into any form plugin.
+- **Mailchimp, ActiveCampaign, Brevo, Klaviyo:** an API key (Mailchimp: Profile → Extras → API keys, ending with the data center like `-us21`; ActiveCampaign: Settings → Developer, API URL and key; Brevo: SMTP & API → API keys; Klaviyo: a private `pk_` key with profiles, lists, subscriptions, events and campaigns access). Pick the audience or list and which records to sync. AIVA registers its webhook for unsubscribes when it runs on public https.
+- **Stripe:** a secret key, or a restricted key with write access to Payment Links, Prices, Products, Refunds and Webhook Endpoints and read access to Checkout Sessions, PaymentIntents and Charges. AIVA creates the webhook endpoint in your Stripe account. (This is separate from AIVA's own `STRIPE_SECRET_KEY` billing.)
+- **PayPal:** a REST app's client ID and secret with Invoicing, and the environment (live or sandbox). AIVA registers and verifies the webhook with PayPal.
+- **Square:** an access token (production or sandbox), optionally the location, and the webhook signature key if AIVA can't create the subscription itself. The location's currency must match the invoice's.
+- **Chargebee:** your site and an API key; add the webhook URL shown in Chargebee with authentication off (AIVA re-reads every event from Chargebee).
+- **Zendesk:** subdomain, agent email and API token (an admin's token lets AIVA create the webhook and trigger itself).
+- **Freshdesk:** domain and API key; for live updates add an automation rule (Ticket updates → Trigger webhook) posting `{"ticket_id": "{{ticket.id}}"}` to the URL shown.
+- **Intercom:** an access token and region (us, eu, au) and, for signed webhooks, the app's client secret; subscribe the URL shown to the conversation and `contact.lead.created` topics in the Developer Hub.
+- **Help Scout:** create an app (Your profile → My apps) and paste its ID and secret; AIVA registers the webhook.
+- **Jira Service Management:** site, email and API token, then pick the service desk and request type; add the URL shown as a Jira webhook (Issue created and updated) with the secret generated in AIVA.
+- **Adobe Acrobat Sign:** an integration key with `agreement_read`, `agreement_write`, `agreement_send`, `webhook_read`, `webhook_write`; the API access point is found automatically.
+- **PandaDoc:** a production API key; set a default quote template. Uploaded files need `{signature:Signer1}` field tags.
+- **Apollo.io:** an API key (a master key for people search). **ZoomInfo:** a PKI app's username, client ID and private key. Both then appear in Settings → Enrichment.
+- **Google Analytics 4:** the web stream's measurement ID and a Measurement Protocol API secret; mark AIVA's events as key events in GA4.
+- **Power BI:** create a read-only API key, add it as a parameter named `AivaApiKey`, paste the `AivaFeed` function from the Power BI page and add one query per dataset. In the Power BI service set the data source credential to Anonymous with "Skip test connection" (the key travels in a header), then schedule refresh.
+- **Looker Studio:** paste the connector's `Code.gs` and `appsscript.json` from the Looker Studio page into an Apps Script project, deploy it, open the connector in Looker Studio and paste the API key.
 - **Zapier, Make, n8n:** add a webhook on the integration's page or under **Integrations → Webhooks** with the URL from the Zap trigger, Make's custom webhook or n8n's Webhook node. Requests carry `X-AIVA-Signature: t=<time>,v1=<HMAC-SHA256 of "<time>.<body>">` with the webhook's secret. To create or update records from those tools, call the REST API (`https://<your-site>/api/aiva/...`) with an API key; Zapier apps can subscribe through the REST hooks at `/api/aiva/hooks`.
 
 ### Manual setup (without Docker)
@@ -403,7 +444,7 @@ npx tsc --noEmit  # type check
 npm run build     # production build
 ```
 
-The integration suite signs up a brand-new workspace per run and exercises sign-in, MFA, lockout, invitations, permissions, tenant isolation, quotes, forecasting, cases and SLAs, workflows, reports and dashboards — plus plans and trial expiry, custom modules and fields, campaigns, forms, imports, calls, API keys, HIPAA mode, AI agents and predictions, inventory and invoices, approvals, journeys, portals, custom buttons, record visibility, ABM, Google Ads and sandboxes — and the settings suite: workspace security (IP allowlist, required MFA, API-key switch), add-ons and credits, data requests, territories and round-robin routing, support access, the MCP server, sending domains, snippets, sequences end to end (sending, click tracking, replies, bounces, meetings, unsubscribes), picklists, goals, removal requests, personas, signals and conversation intelligence — and the integrations: on/off switches and dependencies, sign-in with PKCE and single-use state, every provider's connect, send, sync and webhook paths with the provider APIs mocked (signature checks both accepted and refused), opt-outs, envelope completion, form and lead-ad capture, and outgoing webhook signing, retries and URL safety.
+The integration suite signs up a brand-new workspace per run and exercises sign-in, MFA, lockout, invitations, permissions, tenant isolation, quotes, forecasting, cases and SLAs, workflows, reports and dashboards — plus plans and trial expiry, custom modules and fields, campaigns, forms, imports, calls, API keys, HIPAA mode, AI agents and predictions, inventory and invoices, approvals, journeys, portals, custom buttons, record visibility, ABM, Google Ads and sandboxes — and the settings suite: workspace security (IP allowlist, required MFA, API-key switch), add-ons and credits, data requests, territories and round-robin routing, support access, the MCP server, sending domains, snippets, sequences end to end (sending, click tracking, replies, bounces, meetings, unsubscribes), picklists, goals, removal requests, personas, signals and conversation intelligence — and the 47 integrations: on/off switches and dependencies, sign-in with PKCE and single-use state, every provider's connect, send, sync and webhook paths with the provider APIs mocked (signature checks both accepted and refused), opt-outs, envelope completion, form and lead-ad capture, outgoing webhook signing, retries and URL safety, audience sync and suppressions both ways, invoices and payments with accounting systems (no duplicates on retry), payment links, partial payments and refunds, ticket matching and escalation, multi-provider e-signature, prospect import, ad conversions, GA4 events and the analytics feed's record visibility.
 
 ## Security notes
 
@@ -412,6 +453,7 @@ The integration suite signs up a brand-new workspace per run and exercises sign-
 - Workspaces can require two-step verification, restrict access to an IP allowlist and switch API keys off; AIVA support can only enter a workspace with a time-limited grant from an admin, and every page they open is logged.
 - Sequence click links are HMAC-signed, so the tracking redirect can't be used as an open redirect.
 - Integration tokens, keys and webhook secrets are encrypted at rest and never returned to the browser (an outgoing webhook's signing secret is shown once). Provider sign-in uses PKCE where supported and single-use, 15-minute state that only completes in the browser session that started it (a sign-in link sent to someone else can't attach their account); inbound webhooks verify each provider's signature (Twilio, Meta, Calendly, DocuSign, the WordPress plugin) in constant time and ignore repeats; in production, outgoing webhooks only go to public https addresses (including addresses hidden inside IPv6), checked when saved and again, pinned, on every delivery, with a 15-second limit per delivery. A form webhook's address is only shown to admins, and people can only schedule meetings through their own Zoom, calendar and mailbox unless they're a manager.
+- Money from integrations is only applied after AIVA re-reads it from the provider (never from a webhook body alone), once per provider payment id, with the invoice locked; a payment that arrives both through a payment link and from the accounting system is counted once. Refreshed sign-in tokens are saved immediately, so a sync that fails afterwards can't lose a provider's newly rotated refresh token, and the scheduler takes workspaces in turn so none is starved.
 - Browser sessions use httpOnly, SameSite cookies; the frontend never sees tokens.
 - Every API route checks the caller's permissions, and every query is scoped to the caller's organization.
 - Production deployments still need: a real email provider for invitations and resets, HTTPS everywhere, secret management, and rate limiting at the edge.
@@ -420,6 +462,7 @@ The integration suite signs up a brand-new workspace per run and exercises sign-
 
 - Push notifications from Gmail, Google Calendar and Microsoft Graph (today: inbox and calendar sync every 10 minutes)
 - Sending media (MMS and WhatsApp images and documents), Slack slash commands and interactive buttons
+- Two-way comment sync with help desks, more than one list per email marketing tool, and an OData `$metadata` endpoint for the analytics feed
 - Domain verification (DNS) for single sign-on domains and an option to require single sign-on
 - Native QuickBooks and Google Ads API connections (today: CSV export and lead-form webhook)
 - SAML single sign-on and SCIM provisioning (OpenID Connect single sign-on is available)

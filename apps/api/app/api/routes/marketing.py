@@ -1238,8 +1238,17 @@ async def google_ads(
     rows = await _google_conversions(db, principal)
     base = get_settings().app_base_url.rstrip("/")
     organization = await db.get(Organization, principal.organization_id)
+    from app.integrations import core as integrations_core
+
+    hub_connection = await integrations_core.connection_for(db, principal.organization_id, "google_ads")
     return {
         "connected": integration is not None,
+        # The Google Ads integration (Integrations → Google Ads) uploads conversions automatically.
+        "integration": {
+            "enabled": await integrations_core.is_enabled(db, principal.organization_id, "google_ads"),
+            "connected": hub_connection is not None,
+            "href": "/integrations/google_ads",
+        },
         "settings": {
             "lead_conversion_name": config.get("lead_conversion_name", "AIVA lead"),
             "won_conversion_name": config.get("won_conversion_name", "AIVA closed deal"),

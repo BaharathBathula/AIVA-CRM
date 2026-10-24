@@ -22,18 +22,16 @@ import {
 // Only used before a user has signed in (public endpoints).
 const FALLBACK_ORGANIZATION_ID = process.env.AIVA_ORGANIZATION_ID;
 
-/** Signature headers that providers send to `/api/aiva/public/...` webhooks. */
-const WEBHOOK_HEADERS = new Set([
-  "x-hub-signature-256", // WhatsApp and Facebook (Meta)
-  "x-hub-signature",
-  "x-twilio-signature", // Twilio
-  "calendly-webhook-signature", // Calendly
-  "x-slack-signature", // Slack
-  "x-slack-request-timestamp",
-  "x-aiva-signature", // AIVA's WordPress plugin
-  "x-aiva-secret",
-  "x-aiva-timestamp",
-]);
+/**
+ * Signature and event headers that providers send to `/api/aiva/public/...`
+ * webhooks (Meta, Twilio, Calendly, Slack, DocuSign, Stripe, PayPal, Intuit, Xero,
+ * FreshBooks, Square, Chargebee, Zendesk, Help Scout, Intercom, Atlassian,
+ * Adobe Acrobat Sign, LinkedIn, Klaviyo and AIVA's own WordPress plugin). Only
+ * these pass through; session, workspace and forwarding headers never do.
+ */
+const WEBHOOK_HEADER =
+  /^(stripe-signature|paypal-[a-z-]+|intuit-signature|calendly-webhook-signature|klaviyo-[a-z-]+|x-hub-signature(-256)?|x-(twilio|li|xero|helpscout|zendesk-webhook|square|chargebee|freshbooks|docusign|slack|adobesign|atlassian|aiva|klaviyo|pandadoc|intercom)-[a-z0-9-]+)$/;
+const NEVER_FORWARDED = new Set(["x-session-id", "x-organization-id", "x-forwarded-for", "x-forwarded-host", "x-forwarded-proto", "x-portal-token", "authorization", "cookie", "host"]);
 
 async function forward(request: NextRequest, body: ArrayBuffer | undefined, token?: string, organizationId?: string) {
   const path = request.nextUrl.pathname.replace(/^\/api\/aiva\/?/, "");
@@ -64,7 +62,8 @@ async function forward(request: NextRequest, body: ArrayBuffer | undefined, toke
   if (signature) headers.set("Stripe-Signature", signature);
   if (path.startsWith("public/")) {
     request.headers.forEach((value, name) => {
-      if (WEBHOOK_HEADERS.has(name) || name.startsWith("x-docusign-signature-")) headers.set(name, value);
+      const lower = name.toLowerCase();
+      if (WEBHOOK_HEADER.test(lower) && !NEVER_FORWARDED.has(lower)) headers.set(lower, value);
     });
   }
 
@@ -88,7 +87,8 @@ function responseHeaders(upstream: Response) {
   const disposition = upstream.headers.get("content-disposition");
   if (disposition) headers.set("Content-Disposition", disposition);
   // Keep the download safety headers set by the backend (file previews).
-  for (const name of ["content-security-policy", "x-content-type-options", "cache-control", "mcp-session-id", "www-authenticate", "location"]) {
+  // x-adobesign-clientid: Acrobat Sign checks its webhook URL by expecting its client ID echoed back.
+  for (const name of ["content-security-policy", "x-content-type-options", "cache-control", "mcp-session-id", "www-authenticate", "location", "x-adobesign-clientid"]) {
     const value = upstream.headers.get(name);
     if (value) headers.set(name, value);
   }

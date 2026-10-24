@@ -17,15 +17,17 @@ from __future__ import annotations
 import base64
 import hashlib
 import hmac
+import json
 import logging
 import secrets
+import time
 import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any
 from urllib.parse import urlencode
 
 import httpx
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm.attributes import set_committed_value
 
@@ -50,6 +52,45 @@ class IntegrationError(Exception):
 
 def utcnow() -> datetime:
     return datetime.now(timezone.utc)
+
+
+# ---------------------------------------------------------------------------
+# Fair scheduling: every connection a scheduler run looks at (even one it skips
+# because it's switched off, paused or over its plan) is marked, and runs pick the
+# connections looked at longest ago first, so no workspace waits forever.
+# ---------------------------------------------------------------------------
+
+SCHEDULER_SEEN = "scheduler_seen_at"
+
+
+def scheduler_order():
+    """ORDER BY for scheduler runs over ``IntegrationConnection``: least recently looked at first."""
+
+    return IntegrationConnection.config[SCHEDULER_SEEN].astext.asc().nulls_first()
+
+
+def mark_seen(connection: IntegrationConnection) -> None:
+    """Mark a loaded connection as looked at by this run (saved with the caller's commit)."""
+
+    connection.config = {**(connection.config or {}), SCHEDULER_SEEN: utcnow().isoformat()}
+
+
+async def mark_seen_ids(db: AsyncSession, connection_ids: list[uuid.UUID]) -> None:
+    """Mark connections by id and commit, without touching anything else the caller holds."""
+
+    if not connection_ids:
+        return
+    from sqlalchemy import cast, literal
+    from sqlalchemy.dialects.postgresql import JSONB
+
+    stamp = cast(literal(json.dumps({SCHEDULER_SEEN: utcnow().isoformat()})), JSONB)  # a JSON object, merged in
+    await db.execute(
+        update(IntegrationConnection)
+        .where(IntegrationConnection.id.in_(connection_ids), func.jsonb_typeof(IntegrationConnection.config) == "object")
+        .values(config=IntegrationConnection.config.op("||")(stamp))
+        .execution_options(synchronize_session=False)
+    )
+    await db.commit()
 
 
 def definition(key: str) -> IntegrationDef:
@@ -283,7 +324,8 @@ async def start_oauth(
         params["code_challenge_method"] = "S256"
     if family.key == "microsoft":
         params["response_mode"] = "query"
-    return f"{_endpoint(family.authorize_url, family.key, app['options'])}?{urlencode(params)}"
+    base = _endpoint(family.authorize_url, family.key, app["options"])
+    return f"{base}{'&' if '?' in base else '?'}{urlencode(params)}"
 
 
 async def _token_request(family: OAuthFamily, app: dict[str, Any], data: dict[str, str]) -> dict[str, Any]:
@@ -312,7 +354,12 @@ async def _token_request(family: OAuthFamily, app: dict[str, Any], data: dict[st
     return payload
 
 
-async def finish_oauth(db: AsyncSession, *, state: str, code: str, session_id: str | None) -> tuple[IntegrationConnection, IntegrationOAuthState]:
+async def finish_oauth(
+    db: AsyncSession, *, state: str, code: str, session_id: str | None, callback: dict[str, str] | None = None
+) -> tuple[IntegrationConnection, IntegrationOAuthState]:
+    """Finish a sign-in. ``callback`` holds extra parameters the provider sent back
+    (QuickBooks sends the company's ``realmId``); identity lookups can read them."""
+
     row = (await db.execute(select(IntegrationOAuthState).where(IntegrationOAuthState.state_hash == sha256(state)))).scalar_one_or_none()
     if row is None or row.used_at is not None or row.expires_at < utcnow():
         raise IntegrationError("That sign-in link has expired. Start connecting again.", 400)
@@ -331,6 +378,7 @@ async def finish_oauth(db: AsyncSession, *, state: str, code: str, session_id: s
     if row.code_verifier:
         data["code_verifier"] = decrypt(row.code_verifier) or ""
     tokens = await _token_request(family, app, data)
+    tokens = {**tokens, "_callback": dict(callback or {})}
 
     from app.integrations import identity
 
@@ -361,6 +409,35 @@ async def finish_oauth(db: AsyncSession, *, state: str, code: str, session_id: s
     return connection, row
 
 
+# New tokens from recent refreshes, per process, keyed by (connection, old refresh token).
+# If the caller's transaction rolls back after a refresh (a 429 later in the same run),
+# the database still holds a refresh token the provider has already retired; the next
+# refresh then uses these instead of failing and asking people to reconnect.
+_ROTATED: dict[tuple[uuid.UUID, str], tuple[str, str | None, datetime | None, float]] = {}
+_ROTATED_SECONDS = 24 * 3600
+
+
+async def _save_tokens_now(connection_id: uuid.UUID, access: str, refresh: str | None, expires_at: datetime | None) -> bool:
+    """Write new tokens in their own short transaction, so they survive the caller rolling
+    back. Gives up after two seconds if the caller itself holds the row (the in-process
+    copy above covers that case)."""
+
+    from app.db.session import AsyncSessionLocal
+
+    values: dict[str, Any] = {"access_token": access, "token_expires_at": expires_at, "status": "connected"}
+    if refresh:
+        values["refresh_token"] = refresh
+    try:
+        async with AsyncSessionLocal() as own:
+            await own.execute(text("SET LOCAL lock_timeout = '2s'"))
+            await own.execute(update(IntegrationConnection).where(IntegrationConnection.id == connection_id).values(**values))
+            await own.commit()
+        return True
+    except Exception as exc:  # noqa: BLE001 - best effort; the caller's transaction still carries them
+        logger.warning("Couldn't save refreshed tokens for connection %s right away: %r", connection_id, exc)
+        return False
+
+
 async def refresh_access_token(db: AsyncSession, connection: IntegrationConnection) -> str:
     item = definition(connection.provider)
     family = FAMILIES.get(item.family or "")
@@ -387,6 +464,22 @@ async def refresh_access_token(db: AsyncSession, connection: IntegrationConnecti
     if family is None or not refresh:
         connection.status = "needs_reauth"
         raise IntegrationError(f"{item.name} needs to be reconnected.", 409)
+    now_mono = time.monotonic()
+    for stale in [k for k, v in _ROTATED.items() if now_mono - v[3] > _ROTATED_SECONDS]:
+        _ROTATED.pop(stale, None)
+    rotated = _ROTATED.get((connection.id, sha256(refresh))) if connection.id is not None else None
+    if rotated is not None:
+        # A refresh in this process already replaced this refresh token, but that run rolled back.
+        access_enc, refresh_enc, expires_at, _ = rotated
+        connection.access_token = access_enc
+        if refresh_enc:
+            connection.refresh_token = refresh_enc
+        connection.token_expires_at = expires_at
+        connection.status = "connected"
+        token = decrypt(access_enc) if access_enc else None
+        if token and (expires_at is None or expires_at - REFRESH_MARGIN > utcnow()):
+            return token
+        refresh = decrypt(refresh_enc) if refresh_enc else refresh
     app = await oauth_app(db, connection.organization_id, family.key)
     if not app["client_id"]:
         raise IntegrationError(f"{family.label} sign-in isn't set up on this server.", 409)
@@ -405,6 +498,9 @@ async def refresh_access_token(db: AsyncSession, connection: IntegrationConnecti
         connection.refresh_token = encrypt(tokens["refresh_token"])
     connection.token_expires_at = utcnow() + timedelta(seconds=int(tokens["expires_in"])) if tokens.get("expires_in") else None
     connection.status = "connected"
+    if connection.id is not None:
+        _ROTATED[(connection.id, sha256(refresh))] = (connection.access_token, connection.refresh_token, connection.token_expires_at, time.monotonic())
+        await _save_tokens_now(connection.id, connection.access_token, connection.refresh_token, connection.token_expires_at)
     return tokens["access_token"]
 
 
