@@ -10,7 +10,7 @@ import uuid
 from typing import Any
 from urllib.parse import urlencode
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, status
 from fastapi.responses import JSONResponse, RedirectResponse, Response
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
@@ -44,7 +44,12 @@ def _item(key: str) -> IntegrationDef:
     return item
 
 
-def connection_out(connection: IntegrationConnection | None, names: dict[str, str] | None = None) -> dict[str, Any] | None:
+# Inbound addresses (and callback URLs) are only shown to people who can manage the
+# integration: for a form webhook the address itself is what lets someone post leads.
+PRIVATE_DETAIL_KEYS = ("webhook_url", "status_callback_url", "app_webhook_url")
+
+
+def connection_out(connection: IntegrationConnection | None, names: dict[str, str] | None = None, *, show_webhook: bool = True) -> dict[str, Any] | None:
     if connection is None:
         return None
     return {
@@ -58,7 +63,7 @@ def connection_out(connection: IntegrationConnection | None, names: dict[str, st
         "secrets": core.secrets_set(connection),
         "user_id": str(connection.user_id) if connection.user_id else None,
         "user_name": (names or {}).get(str(connection.user_id)) if connection.user_id else None,
-        "webhook_url": core.webhook_url(connection.provider, connection.webhook_token),
+        "webhook_url": core.webhook_url(connection.provider, connection.webhook_token) if show_webhook else None,
         "last_sync_at": connection.last_sync_at,
         "last_used_at": connection.last_used_at,
         "last_error": connection.last_error,
@@ -210,6 +215,8 @@ async def integration_detail(key: str, principal: Principal = Depends(get_curren
     except Exception:  # noqa: BLE001 - a provider hiccup mustn't break the page
         logger.exception("Integration detail hook failed for %s", key)
         extra = {"error": "Couldn't load live details from the provider right now."}
+    if not manage and isinstance(extra, dict):
+        extra = {k: (None if k in PRIVATE_DETAIL_KEYS else v) for k, v in extra.items()}
     return {
         "integration": item.to_dict(),
         "enabled": enabled,
@@ -218,7 +225,7 @@ async def integration_detail(key: str, principal: Principal = Depends(get_curren
         "available": available,
         "status": state,
         "can_manage": manage,
-        "connection": connection_out(connection, {str(principal.user_id): principal.full_name}),
+        "connection": connection_out(connection, {str(principal.user_id): principal.full_name}, show_webhook=manage or bool(connection and connection.user_id)),
         "people": people,
         "workspace_config": dict(toggle.config or {}) if toggle else {},
         "workspace_secrets": core.secrets_set(toggle),
@@ -327,8 +334,18 @@ class ConnectPayload(BaseModel):
 
 
 @router.post("/{key}/connect")
-async def connect(key: str, payload: ConnectPayload, principal: Principal = Depends(require_permission("records.read")), db: AsyncSession = Depends(get_db)):
-    """Start signing in at the provider; returns the URL to send the browser to."""
+async def connect(
+    key: str,
+    payload: ConnectPayload,
+    principal: Principal = Depends(require_permission("records.read")),
+    x_session_id: str | None = Header(default=None, alias="X-Session-ID"),
+    db: AsyncSession = Depends(get_db),
+):
+    """Start signing in at the provider; returns the URL to send the browser to.
+
+    The round trip is tied to the caller's browser session: the callback is only
+    accepted from that same session.
+    """
 
     item = _item(key)
     if not principal.has(item.feature):
@@ -337,8 +354,12 @@ async def connect(key: str, payload: ConnectPayload, principal: Principal = Depe
         raise HTTPException(status.HTTP_403_FORBIDDEN, f"Only an admin can connect {item.name} for the workspace.")
     if principal.api_key_id is not None or principal.support_grant_id is not None:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Connect integrations while signed in as yourself.")
+    if not await _own_session(db, principal, x_session_id):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Connect from the AIVA app in your browser.")
     try:
-        url = await core.start_oauth(db, organization_id=principal.organization_id, user_id=principal.user_id, key=key, return_to=payload.return_to)
+        url = await core.start_oauth(
+            db, organization_id=principal.organization_id, user_id=principal.user_id, key=key, session_id=x_session_id or "", return_to=payload.return_to
+        )
     except IntegrationError as exc:
         raise _error(exc) from exc
     return {"authorize_url": url}
@@ -543,12 +564,26 @@ def _back(path: str, **params: str) -> RedirectResponse:
     return RedirectResponse(f"{base}{path}{'?' + query if query else ''}", status_code=status.HTTP_302_FOUND)
 
 
+async def _own_session(db: AsyncSession, principal: Principal, session_id: str | None) -> bool:
+    """True when ``session_id`` is one of the caller's live AIVA sign-in sessions."""
+
+    from app.models.platform import UserSession
+
+    try:
+        parsed = uuid.UUID(str(session_id))
+    except (TypeError, ValueError):
+        return False
+    session = await db.get(UserSession, parsed)
+    return bool(session and session.user_id == principal.user_id and session.revoked_at is None and session.expires_at > core.utcnow())
+
+
 @public_router.get("/oauth/callback")
 async def oauth_callback(
     state: str | None = None,
     code: str | None = None,
     error: str | None = None,
     error_description: str | None = None,
+    x_session_id: str | None = Header(default=None, alias="X-Session-ID"),
     db: AsyncSession = Depends(get_db),
 ):
     if not state:
@@ -563,7 +598,7 @@ async def oauth_callback(
         return _back(target, error=message[:300])
     db.sync_session.info["automation_disabled"] = True
     try:
-        connection, row = await core.finish_oauth(db, state=state, code=code)
+        connection, row = await core.finish_oauth(db, state=state, code=code, session_id=x_session_id)
     except IntegrationError as exc:
         await db.commit()
         return _back("/integrations", error=str(exc)[:300])

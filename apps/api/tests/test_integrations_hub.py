@@ -36,7 +36,7 @@ def signup(client, company: str = "Hub Co") -> dict:
         "email": email,
         "org": data["organization_id"],
         "user_id": data["user_id"],
-        "headers": {"Authorization": f"Bearer {data['access_token']}", "X-Organization-ID": data["organization_id"]},
+        "headers": {"Authorization": f"Bearer {data['access_token']}", "X-Organization-ID": data["organization_id"], "X-Session-ID": data["session_id"]},
     }
 
 
@@ -110,11 +110,11 @@ def test_oauth_connect_with_workspace_app_and_pkce(client, ws, monkeypatch):
 
     monkeypatch.setattr(core, "_token_request", fake_token)
     monkeypatch.setattr(identity, "identify", fake_identify)
-    back = client.get(f"{API}/public/integrations/oauth/callback", params={"state": state, "code": "auth-code"}, follow_redirects=False)
+    back = client.get(f"{API}/public/integrations/oauth/callback", params={"state": state, "code": "auth-code"}, headers={"X-Session-ID": h["X-Session-ID"]}, follow_redirects=False)
     assert back.status_code == 302 and "connected=zoom" in back.headers["location"]
     assert seen["code"] == "auth-code" and len(seen["code_verifier"]) >= 43
     # The state is single use.
-    again = client.get(f"{API}/public/integrations/oauth/callback", params={"state": state, "code": "auth-code"}, follow_redirects=False)
+    again = client.get(f"{API}/public/integrations/oauth/callback", params={"state": state, "code": "auth-code"}, headers={"X-Session-ID": h["X-Session-ID"]}, follow_redirects=False)
     assert "error=" in again.headers["location"]
 
     connected = client.get(f"{API}/integration-hub/zoom", headers=h).json()
@@ -122,6 +122,42 @@ def test_oauth_connect_with_workspace_app_and_pkce(client, ws, monkeypatch):
     assert "zoom-access" not in str(connected)
     gone = client.delete(f"{API}/integration-hub/zoom/connection", headers=h)
     assert gone.status_code == 200 and gone.json()["status"] == "not_connected"
+
+
+def test_sign_in_link_only_works_in_the_session_that_started_it(client, ws, monkeypatch):
+    """A sign-in link sent to someone else can't attach their account to the sender's."""
+    from app.integrations import core, identity
+
+    h = ws["headers"]
+    client.put(f"{API}/integration-hub/zoom/toggle", json={"enabled": True}, headers=h)
+    client.put(f"{API}/integration-hub/apps/zoom", json={"client_id": "zoom-client-xyz", "client_secret": "zoom-secret"}, headers=h)
+
+    no_session = {k: v for k, v in h.items() if k != "X-Session-ID"}
+    assert client.post(f"{API}/integration-hub/zoom/connect", json={}, headers=no_session).status_code == 400
+    forged = {**no_session, "X-Session-ID": str(uuid.uuid4())}
+    assert client.post(f"{API}/integration-hub/zoom/connect", json={}, headers=forged).status_code == 400
+
+    exchanged: list[str] = []
+
+    async def fake_token(family, app_creds, data):
+        exchanged.append(data["code"])
+        return {"access_token": "victim-access", "refresh_token": "victim-refresh", "expires_in": 3600}
+
+    async def fake_identify(family, key, tokens, app_creds):
+        return {"label": "victim@zoom.example", "external_id": "victim"}
+
+    monkeypatch.setattr(core, "_token_request", fake_token)
+    monkeypatch.setattr(identity, "identify", fake_identify)
+
+    url = client.post(f"{API}/integration-hub/zoom/connect", json={}, headers=h).json()["authorize_url"]
+    state = parse_qs(urlparse(url).query)["state"][0]
+    victim = signup(client, "Victim Co")
+    for session in (victim["headers"]["X-Session-ID"], None):
+        headers = {"X-Session-ID": session} if session else {}
+        back = client.get(f"{API}/public/integrations/oauth/callback", params={"state": state, "code": "victim-code"}, headers=headers, follow_redirects=False)
+        assert back.status_code == 302 and "error=" in back.headers["location"]
+    assert exchanged == []  # the victim's code is never exchanged
+    assert client.get(f"{API}/integration-hub/zoom", headers=h).json()["connection"] is None
 
 
 def test_cancelled_sign_in_returns_with_message(client, ws):
@@ -155,3 +191,20 @@ def test_activity_feed(client, ws):
     response = client.get(f"{API}/integration-hub", headers=ws["headers"])
     assert response.status_code == 200
     assert response.json()["items"]
+
+
+def test_inbound_addresses_are_for_admins_only(client):
+    """A form webhook's address is what lets someone post leads, so members don't see it."""
+    ws = signup(client, "Address Co")
+    h = ws["headers"]
+    assert client.put(f"{API}/integration-hub/wordpress_forms/toggle", json={"enabled": True}, headers=h).status_code == 200
+    admin_view = client.get(f"{API}/integration-hub/wordpress_forms", headers=h).json()
+    assert admin_view["connection"]["webhook_url"] and admin_view["extra"]["webhook_url"]
+
+    email = f"member-{uuid.uuid4().hex[:8]}@hub.example"
+    invited = client.post(f"{API}/admin/users/invite", json={"email": email, "full_name": "Mia Member", "role": "member"}, headers=h).json()
+    joined = client.post(f"{API}/auth/invitations/accept", json={"token": invited["invite_url"].split("token=")[1], "password": PASSWORD}).json()
+    member = {"Authorization": f"Bearer {joined['access_token']}", "X-Organization-ID": ws["org"]}
+    member_view = client.get(f"{API}/integration-hub/wordpress_forms", headers=member).json()
+    assert member_view["connection"]["webhook_url"] is None and member_view["extra"].get("webhook_url") is None
+    assert admin_view["connection"]["webhook_url"] not in str(member_view)

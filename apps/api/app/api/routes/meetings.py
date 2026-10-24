@@ -491,6 +491,9 @@ async def create_meeting(
     data = payload.model_dump(exclude={"attendees", "reminder_minutes", "send_invites", "conference"})
     await _check_links(db, org, data)
     organizer = data.get("organizer_user_id") or principal.user_id
+    if organizer != principal.user_id and not _manages_others(principal):
+        # The organizer's own calendar, mailbox and Zoom are used for the meeting.
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Only a manager can schedule a meeting with someone else as the organizer.")
     meeting = Meeting(
         id=uuid.uuid4(),
         organization_id=org,
@@ -564,6 +567,8 @@ async def update_meeting(
     meeting = await _meeting(db, principal, meeting_id)
     _ensure_editor(principal, meeting)
     changes = payload.model_dump(exclude_unset=True, exclude={"send_updates", "attendees", "reminder_minutes", "conference"})
+    if changes.get("organizer_user_id") not in (None, principal.user_id, meeting.organizer_user_id) and not _manages_others(principal):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Only a manager can make someone else the organizer.")
     if meeting.status == "cancelled" and set(changes) - {"notes"}:
         raise HTTPException(status.HTTP_409_CONFLICT, "This meeting was cancelled. Schedule a new one instead.")
     await _check_links(db, org, changes)

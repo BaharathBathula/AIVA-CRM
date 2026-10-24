@@ -98,7 +98,7 @@ def signature_ok(app_secret: str | None, body: bytes, header: str | None) -> boo
     if not app_secret or not header or not header.startswith("sha256="):
         return False
     expected = hmac.new(app_secret.encode(), body, hashlib.sha256).hexdigest()
-    return hmac.compare_digest(expected, header.split("=", 1)[1].strip())
+    return hmac.compare_digest(expected.encode(), header.split("=", 1)[1].strip().encode())
 
 
 # ===========================================================================

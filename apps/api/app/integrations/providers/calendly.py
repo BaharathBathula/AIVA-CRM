@@ -247,12 +247,12 @@ def verify_signature(header: str | None, body: bytes, key: str, now: float | Non
         if name and value:
             parts[name] = value
     stamp, signature = parts.get("t", ""), parts.get("v1", "")
-    if not stamp.isdigit() or not signature:
+    if not (stamp.isascii() and stamp.isdigit()) or not signature:
         return False
     if abs((now or time.time()) - int(stamp)) > TOLERANCE_SECONDS:
         return False
     expected = hmac.new(key.encode(), stamp.encode() + b"." + body, hashlib.sha256).hexdigest()
-    return hmac.compare_digest(expected, signature)
+    return hmac.compare_digest(expected.encode(), signature.encode())
 
 
 # ---------------------------------------------------------------------------
@@ -365,7 +365,9 @@ async def _booked(
     event_name = str(scheduled.get("name") or "Calendly meeting")[:300]
     location = scheduled.get("location") or {}
     kind = str(location.get("type") or "")
-    join_url = location.get("join_url") or (location.get("location") if str(location.get("location") or "").startswith("https://") else None)
+    from app.integrations.providers.calendars import safe_url
+
+    join_url = safe_url(location.get("join_url")) or safe_url(location.get("location"))
     place = None if join_url else (location.get("location") or LOCATION_LABELS.get(kind) or None)
     answers = _answers(invitee)
     hosts = scheduled.get("event_memberships") or []

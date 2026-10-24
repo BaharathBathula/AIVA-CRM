@@ -403,7 +403,7 @@ def valid_signature(app_secret: str | None, raw: bytes, header: str | None) -> b
     if not app_secret or not header or not header.startswith("sha256="):
         return False
     expected = hmac.new(app_secret.encode(), raw, hashlib.sha256).hexdigest()
-    return hmac.compare_digest(expected, header.removeprefix("sha256="))
+    return hmac.compare_digest(expected.encode(), header.removeprefix("sha256=").encode())
 
 
 def _parse(item: dict[str, Any]) -> tuple[str, list[dict[str, Any]]]:
@@ -497,7 +497,7 @@ async def handle_webhook(db: AsyncSession, key: str, connection: IntegrationConn
         params = request.query_params
         verify = core.secret(connection, "verify_token") or ""
         given = params.get("hub.verify_token") or ""
-        if params.get("hub.mode") == "subscribe" and verify and hmac.compare_digest(given, verify):
+        if params.get("hub.mode") == "subscribe" and verify and hmac.compare_digest(given.encode(), verify.encode()):
             core.log(db, connection.organization_id, key, "webhook_verified", "Meta verified the webhook URL.", level="success", connection=connection)
             return PlainTextResponse(params.get("hub.challenge") or "")
         return PlainTextResponse("Verification failed", status_code=403)

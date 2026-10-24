@@ -57,7 +57,7 @@ def signup(client, company: str = "Messaging Co") -> dict:
     return {
         "org": data["organization_id"],
         "user_id": data["user_id"],
-        "headers": {"Authorization": f"Bearer {data['access_token']}", "X-Organization-ID": data["organization_id"]},
+        "headers": {"Authorization": f"Bearer {data['access_token']}", "X-Organization-ID": data["organization_id"], "X-Session-ID": data["session_id"]},
     }
 
 
@@ -509,7 +509,7 @@ def connect_slack(client, ws) -> dict:
     started = client.post(f"{API}/integration-hub/slack/connect", json={}, headers=h)
     assert started.status_code == 200, started.text
     state = parse_qs(urlparse(started.json()["authorize_url"]).query)["state"][0]
-    back = client.get(f"{API}/public/integrations/oauth/callback", params={"state": state, "code": "slack-code"}, follow_redirects=False)
+    back = client.get(f"{API}/public/integrations/oauth/callback", params={"state": state, "code": "slack-code"}, headers={"X-Session-ID": h["X-Session-ID"]}, follow_redirects=False)
     assert back.status_code == 302 and "connected=slack" in back.headers["location"]
     detail = client.get(f"{API}/integration-hub/slack", headers=h).json()
     assert detail["status"] == "connected" and detail["extra"]["mode"] == "bot"

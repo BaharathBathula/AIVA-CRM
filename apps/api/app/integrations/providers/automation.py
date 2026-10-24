@@ -66,9 +66,13 @@ PROVIDER_NAMES = {"zapier": "Zapier", "make": "Make", "n8n": "n8n", "custom": "O
 BACKOFF = (60, 5 * 60, 15 * 60, 60 * 60, 3 * 3600, 6 * 3600, 12 * 3600)
 MAX_ATTEMPTS = len(BACKOFF) + 1
 PAUSE_AFTER_FAILURES = 20  # failed attempts in a row before a subscription is paused
-TIMEOUT_SECONDS = 10.0
+TIMEOUT_SECONDS = 10.0  # per network read/connect
+TOTAL_SECONDS = 15.0  # a whole delivery, however slowly the receiver answers
+MAX_RESPONSE_BYTES = 4096  # only the start of the receiver's reply is read (for the log)
 BATCH = 200
 CONCURRENCY = 8
+PER_SUBSCRIPTION_PER_RUN = 25  # one busy subscription can't hold the queue
+RUN_BUDGET_SECONDS = 45.0  # no new sends start after this; the rest go next run
 OFF_GRACE = timedelta(hours=24)  # queued events wait this long for a switched-off integration
 RETENTION = timedelta(days=30)
 PURGE_DELETED_AFTER = timedelta(minutes=10)
@@ -320,8 +324,35 @@ class UnsafeTarget(IntegrationError):
     pass
 
 
+LOCAL_HOSTS = ("localhost", "127.0.0.1", "::1", "[::1]")
+
+
 def _private_allowed() -> bool:
-    return get_settings().environment in {"development", "test"}
+    """Local and private addresses are only allowed on a developer's own machine:
+    a development or test environment whose public address is itself local."""
+
+    settings = get_settings()
+    if settings.environment not in {"development", "test"}:
+        return False
+    host = (urlsplit(settings.app_base_url or "").hostname or "").lower()
+    return host in LOCAL_HOSTS or host.endswith((".localhost", ".test", ".internal"))
+
+
+# IPv6 ranges that carry an IPv4 address inside them (NAT64, IPv4-compatible).
+_NAT64 = (ipaddress.ip_network("64:ff9b::/96"), ipaddress.ip_network("64:ff9b:1::/48"))
+_IPV4_COMPATIBLE = ipaddress.ip_network("::/96")
+
+
+def _embedded_ipv4(address: ipaddress.IPv6Address) -> ipaddress.IPv4Address | None:
+    if address.ipv4_mapped is not None:
+        return address.ipv4_mapped
+    if address.sixtofour is not None:
+        return address.sixtofour
+    if address.teredo is not None:
+        return address.teredo[1]
+    if any(address in network for network in _NAT64) or (address in _IPV4_COMPATIBLE and int(address) > 1):
+        return ipaddress.IPv4Address(int(address) & 0xFFFFFFFF)
+    return None
 
 
 def _address_ok(ip: str) -> bool:
@@ -329,11 +360,14 @@ def _address_ok(ip: str) -> bool:
         address = ipaddress.ip_address(ip.split("%", 1)[0])
     except ValueError:
         return False
-    if isinstance(address, ipaddress.IPv6Address) and address.ipv4_mapped is not None:
-        address = address.ipv4_mapped
+    candidates: list[ipaddress.IPv4Address | ipaddress.IPv6Address] = [address]
+    if isinstance(address, ipaddress.IPv6Address):
+        inner = _embedded_ipv4(address)
+        if inner is not None:
+            candidates = [inner] if address.ipv4_mapped is not None else [address, inner]
     if _private_allowed():
-        return not address.is_multicast and not address.is_unspecified
-    return address.is_global and not address.is_multicast
+        return all(not a.is_multicast and not a.is_unspecified for a in candidates)
+    return all(a.is_global and not a.is_multicast for a in candidates)
 
 
 def check_target_url(url: str) -> str:
@@ -416,26 +450,37 @@ async def _post(url: str, body: bytes, headers: dict[str, str]) -> SendResult:
     extensions = {"sni_hostname": host} if scheme == "https" else {}
     started = time.monotonic()
     async with httpx.AsyncClient(timeout=TIMEOUT_SECONDS, follow_redirects=False, trust_env=False) as client:
-        response = await client.request("POST", pinned, content=body, headers=request_headers, extensions=extensions)
+        async with client.stream("POST", pinned, content=body, headers=request_headers, extensions=extensions) as response:
+            status_code = response.status_code
+            content = b""
+            if not 200 <= status_code < 300:
+                async for chunk in response.aiter_bytes():
+                    content += chunk
+                    if len(content) >= MAX_RESPONSE_BYTES:
+                        break
     elapsed = int((time.monotonic() - started) * 1000)
-    if 200 <= response.status_code < 300:
-        return SendResult(True, response.status_code, None, duration_ms=elapsed)
-    snippet = response.text[:300].strip() if response.content else ""
-    reason = f"HTTP {response.status_code}" + (f": {snippet}" if snippet else "")
-    if 300 <= response.status_code < 400:
-        reason = f"HTTP {response.status_code} redirect (AIVA doesn't follow redirects; use the final URL)."
-    return SendResult(False, response.status_code, reason[:1000], gone=response.status_code == 410, duration_ms=elapsed)
+    if 200 <= status_code < 300:
+        return SendResult(True, status_code, None, duration_ms=elapsed)
+    snippet = content[:300].decode("utf-8", "replace").strip()
+    reason = f"HTTP {status_code}" + (f": {snippet}" if snippet else "")
+    if 300 <= status_code < 400:
+        reason = f"HTTP {status_code} redirect (AIVA doesn't follow redirects; use the final URL)."
+    return SendResult(False, status_code, reason[:1000], gone=status_code == 410, duration_ms=elapsed)
+
+
+# Marks a delivery left for the next run (not an attempt, not a failure).
+DEFERRED = SendResult(False, None, "deferred")
 
 
 async def send(url: str, body: bytes, headers: dict[str, str]) -> SendResult:
     """Send one webhook; never raises."""
 
     try:
-        return await _post(url, body, headers)
+        return await asyncio.wait_for(_post(url, body, headers), timeout=TOTAL_SECONDS)
     except UnsafeTarget as exc:
         return SendResult(False, None, str(exc))
-    except httpx.TimeoutException:
-        return SendResult(False, None, f"Timed out after {int(TIMEOUT_SECONDS)} seconds.")
+    except (httpx.TimeoutException, asyncio.TimeoutError):
+        return SendResult(False, None, f"No answer within {int(TOTAL_SECONDS)} seconds.")
     except httpx.HTTPError as exc:
         return SendResult(False, None, f"Couldn't connect ({exc.__class__.__name__}).")
     except Exception as exc:  # noqa: BLE001 - one broken URL mustn't stop the queue
@@ -470,7 +515,7 @@ def verify_signature(secret: str, body: bytes, header: str | None, tolerance: in
     if abs(time.time() - timestamp) > tolerance:
         return False
     expected = sign(secret, body, timestamp).split("v1=", 1)[1]
-    return hmac.compare_digest(expected, parts.get("v1", ""))
+    return hmac.compare_digest(expected.encode(), str(parts.get("v1", "")).encode())
 
 
 def _body(payload: dict[str, Any]) -> bytes:
@@ -764,15 +809,23 @@ async def run_due(db: AsyncSession) -> int:
             groups.setdefault(subscription.id, (subscription, []))[1].append(delivery)
 
         semaphore = asyncio.Semaphore(CONCURRENCY)
+        stop_at = time.monotonic() + RUN_BUDGET_SECONDS
 
         async def run_group(subscription: WebhookSubscription, items: list[WebhookDelivery]) -> list[tuple[WebhookDelivery, SendResult | None]]:
-            """Send in order; after a failure, hold the rest back (one try per URL per run)."""
+            """Send in order; after a failure, hold the rest back (one try per URL per run).
+
+            Deliveries beyond this run's share (per subscription, or once the run's time
+            budget is spent) are left exactly as they are for the next run.
+            """
 
             outcome: list[tuple[WebhookDelivery, SendResult | None]] = []
             failed = False
-            for delivery in items:
+            for index, delivery in enumerate(items):
                 if failed:
                     outcome.append((delivery, None))
+                    continue
+                if index >= PER_SUBSCRIPTION_PER_RUN or time.monotonic() >= stop_at:
+                    outcome.append((delivery, DEFERRED))
                     continue
                 delivery.attempts = (delivery.attempts or 0) + 1
                 body = _body(delivery.payload)
@@ -787,6 +840,8 @@ async def run_due(db: AsyncSession) -> int:
             last: SendResult | None = None
             hold_until: datetime | None = None
             for delivery, result in outcome:
+                if result is DEFERRED:
+                    continue
                 if result is None:
                     delivery.next_attempt_at = hold_until or now + timedelta(seconds=BACKOFF[0])
                     continue

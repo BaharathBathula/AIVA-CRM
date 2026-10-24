@@ -80,6 +80,8 @@ class IntegrationOAuthState(UUIDPrimaryKeyMixin, OrganizationOwnedMixin, Timesta
     personal: Mapped[bool] = _bool(False)
     code_verifier: Mapped[str | None] = mapped_column(Text, nullable=True)  # encrypted
     return_to: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    # SHA-256 of the AIVA browser session that started it; the callback must come from that session.
+    session_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     used_at: Mapped[datetime | None] = _when()
 

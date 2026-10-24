@@ -52,7 +52,7 @@ def signup(client, company: str = "Docs Co") -> dict:
         "email": email,
         "org": data["organization_id"],
         "user_id": data["user_id"],
-        "headers": {"Authorization": f"Bearer {data['access_token']}", "X-Organization-ID": data["organization_id"]},
+        "headers": {"Authorization": f"Bearer {data['access_token']}", "X-Organization-ID": data["organization_id"], "X-Session-ID": data["session_id"]},
     }
 
 
@@ -112,7 +112,7 @@ def connect_oauth(client, ws, monkeypatch, key: str, family: str, who: dict) -> 
 
     monkeypatch.setattr(core, "_token_request", fake_token)
     monkeypatch.setattr(identity, "identify", fake_identify)
-    back = client.get(f"{API}/public/integrations/oauth/callback", params={"state": state, "code": "auth-code"}, follow_redirects=False)
+    back = client.get(f"{API}/public/integrations/oauth/callback", params={"state": state, "code": "auth-code"}, headers={"X-Session-ID": h["X-Session-ID"]}, follow_redirects=False)
     assert back.status_code == 302 and f"connected={key}" in back.headers["location"], back.headers["location"]
 
 

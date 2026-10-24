@@ -685,9 +685,13 @@ async def detail(db: AsyncSession, key: str, principal: Any) -> dict[str, Any]:
     ).scalars().all()
     toggle = await core.toggle_row(db, org, KEY)
     push = _push_url(connection) if connection is not None else None
+    recent = await requests_out(db, org, list(rows), with_timeline=True)
+    if not principal.can("admin.settings"):
+        # Same rule as the signatures list: requests you sent, or on records you can open.
+        recent = [i for i in recent if i["sent_by_user_id"] == str(principal.user_id) or i["record"] is not None]
     return {
         "counts": {status: int(counts.get(status, 0)) for status in ("sent", "delivered", "completed", "declined", "voided", "error", "created")},
-        "recent": await requests_out(db, org, list(rows), with_timeline=True),
+        "recent": recent,
         "settings": settings_for(toggle.config if toggle else {}),
         "connect": {
             "push": bool(push),

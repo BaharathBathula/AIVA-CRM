@@ -46,7 +46,7 @@ def signup(client, company: str = "Mail Cal Co") -> dict:
         "email": address,
         "org": data["organization_id"],
         "user_id": data["user_id"],
-        "headers": {"Authorization": f"Bearer {data['access_token']}", "X-Organization-ID": data["organization_id"]},
+        "headers": {"Authorization": f"Bearer {data['access_token']}", "X-Organization-ID": data["organization_id"], "X-Session-ID": data["session_id"]},
     }
 
 
@@ -109,7 +109,7 @@ def connect(client, ws: dict, key: str, family: str, label: str, monkeypatch, *,
 
     monkeypatch.setattr(core, "_token_request", fake_token)
     monkeypatch.setattr(identity, "identify", fake_identify)
-    back = client.get(f"{API}/public/integrations/oauth/callback", params={"state": state, "code": "code"}, follow_redirects=False)
+    back = client.get(f"{API}/public/integrations/oauth/callback", params={"state": state, "code": "code"}, headers={"X-Session-ID": h["X-Session-ID"]}, follow_redirects=False)
     assert back.status_code == 302 and f"connected={key}" in back.headers["location"], back.headers.get("location")
 
 
@@ -593,3 +593,30 @@ def test_unsafe_links_from_a_calendar_are_dropped():
          "onlineMeeting": {"joinUrl": "https://teams.microsoft.com/l/meetup-join/ok"}, "isOrganizer": True}
     )
     assert outlook.join_url == "https://teams.microsoft.com/l/meetup-join/ok" and outlook.start.hour == 10 and outlook.organizer_self
+
+
+def test_members_cannot_schedule_through_a_colleagues_accounts(client, fake, monkeypatch):
+    """Naming someone else as organizer would use their Zoom, calendar and mailbox: managers only."""
+    from datetime import datetime, timedelta, timezone
+
+    ws = signup(client)
+    connect(client, ws, "zoom", "zoom", "owner@zoom.example", monkeypatch)
+    fake.on("POST", r"api\.zoom\.us/v2/users/me/meetings$", {"id": 1, "join_url": "https://zoom.us/j/1"})
+    email = f"rep-{uuid.uuid4().hex[:8]}@mailcal.example"
+    invited = client.post(f"{API}/admin/users/invite", json={"email": email, "full_name": "Rex Rep", "role": "member"}, headers=ws["headers"]).json()
+    joined = client.post(f"{API}/auth/invitations/accept", json={"token": invited["invite_url"].split("token=")[1], "password": PASSWORD}).json()
+    rep = {"Authorization": f"Bearer {joined['access_token']}", "X-Organization-ID": ws["org"]}
+    start = datetime.now(timezone.utc).replace(microsecond=0) + timedelta(days=1)
+    body = {"title": "Pricing call", "start_at": start.isoformat(), "end_at": (start + timedelta(minutes=30)).isoformat(), "conference": "zoom"}
+
+    refused = client.post(f"{API}/meetings", json={**body, "organizer_user_id": ws["user_id"]}, headers=rep)
+    assert refused.status_code == 403
+    assert not [c for c in fake.calls if "zoom.us" in c["url"]]
+
+    own = client.post(f"{API}/meetings", json={**body, "conference": None}, headers=rep)
+    assert own.status_code == 201, own.text
+    moved = client.patch(f"{API}/meetings/{own.json()['id']}", json={"organizer_user_id": ws["user_id"]}, headers=rep)
+    assert moved.status_code == 403
+
+    # The owner (a manager) may schedule for someone else.
+    assert client.post(f"{API}/meetings", json={**body, "conference": None, "organizer_user_id": joined["user_id"]}, headers=ws["headers"]).status_code == 201

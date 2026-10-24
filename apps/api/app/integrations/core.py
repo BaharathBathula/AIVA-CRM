@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import base64
 import hashlib
+import hmac
 import logging
 import secrets
 import uuid
@@ -24,8 +25,9 @@ from typing import Any
 from urllib.parse import urlencode
 
 import httpx
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm.attributes import set_committed_value
 
 from app.core.config import get_settings
 from app.core.crypto import decrypt, encrypt, sha256
@@ -234,9 +236,12 @@ async def start_oauth(
     organization_id: uuid.UUID,
     user_id: uuid.UUID,
     key: str,
+    session_id: str,
     return_to: str | None = None,
 ) -> str:
     item = definition(key)
+    if not session_id:
+        raise IntegrationError("Connect from the AIVA app in your browser.", 400)
     if item.family is None or item.auth not in {"oauth", "credentials"} or item.family not in FAMILIES:
         raise IntegrationError(f"{item.name} doesn't connect by signing in.")
     await require_enabled(db, organization_id, key)
@@ -259,6 +264,7 @@ async def start_oauth(
             personal=item.personal or key == "microsoft_teams",
             code_verifier=encrypt(verifier) if verifier else None,
             return_to=(return_to if return_to and return_to.startswith("/") and not return_to.startswith("//") else f"/integrations/{key}")[:500],
+            session_hash=sha256(session_id),
             expires_at=utcnow() + timedelta(minutes=STATE_MINUTES),
         )
     )
@@ -306,11 +312,16 @@ async def _token_request(family: OAuthFamily, app: dict[str, Any], data: dict[st
     return payload
 
 
-async def finish_oauth(db: AsyncSession, *, state: str, code: str) -> tuple[IntegrationConnection, IntegrationOAuthState]:
+async def finish_oauth(db: AsyncSession, *, state: str, code: str, session_id: str | None) -> tuple[IntegrationConnection, IntegrationOAuthState]:
     row = (await db.execute(select(IntegrationOAuthState).where(IntegrationOAuthState.state_hash == sha256(state)))).scalar_one_or_none()
     if row is None or row.used_at is not None or row.expires_at < utcnow():
         raise IntegrationError("That sign-in link has expired. Start connecting again.", 400)
     row.used_at = utcnow()
+    # The sign-in must come back to the same AIVA browser session that started it, so a
+    # link started by someone else can't attach the person's account to theirs.
+    if not row.session_hash or not session_id or not hmac.compare_digest(sha256(session_id), row.session_hash):
+        log(db, row.organization_id, row.provider, "connect_refused", "A sign-in came back in a different browser session than the one that started it, so it was ignored.", level="warning", user_id=row.user_id)
+        raise IntegrationError("This sign-in was started in another browser or by someone else. Start connecting again from AIVA.", 400)
     item = definition(row.provider)
     family = FAMILIES[item.family or ""]
     app = await oauth_app(db, row.organization_id, family.key)
@@ -353,6 +364,25 @@ async def finish_oauth(db: AsyncSession, *, state: str, code: str) -> tuple[Inte
 async def refresh_access_token(db: AsyncSession, connection: IntegrationConnection) -> str:
     item = definition(connection.provider)
     family = FAMILIES.get(item.family or "")
+    if connection.id is not None:
+        # One refresh at a time per connection: providers like Zoom accept each refresh
+        # token once, so a second refresher must use the first one's new tokens. The lock
+        # lasts until this transaction ends, when the winner's new tokens are committed.
+        await db.execute(select(func.pg_advisory_xact_lock(func.hashtextextended(f"aiva-integration-refresh:{connection.id}", 0))))
+        latest = (
+            await db.execute(
+                select(IntegrationConnection.access_token, IntegrationConnection.refresh_token, IntegrationConnection.token_expires_at, IntegrationConnection.status)
+                .where(IntegrationConnection.id == connection.id)
+            )
+        ).one_or_none()
+        if latest is not None and latest.refresh_token and latest.refresh_token != connection.refresh_token:
+            set_committed_value(connection, "access_token", latest.access_token)
+            set_committed_value(connection, "refresh_token", latest.refresh_token)
+            set_committed_value(connection, "token_expires_at", latest.token_expires_at)
+            set_committed_value(connection, "status", latest.status)
+            token = decrypt(latest.access_token) if latest.access_token else None
+            if token and (latest.token_expires_at is None or latest.token_expires_at - REFRESH_MARGIN > utcnow()):
+                return token
     refresh = decrypt(connection.refresh_token) if connection.refresh_token else None
     if family is None or not refresh:
         connection.status = "needs_reauth"

@@ -433,7 +433,7 @@ async def handle_webhook(db: AsyncSession, key: str, connection: IntegrationConn
     if _rate_limited(connection.webhook_token or str(connection.id)):
         return JSONResponse({"ok": False, "error": "Too many submissions. Slow down and try again in a minute."}, status_code=429)
     declared = request.headers.get("content-length")
-    if declared and declared.isdigit() and int(declared) > MAX_BODY:
+    if declared and declared.isascii() and declared.isdigit() and int(declared) > MAX_BODY:
         return _reject(db, connection, 413, "A submission was refused because it was larger than 256 KB.")
     body = await request.body()
     if len(body) > MAX_BODY:

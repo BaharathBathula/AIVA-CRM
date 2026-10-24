@@ -49,7 +49,7 @@ def signup(client, company: str = "Capture Co") -> dict:
     return {
         "org": data["organization_id"],
         "user_id": data["user_id"],
-        "headers": {"Authorization": f"Bearer {data['access_token']}", "X-Organization-ID": data["organization_id"]},
+        "headers": {"Authorization": f"Bearer {data['access_token']}", "X-Organization-ID": data["organization_id"], "X-Session-ID": data["session_id"]},
     }
 
 
@@ -491,7 +491,7 @@ def test_facebook_lead_ads_end_to_end(client, monkeypatch):
     client.put(f"{API}/integration-hub/facebook_lead_ads/toggle", json={"enabled": True}, headers=h)
     url = client.post(f"{API}/integration-hub/facebook_lead_ads/connect", json={}, headers=h).json()["authorize_url"]
     state = parse_qs(urlparse(url).query)["state"][0]
-    back = client.get(f"{API}/public/integrations/oauth/callback", params={"state": state, "code": "c"}, follow_redirects=False)
+    back = client.get(f"{API}/public/integrations/oauth/callback", params={"state": state, "code": "c"}, headers={"X-Session-ID": h["X-Session-ID"]}, follow_redirects=False)
     assert "connected=facebook_lead_ads" in back.headers["location"], back.headers["location"]
     detail = client.get(f"{API}/integration-hub/facebook_lead_ads", headers=h).json()
     extra = detail["extra"]
@@ -592,3 +592,34 @@ def test_sender_pins_the_checked_address_and_keeps_the_host(monkeypatch):
         assert not redirected.ok and "redirect" in (redirected.error or "") and len(seen) == 2
     finally:
         server.shutdown()
+
+
+def test_a_slow_receiver_is_cut_off(monkeypatch):
+    """A receiver that answers byte by byte can't hold the webhook queue (total deadline)."""
+    import asyncio
+    import time
+
+    from app.integrations.providers import automation
+
+    monkeypatch.setattr(automation, "TOTAL_SECONDS", 1.0)
+
+    async def main():
+        async def handler(reader, writer):
+            await reader.read(65536)
+            writer.write(b"HTTP/1.1 500 Oops\r\nContent-Length: 60\r\n\r\n")
+            await writer.drain()
+            for _ in range(60):
+                await asyncio.sleep(0.2)
+                writer.write(b"x")
+                await writer.drain()
+            writer.close()
+
+        server = await asyncio.start_server(handler, "127.0.0.1", 0)
+        port = server.sockets[0].getsockname()[1]
+        started = time.monotonic()
+        result = await automation.send(f"http://127.0.0.1:{port}/hook", b"{}", {"Content-Type": "application/json"})
+        server.close()
+        return result, time.monotonic() - started
+
+    result, took = asyncio.run(main())
+    assert not result.ok and took < 3 and "No answer" in (result.error or "")

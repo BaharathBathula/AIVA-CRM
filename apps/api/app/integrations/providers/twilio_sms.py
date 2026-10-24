@@ -155,7 +155,7 @@ def _url_variants(url: str) -> list[str]:
 def valid_signature(auth_token: str | None, url: str, params: list[tuple[str, str]], signature: str | None) -> bool:
     if not auth_token or not signature:
         return False
-    return any(hmac.compare_digest(signature_for(auth_token, candidate, params), signature) for candidate in _url_variants(url))
+    return any(hmac.compare_digest(signature_for(auth_token, candidate, params).encode(), signature.encode()) for candidate in _url_variants(url))
 
 
 # ---------------------------------------------------------------------------
